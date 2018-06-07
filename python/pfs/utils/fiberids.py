@@ -86,7 +86,6 @@ class FiberIds(object):
                                   comments='\\')
         for name in [d[0] for d in dtype]:
             def _fetchOne(self, name=name):
-                print("fetching ", name)
                 return self.data.__getitem__(name)
 
             setattr(self.__class__, name,
