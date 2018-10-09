@@ -17,21 +17,31 @@ import DistortionCoefficients
 
 mypath=os.path.dirname(os.path.abspath(__file__))+'/'
 
-## input x,y point list and zenith angle
-def CoordinateTransform(xyin, za, mode):
+## input x,y point list, zenith angle, mode, rotator angle, centerposition
+def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.],[0.]])):
     
     #print(mode,file=sys.stderr)
+    c=DistortionCoefficients.Coeff(mode)
+
+    #convert pixel to mm: mcs_pfi
+    if(c.mode=='mcs_pfi'):
+        xyin=Pixel2mm(xyin, inr, cent)
 
     arg=np.array([np.arctan2(j,i) for i,j in zip(*xyin)])
-
-    c=DistortionCoefficients.Coeff(mode)
+    if c.mode == 'mcs_pfi' :
+        arg=arg+np.pi
 
     print("Scaling", file=sys.stderr)
 
+    # Scale conversion
     scale=ScalingFactor(xyin, c)
 
     #deviation
     # base
+    """
+    To check the distortion, the below forking is commented out temporary
+    """
+    """
     if mode == 'mcs_pfi' :
         print("Offset 1 is skipped", file=sys.stderr)
         offx1=np.zeros(xyin.shape[1])
@@ -40,7 +50,10 @@ def CoordinateTransform(xyin, za, mode):
     else :
         print("Offset 1", file=sys.stderr)
         offx1,offy1=OffsetBase(xyin, c)
+    """
 
+    print("Offset 1", file=sys.stderr)
+    offx1,offy1=OffsetBase(xyin, c)
 
     # z-dependent
     print("Offset 2", file=sys.stderr)
@@ -67,8 +80,13 @@ def CoordinateTransform(xyin, za, mode):
 # differential : z
 def DeviationZenithAngle(xyin, za, c):
 
-    # Reference: zenith angle 30 deg
-    coeffz=DiffCoeff(za, c)/DiffCoeff(30., c)
+    if c.mode == 'mcs_pfi':
+        # Reference: zenith angle 60 deg
+        coeffzx=DiffCoeff(za, c, axis='x')/DiffCoeff(60., c, axis='x')
+        coeffzy=DiffCoeff(za, c, axis='y')/DiffCoeff(60., c, axis='y')
+    else:
+        # Reference: zenith angle 30 deg
+        coeffz=DiffCoeff(za, c)/DiffCoeff(30., c)
 
     # x : dx = c0*x*y
     cx=c.cx
@@ -82,8 +100,15 @@ def DeviationZenithAngle(xyin, za, c):
     sl_itrp=ipol.splrep(za_a,sl_a,k=2,s=0)
     cy5=ipol.splev(za,sl_itrp)
 
-    offx=np.array([coeffz*cx*x*y for x,y in zip(*xyin)])
-    offy=np.array([coeffz*(cy[0]*x*x+cy[1]*y*y+cy[2]*np.power(y,4.)+cy[3]*x*x*y*y+cy[4])+cy5*y for x,y in zip(*xyin)])
+    if c.mode == 'mcs_pfi':
+        tarr=np.array([RotationPattern(za,c,x,y) for x,y in zip(*xyin)])
+        rotxy=tarr.transpose()
+
+        offx=np.array([coeffzx*(cx[0]*x*x+cx[1]*y*y+cx[2]*x*y+cx[3]) for x,y in zip(*rotxy)])
+        offy=np.array([coeffzy*(cy[0]*x*x+cy[1]*y*y+cy[2]*np.power(y,4.)+cy[3]*x*x*y*y+cy[4])+cy5*y for x,y in zip(*rotxy)])
+    else:
+        offx=np.array([coeffz*cx*x*y for x,y in zip(*xyin)])
+        offy=np.array([coeffz*(cy[0]*x*x+cy[1]*y*y+cy[2]*np.power(y,4.)+cy[3]*x*x*y*y+cy[4])+cy5*y for x,y in zip(*xyin)])
 
     #offx=[]
     #offy=[]
@@ -96,10 +121,25 @@ def DeviationZenithAngle(xyin, za, c):
 
     return offx,offy
 
-def DiffCoeff(za, c):
+def DiffCoeff(za, c, axis='x'):
 
     za*=np.pi/180.
-    return c.dsc[0]*(c.dsc[1]*np.sin(za)+(1-np.cos(za)))
+    if (c.mode == 'mcs_pfi') and (axis == 'y'):
+        return c.dsc[2]*(c.dsc[3]*np.sin(za)+(1-np.cos(za)))
+    else:
+        return c.dsc[0]*(c.dsc[1]*np.sin(za)+(1-np.cos(za)))
+
+## treat rotated pattern (Sep. 2018)
+def RotationPattern(za,c,x,y):
+    
+    ra=-1.*(60.-za)
+
+    #if c.mode == 'mcs_pfi' :
+    #    ra=ra+np.pi
+
+    rx, ry = Rotation(x,y,ra)
+
+    return rx, ry
 
 
 ## Offset at base
@@ -161,7 +201,10 @@ def ScalingFactor_Rfunc(r, c):
 
     rc=c.rsc
 
-    return rc[0]*r+rc[1]*np.power(r,3.)+rc[2]*np.power(r,5.)
+    if c.mode == 'mcs_pfi':
+        return rc[0]*r+rc[1]*np.power(r,3.)+rc[2]*np.power(r,5.)+rc[3]*np.power(r,7.)
+    else:
+        return rc[0]*r+rc[1]*np.power(r,3.)+rc[2]*np.power(r,5.)
 
 ## Scaling Factor: interpolation func.
 def ScalingFactor_Inter(c):
@@ -177,3 +220,32 @@ def ScalingFactor_Inter(c):
     r_itrp=ipol.splrep(IpolD[0],IpolD[1],s=0)
 
     return r_itrp
+
+def Pixel2mm(xyin, inr, cent):
+
+    #pixel scale: 3.2um/pixel
+    pixel=3.2e-3
+
+    offxy=xyin-cent
+
+
+    xymm=[]
+    for x,y in zip(*offxy):
+        rx,ry = Rotation(x, y, inr)
+        rx *= pixel ; ry *= pixel
+        xymm.append([rx, ry])
+
+    xymm=np.swapaxes(np.array(xymm,dtype=float),0,1)
+
+#    print(offxy,xymm)
+    return xymm
+
+## Rotation (angle in degree)
+def Rotation(x,y,rot):
+    
+    ra = rot*np.pi/180.
+
+    rx=np.cos(ra)*x-np.sin(ra)*y
+    ry=np.sin(ra)*x+np.cos(ra)*y
+
+    return rx, ry
