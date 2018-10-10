@@ -233,7 +233,7 @@ def Pixel2mm(xyin, inr, cent):
     for x,y in zip(*offxy):
         rx,ry = Rotation(x, y, inr)
         rx *= pixel ; ry *= pixel
-        xymm.append([rx, ry])
+        xymm.append([rx, -1*ry])
 
     xymm=np.swapaxes(np.array(xymm,dtype=float),0,1)
 
