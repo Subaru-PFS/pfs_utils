@@ -9,7 +9,7 @@ from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 
-import DistortionCoefficients
+from . import DistortionCoefficients
 
 def WCSParameters(mode,cent,rot,alt,az):
 
