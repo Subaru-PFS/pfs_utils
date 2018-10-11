@@ -13,58 +13,35 @@ from scipy import interpolate as ipol
 # pfi_mcs : F3C to MCS
 # mcs_pfi : MCS to F3C
 
-mypath='/home/moritani/host_lisa/FocalPlane1704/script_new/'
+import DistortionCoefficients
 
-class Coeff:
+mypath=os.path.dirname(os.path.abspath(__file__))+'/'
 
-    def __init__(self, mode):
-
-        # Differential pattern
-        # x : dx = c0*x*y
-        dic_cx={"sky_pfi":0.0750466788561,
-                "sky_pfi_hsc":0.06333788071803437,
-                "mcs_pfi":0.000503107811479}
-        # y : dy = c0*x^2 + c1*y^2 + c2*y^4 + c3*x^2*y^2 + c4
-        dic_cy={"sky_pfi":[0.045278345420470184, 0.094587722958699313, 0.063632568952111501, 0.074033633816049674, -0.023152187620119963],
-                "sky_pfi_hsc":[0.03094074673276881, 0.07592444641651051, 0.04699568361118014, 0.05799533522450577, -0.01739380213343191],
-                "mcs_pfi":[0.00030369690700435151, 0.00063595572244913589, 2.8397096204379468e-06, 3.3134621802542193e-06, -0.022829824902876293]}
-        # y : slope cy5(z) * y
-        dic_slp={"sky_pfi":[0.,-0.00069803799551166809, -0.0048414570302028372],
-                 "sky_pfi_hsc":[0., -0.00015428320350572582, -7.358026105602118e-05],
-                 "mcs_pfi":[0.,6.4670295752240791e-07,0.00028349223770956881]}
-
-        # Scaling factor of difference
-        dic_dsc={"sky_pfi":[0.995465, 1.741161],
-                 "sky_pfi_hsc":[0.116418996679199, 16.9113776962136],
-                 "mcs_pfi":[0.995339, 1.741417]}
-
-        # Scaling factor w.r.t radius
-        dic_rsc={"sky_pfi":[319.97094550870497, 14.307946849934524, 6.6009649162879214],
-                 "sky_pfi_hsc":[320.0107640966762, 14.297123404641752, 6.586014956556028],
-                 "mcs_pfi":[26.209255623259196, 0.0077741519133454062, 2.4652054436469228e-05]}
-
-        self.mode=mode
-        self.cx=dic_cx[mode]
-        self.cy=dic_cy[mode]
-        self.slp=dic_slp[mode]
-        self.dsc=dic_dsc[mode]
-        self.rsc=dic_rsc[mode]
-
-## input x,y point list and zenith angle
-def CoordinateTransform(xyin, za, mode):
+## input x,y point list, zenith angle, mode, rotator angle, centerposition
+def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.],[0.]])):
     
     #print(mode,file=sys.stderr)
+    c=DistortionCoefficients.Coeff(mode)
+
+    #convert pixel to mm: mcs_pfi
+    if(c.mode=='mcs_pfi'):
+        xyin=Pixel2mm(xyin, inr, cent)
 
     arg=np.array([np.arctan2(j,i) for i,j in zip(*xyin)])
-
-    c=Coeff(mode)
+    if c.mode == 'mcs_pfi' :
+        arg=arg+np.pi
 
     print("Scaling", file=sys.stderr)
 
+    # Scale conversion
     scale=ScalingFactor(xyin, c)
 
     #deviation
     # base
+    """
+    To check the distortion, the below forking is commented out temporary
+    """
+    """
     if mode == 'mcs_pfi' :
         print("Offset 1 is skipped", file=sys.stderr)
         offx1=np.zeros(xyin.shape[1])
@@ -73,7 +50,10 @@ def CoordinateTransform(xyin, za, mode):
     else :
         print("Offset 1", file=sys.stderr)
         offx1,offy1=OffsetBase(xyin, c)
+    """
 
+    print("Offset 1", file=sys.stderr)
+    offx1,offy1=OffsetBase(xyin, c)
 
     # z-dependent
     print("Offset 2", file=sys.stderr)
@@ -100,8 +80,13 @@ def CoordinateTransform(xyin, za, mode):
 # differential : z
 def DeviationZenithAngle(xyin, za, c):
 
-    # Reference: zenith angle 30 deg
-    coeffz=DiffCoeff(za, c)/DiffCoeff(30., c)
+    if c.mode == 'mcs_pfi':
+        # Reference: zenith angle 60 deg
+        coeffzx=DiffCoeff(za, c, axis='x')/DiffCoeff(60., c, axis='x')
+        coeffzy=DiffCoeff(za, c, axis='y')/DiffCoeff(60., c, axis='y')
+    else:
+        # Reference: zenith angle 30 deg
+        coeffz=DiffCoeff(za, c)/DiffCoeff(30., c)
 
     # x : dx = c0*x*y
     cx=c.cx
@@ -115,8 +100,15 @@ def DeviationZenithAngle(xyin, za, c):
     sl_itrp=ipol.splrep(za_a,sl_a,k=2,s=0)
     cy5=ipol.splev(za,sl_itrp)
 
-    offx=np.array([coeffz*cx*x*y for x,y in zip(*xyin)])
-    offy=np.array([coeffz*(cy[0]*x*x+cy[1]*y*y+cy[2]*np.power(y,4.)+cy[3]*x*x*y*y+cy[4])+cy5*y for x,y in zip(*xyin)])
+    if c.mode == 'mcs_pfi':
+        tarr=np.array([RotationPattern(za,c,x,y) for x,y in zip(*xyin)])
+        rotxy=tarr.transpose()
+
+        offx=np.array([coeffzx*(cx[0]*x*x+cx[1]*y*y+cx[2]*x*y+cx[3]) for x,y in zip(*rotxy)])
+        offy=np.array([coeffzy*(cy[0]*x*x+cy[1]*y*y+cy[2]*np.power(y,4.)+cy[3]*x*x*y*y+cy[4])+cy5*y for x,y in zip(*rotxy)])
+    else:
+        offx=np.array([coeffz*cx*x*y for x,y in zip(*xyin)])
+        offy=np.array([coeffz*(cy[0]*x*x+cy[1]*y*y+cy[2]*np.power(y,4.)+cy[3]*x*x*y*y+cy[4])+cy5*y for x,y in zip(*xyin)])
 
     #offx=[]
     #offy=[]
@@ -129,10 +121,25 @@ def DeviationZenithAngle(xyin, za, c):
 
     return offx,offy
 
-def DiffCoeff(za, c):
+def DiffCoeff(za, c, axis='x'):
 
     za*=np.pi/180.
-    return c.dsc[0]*(c.dsc[1]*np.sin(za)+(1-np.cos(za)))
+    if (c.mode == 'mcs_pfi') and (axis == 'y'):
+        return c.dsc[2]*(c.dsc[3]*np.sin(za)+(1-np.cos(za)))
+    else:
+        return c.dsc[0]*(c.dsc[1]*np.sin(za)+(1-np.cos(za)))
+
+## treat rotated pattern (Sep. 2018)
+def RotationPattern(za,c,x,y):
+    
+    ra=-1.*(60.-za)
+
+    #if c.mode == 'mcs_pfi' :
+    #    ra=ra+np.pi
+
+    rx, ry = Rotation(x,y,ra)
+
+    return rx, ry
 
 
 ## Offset at base
@@ -194,7 +201,10 @@ def ScalingFactor_Rfunc(r, c):
 
     rc=c.rsc
 
-    return rc[0]*r+rc[1]*np.power(r,3.)+rc[2]*np.power(r,5.)
+    if c.mode == 'mcs_pfi':
+        return rc[0]*r+rc[1]*np.power(r,3.)+rc[2]*np.power(r,5.)+rc[3]*np.power(r,7.)
+    else:
+        return rc[0]*r+rc[1]*np.power(r,3.)+rc[2]*np.power(r,5.)
 
 ## Scaling Factor: interpolation func.
 def ScalingFactor_Inter(c):
@@ -210,3 +220,32 @@ def ScalingFactor_Inter(c):
     r_itrp=ipol.splrep(IpolD[0],IpolD[1],s=0)
 
     return r_itrp
+
+def Pixel2mm(xyin, inr, cent):
+
+    #pixel scale: 3.2um/pixel
+    pixel=3.2e-3
+
+    offxy=xyin-cent
+
+
+    xymm=[]
+    for x,y in zip(*offxy):
+        rx,ry = Rotation(x, y, inr)
+        rx *= pixel ; ry *= pixel
+        xymm.append([rx, -1*ry])
+
+    xymm=np.swapaxes(np.array(xymm,dtype=float),0,1)
+
+#    print(offxy,xymm)
+    return xymm
+
+## Rotation (angle in degree)
+def Rotation(x,y,rot):
+    
+    ra = rot*np.pi/180.
+
+    rx=np.cos(ra)*x-np.sin(ra)*y
+    ry=np.sin(ra)*x+np.cos(ra)*y
+
+    return rx, ry
