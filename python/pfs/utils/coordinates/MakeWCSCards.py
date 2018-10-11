@@ -42,8 +42,8 @@ def WCSParameters(mode,cent,rot,alt,az):
     s = wcs.Sip(a, b, ap, bp, w.wcs.crpix)
 
     # intermeriate worlds to worlds
-    w.wcs.crval = [0, -90]
-    w.wcs.ctype = ["RA---TBD-SIP", "DEC--TBD-SIP"]
+    w.wcs.crval = [0, 0]
+    w.wcs.ctype = ["PFI_X", "PFI_Y"]
     #w.wcs.set_pv([(2, 1, 45.0)])
 
     # Others
