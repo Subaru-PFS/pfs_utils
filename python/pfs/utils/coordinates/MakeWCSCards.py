@@ -15,7 +15,7 @@ def WCSParameters(mode,cent,rot,alt,az):
 
     c=DistortionCoefficients.Coeff(mode)
 
-    rot *= rot * np.pi/180.
+    rot *= np.pi/180.
     w = wcs.WCS(naxis=2)
 
     # pixel -> intermediate pixel
