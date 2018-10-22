@@ -13,7 +13,7 @@ from scipy import interpolate as ipol
 # pfi_mcs : F3C to MCS
 # mcs_pfi : MCS to F3C
 
-import DistortionCoefficients
+from . import DistortionCoefficients
 
 mypath=os.path.dirname(os.path.abspath(__file__))+'/'
 
