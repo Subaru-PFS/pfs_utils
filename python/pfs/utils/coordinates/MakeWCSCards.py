@@ -43,7 +43,7 @@ def WCSParameters(mode,cent,rot,alt,az):
 
     # intermeriate worlds to worlds
     w.wcs.crval = [0, 0]
-    w.wcs.ctype = ["PFI_X", "PFI_Y"]
+    w.wcs.ctype = ["PIXEL", "PIXEL"]
     #w.wcs.set_pv([(2, 1, 45.0)])
 
     # Others
