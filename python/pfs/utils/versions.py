@@ -1,33 +1,65 @@
-import os
 import pathlib
-import sys
 
 import git
 import eups
 
-def gitVersion(repoDir=None):
-    try:
-        gitRepo = git.Repo(path=repoDir)
-    except git.InvalidGitRepositoryError:
-        gitRepo = None
+def version(productName):
+    """
+    Return a single version string for a named product. Prefers git over eups.
+
+    Args
+    ----
+    productName : str
+      The EUPS product name to check.
+
+    Prefer the git version if available, since that is the most
+    descriptive and the best managed.
+
+    Failing a live git version, use the EUPS version. If that is a
+    tag, it is expected to match a git tag. But we do not check.
+    """
+
+    gitVersion, eupsVersion = versions(productName)
+    if gitVersion is None:
+        return eupsVersion if eupsVersion is not None else 'none'
+
+    return gitVersion
+
+def allSetupVersions():
+    eupsEnv = eups.Eups()
+    setupProds = eupsEnv.findProducts()
+
+    res = dict()
+    for p in setupProds:
+        prodInfo = eupsEnv.findSetupVersion(p.name)
+        if prodInfo[0] is None:
+            continue
+        res[p.name] = version(p.name)
+    return res
 
 def _eupsProductIsLocal(prod):
+    """ Return True if the eups version is for a local (setup -r $dir) setup. """
+
     return prod.version.startswith(prod.LocalVersionPrefix)
 
 def versions(productName):
-    """
-    Try to return the current version of the given product.
+    """ Try to return the current git and eups versions of the given product.
+
+    Args
+    ----
+    productName : string
+      EUPS product name to query
+
+    Returns
+    -------
+    gitVersion : standard git version string or None
+    eupsVersion : eups version name or None
 
     We expect three environments for a running program:
       - a setup EUPS directory with a live git repo
       - a live git repo in `pwd`
       - a setup EUPS-tagged version.
 
-    We always use a git version if available, since that is the most descriptive and the best
-    managed.
-
-    Failing a live git version, use the EUPS version. If that is a
-    tag, it is expected to match a git tag.
     """
 
     eupsEnv = eups.Eups()
@@ -35,19 +67,17 @@ def versions(productName):
     if eupsProd is None:
         eupsVersion = None
         prodDir = pathlib.Path().cwd()
-    prodDir = eupsProd.dir
-    eupsVersion = eupsProd.version if not _eupsProductIsLocal(eupsProd) else None
-
+    else:
+        eupsVersion = eupsProd.version  # if not _eupsProductIsLocal(eupsProd) else
+        prodDir = eupsProd.dir
 
     try:
         gitRepo = git.Repo(prodDir)
+        gitVersion = gitRepo.git.describe()
     except git.InvalidGitRepositoryError:
         gitRepo = None
-
-    if gitRepo is None:
-        if eupsVersion is None:
-            return 'none', 'none'
-        return eupsVersion, 'eups'
+        gitVersion = None
 
     # Could check for git-eups conformabity or warn?
-    return gitRepo.git.describe(), 'git'
+    return gitVersion, eupsVersion
+
