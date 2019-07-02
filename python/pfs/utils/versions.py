@@ -1,8 +1,11 @@
 import pathlib
 
-import git
 import eups
-
+try:
+    import git
+except ImportError:
+    git = None
+    
 def version(productName):
     """
     Return a single version string for a named product. Prefers git over eups.
@@ -21,7 +24,7 @@ def version(productName):
 
     gitVersion, eupsVersion = versions(productName)
     if gitVersion is None:
-        return eupsVersion if eupsVersion is not None else 'none'
+        return eupsVersion if eupsVersion is not None else 'unknown'
 
     return gitVersion
 
@@ -73,8 +76,8 @@ def versions(productName):
 
     try:
         gitRepo = git.Repo(prodDir)
-        gitVersion = gitRepo.git.describe()
-    except git.InvalidGitRepositoryError:
+        gitVersion = gitRepo.git.describe(dirty=True)
+    except (git.InvalidGitRepositoryError, AttributeError):
         gitRepo = None
         gitVersion = None
 
