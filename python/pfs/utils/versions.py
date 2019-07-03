@@ -77,7 +77,10 @@ def versions(productName):
     try:
         gitRepo = git.Repo(prodDir)
         gitVersion = gitRepo.git.describe(dirty=True)
-    except (git.InvalidGitRepositoryError, AttributeError):
+    except AttributeError:
+        gitRepo = None
+        gitVersion = None
+    except git.InvalidGitRepositoryError:
         gitRepo = None
         gitVersion = None
 
