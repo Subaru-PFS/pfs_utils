@@ -30,7 +30,7 @@ def version(productName):
 
 def allSetupVersions():
     eupsEnv = eups.Eups()
-    setupProds = eupsEnv.findProducts()
+    setupProds = eupsEnv.findProducts(tags='setup')
 
     res = dict()
     for p in setupProds:
@@ -45,12 +45,12 @@ def _eupsProductIsLocal(prod):
 
     return prod.version.startswith(prod.LocalVersionPrefix)
 
-def versions(productName):
+def versions(product):
     """ Try to return the current git and eups versions of the given product.
 
     Args
     ----
-    productName : string
+    product : string or eups Product instance
       EUPS product name to query
 
     Returns
@@ -65,13 +65,17 @@ def versions(productName):
 
     """
 
-    eupsEnv = eups.Eups()
-    eupsProd = eupsEnv.findSetupProduct(productName)
+    if isinstance(product, str):
+        eupsEnv = eups.Eups()
+        eupsProd = eupsEnv.findSetupProduct(product)
+    else:
+        eupsProd = product
+        
     if eupsProd is None:
         eupsVersion = None
         prodDir = pathlib.Path().cwd()
     else:
-        eupsVersion = eupsProd.version  # if not _eupsProductIsLocal(eupsProd) else
+        eupsVersion = eupsProd.version
         prodDir = eupsProd.dir
 
     try:
