@@ -11,9 +11,10 @@ from scipy import interpolate as ipol
 # sky_pfi_hsc : sky to hsc focal plane
 # sky_mcs : sky to MCS
 # pfi_mcs : F3C to MCS
+# pfi_mcs_wofe : F3C to MCS (w/o Field Element)
 # mcs_pfi : MCS to F3C
 
-from . import DistortionCoefficients
+from . import DistortionCoefficients as DCoeff
 
 mypath=os.path.dirname(os.path.abspath(__file__))+'/'
 
@@ -21,19 +22,24 @@ mypath=os.path.dirname(os.path.abspath(__file__))+'/'
 def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.],[0.]])):
     
     #print(mode,file=sys.stderr)
-    c=DistortionCoefficients.Coeff(mode)
+    c=DCoeff.Coeff(mode)
 
     #convert pixel to mm: mcs_pfi
-    if(c.mode=='mcs_pfi'):
+    if c.mode=='mcs_pfi' :
         xyin=Pixel2mm(xyin, inr, cent)
 
     arg=np.array([np.arctan2(j,i) for i,j in zip(*xyin)])
+    # MCS and PFI : xy is flipped
     if c.mode == 'mcs_pfi' :
         arg=arg+np.pi
 
-    print("Scaling", file=sys.stderr)
+    # PFI to MCS: input argument depends on rotator angle
+    if c.mode == 'pfi_mcs'  or c.mode == 'pfi_mcs_wofe':
+        arg=arg+np.deg2rad(inr)+np.pi
+
 
     # Scale conversion
+    print("Scaling", file=sys.stderr)
     scale=ScalingFactor(xyin, c)
 
     #deviation
@@ -52,13 +58,17 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.],[0.]])):
         offx1,offy1=OffsetBase(xyin, c)
     """
 
-    print("Offset 1", file=sys.stderr)
-    offx1,offy1=OffsetBase(xyin, c)
+    if c.mode=='pfi_mcs' or c.mode == 'pfi_mcs_wofe' :
+        offx1=np.zeros(xyin.shape[1]) ; offy1=np.zeros(xyin.shape[1])
+        offx2=np.zeros(xyin.shape[1]) ; offy2=np.zeros(xyin.shape[1])
+    else:
+        print("Offset 1", file=sys.stderr)
+        offx1,offy1=OffsetBase(xyin, c)
 
-    # z-dependent
-    print("Offset 2", file=sys.stderr)
-    offx2,offy2=DeviationZenithAngle(xyin, za, c)
-    #print(offx2)
+        # z-dependent
+        print("Offset 2", file=sys.stderr)
+        offx2,offy2=DeviationZenithAngle(xyin, za, c)
+        #print(offx2)
 
     xx=scale*np.cos(arg)+offx1+offx2
     yy=scale*np.sin(arg)+offy1+offy2
@@ -71,6 +81,11 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.],[0.]])):
     #    #print x,y,x+y
     #    #xyout.append([x,y])
     #    xyout=np.append(xyout,[x,y,s,t,ox1,oy1,ox2,oy2], axis=0)
+
+    #convert pixel to mm: mcs_pfi
+    if c.mode=='pfi_mcs' or c.mode == 'pfi_mcs_wofe':
+        xx,yy=mm2Pixel(xx, yy, cent)
+
 
     xyout=np.array([xx,yy,scale,arg,offx1,offy1,offx2,offy2])
 
@@ -184,15 +199,18 @@ def ScalingFactor(xyin, c):
 
     dist=[mt.sqrt(i*i+j*j) for i,j in zip(*xyin)]
 
-    # Derive Interpolation function
-    sc_intf=ScalingFactor_Inter(c)
-
     # scale1 : rfunction
     # scale2 : interpolation
     scale1=[ScalingFactor_Rfunc(r,c) for r in dist]
-    scale2=ipol.splev(dist,sc_intf)
+    if c.mode != 'pfi_mcs' and c.mode != 'pfi_mcs_wofe':
+        # Derive Interpolation function
+        sc_intf=ScalingFactor_Inter(c)
+        scale2=ipol.splev(dist,sc_intf)
 
-    scale=np.array([ x+y for x,y in zip(scale1, scale2)])
+    if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
+        scale=scale1
+    else:
+        scale=np.array([ x+y for x,y in zip(scale1, scale2)])
 
     return scale
 
@@ -223,16 +241,13 @@ def ScalingFactor_Inter(c):
 
 def Pixel2mm(xyin, inr, cent):
 
-    #pixel scale: 3.2um/pixel
-    pixel=3.2e-3
 
     offxy=xyin-cent
-
 
     xymm=[]
     for x,y in zip(*offxy):
         rx,ry = Rotation(x, y, inr)
-        rx *= pixel ; ry *= pixel
+        rx *= DCoeff.mcspixel ; ry *= DCoeff.mcspixel
         xymm.append([rx, -1*ry])
 
     xymm=np.swapaxes(np.array(xymm,dtype=float),0,1)
@@ -240,10 +255,17 @@ def Pixel2mm(xyin, inr, cent):
 #    print(offxy,xymm)
     return xymm
 
+def mm2Pixel(x, y, cent):
+
+    sx = x/DCoeff.mcspixel + cent[0]
+    sy = (-1.)*y/DCoeff.mcspixel + cent[1]
+
+    return sx,sy
+
 ## Rotation (angle in degree)
 def Rotation(x,y,rot):
     
-    ra = rot*np.pi/180.
+    ra = np.deg2rad(rot)
 
     rx=np.cos(ra)*x-np.sin(ra)*y
     ry=np.sin(ra)*x+np.cos(ra)*y
