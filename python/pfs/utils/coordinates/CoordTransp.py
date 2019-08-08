@@ -14,7 +14,7 @@ from scipy import interpolate as ipol
 # pfi_mcs_wofe : F3C to MCS (w/o Field Element)
 # mcs_pfi : MCS to F3C
 
-import DistortionCoefficients as DCoeff
+from . import DistortionCoefficients as DCoeff
 
 mypath=os.path.dirname(os.path.abspath(__file__))+'/'
 
