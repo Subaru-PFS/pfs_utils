@@ -80,7 +80,7 @@ def versions(product):
 
     try:
         gitRepo = git.Repo(prodDir)
-        gitVersion = gitRepo.git.describe(dirty=True)
+        gitVersion = gitRepo.git.describe(dirty=True, always=True)
     except AttributeError:
         gitRepo = None
         gitVersion = None
