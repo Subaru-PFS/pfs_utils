@@ -144,7 +144,7 @@ class DummyCableBDatabase:
         self.add("red6", next(hexIt), "LAM red #6 cable", [342])
         self.add("red7", next(hexIt), "LAM red #7 cable", [649])
         self.add("red8", next(hexIt), "LAM red #8 cable", [650])
-        self.add("yellow", next(hexIt), "LAM yellow cable", [347, 400, 449, 545, 593, 641])
+        self.add("yellow", next(hexIt), "LAM yellow cable", [347, 400, 449, 466, 545, 593, 641])
 
         # Additional LAM setups
         allFibers = list(range(1, 652))
