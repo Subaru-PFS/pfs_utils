@@ -260,8 +260,8 @@ def main():
                         help="Setup(s) specifying fibers that were lit")
     args = parser.parse_args()
 
-    fiberId = dcb.getFiberIds(*args.colors)
-    pfsDesignId = dcb.getHash(*args.colors)
+    fiberId = dcb.getFiberIds(*args.setups)
+    pfsDesignId = dcb.getHash(*args.setups)
     design = makePfsDesign(pfsDesignId, fiberId)
     design.write(dirName=args.directory)
     print("Wrote %s" % (design.filename,))
