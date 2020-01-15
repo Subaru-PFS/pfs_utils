@@ -84,12 +84,58 @@ class FiberIds(object):
 
         self.data = np.genfromtxt(flist[0], dtype=dtype,
                                   comments='\\')
+
+        # We want to use cobraId as an index: make sure we can.
+        assert (self.data['cobraId'] == np.arange(1, 2395, dtype='i4')).all()
+
         for name in [d[0] for d in dtype]:
             def _fetchOne(self, name=name):
                 return self.data.__getitem__(name)
 
             setattr(self.__class__, name,
                     property(_fetchOne))
+
+    def moduleForCobra(self, cobraId):
+        """ Return the FPGA moduleId for the given cobraId.
+
+        Args
+        ----
+        cobraId : 1..2394
+
+        Returns
+        -------
+        moduleId : int (1..42)
+          The moduleId for the given cobra
+        """
+        if cobraId < 1 or cobraId > 2394:
+            raise ValueError('cobraId must be 1..2394')
+        cobraInfo = self.data[cobraId-1]
+
+        return cobraInfo['fieldId'] * cobraInfo['moduleInFieldId']
+
+    def fpgaIdsForCobra(self, cobraId):
+        """ Return the FPGA board, cobra pair for the given cobraId.
+
+        Args
+        ----
+        cobraId : 1..2394
+
+        Returns
+        -------
+        boardId : int (1..84)
+        cobraIdx : int (1..29)
+          The FPGA ids for the given cobra
+        """
+
+        moduleId = self.moduleForCobra(cobraId)
+        cobraIdx = self.data[cobraId - 1]['cobraInModuleId']
+
+        if cobraIdx > 29:
+            # Board B
+            return (moduleId - 1)*2 + 2, cobraIdx - 29
+        else:
+            # Board A
+            return (moduleId - 1)*2 + 1, cobraIdx
 
     def cobrasForModule(self, moduleId):
         """ Return the indices of the cobras in a given module.
