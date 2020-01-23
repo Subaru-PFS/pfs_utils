@@ -36,6 +36,8 @@ class FiberIds(object):
 
     Todo
     ----
+
+    Add proper module ID (no board)
     Add methods as needed
     cobraId vs. scienceFiberId? Why two, really?
     fiducials? Separate class, probably.
@@ -138,6 +140,25 @@ class FiberIds(object):
                 raise ValueError("All holeIds not uniquely found.")
 
         return sCobras['cobraId']-1
+
+    def moduleNumsForCobra(self, cobraId):
+        row = np.where(self.cobraId == cobraId)[0][0]
+        board = self.boardId[row]
+        moduleNum = int(board[:-1])
+        cobraInModule = self.cobraInModuleId[row]
+
+        return moduleNum, cobraInModule
+
+    def cobraIdForModulePlusCobra(self, module, cobraInModule):
+        """ Return the global cobraId for given (module, cobraInModule) ids. """
+
+        if cobraInModule <= 29:
+            boardName = f"{module}A"
+        else:
+            boardName = f"{module}B"
+
+        w = (self.boardId == boardName) & (self.cobraInModuleId == cobraInModule)
+        return self.cobraId[w][0]
 
     def xyForCobras(self, cobras):
         """ Return the (x,y) positions of the given cobras.
