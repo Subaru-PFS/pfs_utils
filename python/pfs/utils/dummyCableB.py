@@ -6,7 +6,7 @@ of fibers used.
 """
 
 import numpy as np
-from pfs.datamodel import PfsDesign, TargetType
+from pfs.datamodel import PfsDesign, TargetType, FiberStatus
 
 __all__ = ["HexIterator", "DummyCableBDatabase", "makePfsDesign", "main"]
 
@@ -232,6 +232,7 @@ def makePfsDesign(pfsDesignId, fiberId):
     catId = np.zeros_like(fiberId, dtype=int)
     objId = fiberId
     targetTypes = TargetType.SCIENCE*np.ones_like(fiberId, dtype=int)
+    fiberStatus = np.full_like(targetTypes, FiberStatus.GOOD)
     ra = np.zeros_like(fiberId, dtype=float)
     dec = np.zeros_like(fiberId, dtype=float)
     pfiNominal = np.zeros((num, 2), dtype=float)
@@ -240,7 +241,7 @@ def makePfsDesign(pfsDesignId, fiberId):
     filterNames = [[] for _ in fiberId]
 
     return PfsDesign(pfsDesignId, raBoresight, decBoresight,
-                     fiberId, tract, patch, ra, dec, catId, objId, targetTypes,
+                     fiberId, tract, patch, ra, dec, catId, objId, targetTypes, fiberStatus,
                      fiberMags, filterNames, pfiNominal)
 
 
