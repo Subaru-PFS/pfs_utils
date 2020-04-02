@@ -14,7 +14,7 @@ logger = logging.getLogger('butler')
 defaultDataRoot = pathlib.Path("/data")
 
 class Butler(object):
-    def __init__(self, dataRoot=None, configRoot=None):
+    def __init__(self, dataRoot=None, configRoot=None, specIds=None):
         """A data and configuration manager, inspired by the LSST/DRP butler.
 
         This provides only the most minimal functionality required by the PFS ICS software.
@@ -25,7 +25,10 @@ class Butler(object):
             The root of the data directory tree. Defaults to /data
         configRoot : path-like
             The root of the configuration directory tree.
-            Defaults to $PFS_INSTDATA_DIR
+            Defaults to $PFS_INSTDATA_DIR/data
+        specIds : `pfs.utils.spectroIds.SpectroIds`
+            Contains our identity: site, arm, module, etc.
+            Usually created dynamically, from the hostname.
         """
 
         self.logger = logging.getLogger('butler')
@@ -44,10 +47,13 @@ class Butler(object):
                 raise ValueError("either configRoot must be passed in "
                                  "or the pfs_instdata product must be setup.")
             self.configRoot = pathlib.Path(eupsProd.dir) / "data"
-        self._loadMaps()
+        self._loadMaps(specIds)
 
-    def _loadMaps(self):
+    def _loadMaps(self, specIds=None):
         """Load the definitions of the maps which we can resolve. """
+
+        if specIds is None:
+            specIds = spectroIds.SpectroIds()
 
         from . import butlerMaps
         reload(butlerMaps)
@@ -58,10 +64,9 @@ class Butler(object):
         self.dataMap['dataRoot'] = dict(template=str(self.dataRoot))
         self.configMap['configRoot'] = dict(template=str(self.configRoot))
 
-        addIds = spectroIds.SpectroIds()
-        self.addDict = addIds.idDict
+        self.addDict = specIds.idDict
 
-        self.logger.info(f'loaded butler from {self.configMap}, for {self.dataMap}')
+        self.logger.debug(f'loaded butler from {self.configMap}, for {self.dataMap}')
 
     def getKnownDataMaps(self):
         return sorted(self.dataMap.keys())
