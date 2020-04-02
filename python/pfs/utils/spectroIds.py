@@ -133,12 +133,14 @@ class SpectroIds(object):
         _idDict = dict(site=self.site)
 
         if self.specNum is not None:
+            _idDict['spectrograph'] = self.specNum
             _idDict['specNum'] = self.specNum
             _idDict['specName'] = self.specName
         if self.arm is not None:
             _idDict['arm'] = self.arm
             _idDict['armNum'] = self.armNum
             _idDict['camName'] = self.camName
+            _idDict['cam'] = self.camName
 
         return _idDict
 
