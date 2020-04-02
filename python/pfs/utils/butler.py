@@ -68,6 +68,34 @@ class Butler(object):
 
         self.logger.debug(f'loaded butler from {self.configMap}, for {self.dataMap}')
 
+    def addMaps(self, configMapDict=None, dataMapDict=None):
+        """Add additional maps,
+
+        Args
+        ----
+        configMapDict : dict()
+        dataMapDict : dict()
+          Two dictionaries to update the internal mapping dictionaries with.
+          NOTE: this *overwrites* any values in the existing maps.
+        """
+
+        if configMapDict is not None:
+            self.configMap.update(configMapDict)
+        if dataMapDict is not None:
+            self.dataMap.update(dataMapDict)
+
+    def addKeys(self, addDict):
+        """Add keys to the dict used to evaluate butler templates.
+        
+        Args
+        ----
+        addDict : dict
+          Dictionary to _update_ our internal keys with.
+          NOTE: this *overwrites* any values in the existing dict.
+        """
+
+        self.addDict.update(addDict)
+        
     def getKnownDataMaps(self):
         return sorted(self.dataMap.keys())
 
