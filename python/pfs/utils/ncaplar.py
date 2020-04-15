@@ -50,7 +50,7 @@ x0 = 0
 # value_att = fmin(lamda_f,x0)
 
 
-def defocused_exposure_times(exp_time_0, att_value_0):
+def defocused_exposure_times(exp_time_0, att_value_0=None):
     """ gives list of exposure time and attenatuor values for defocused experiment
 
     @param[in] exp_time_0            exposure time for focus
@@ -61,14 +61,14 @@ def defocused_exposure_times(exp_time_0, att_value_0):
     defocused_exposure_times = []
     att_values = []
 
-    if att_value_0 == 0:
+    if att_value_0 is None:
         effective_exp_time_0 = exp_time_0
     else:
         effective_exp_time_0 = exp_time_0 * (func_att(att_value_0))
 
     for i in list_of_defocus_exposure_times:
         time_without_att = p2(i) * effective_exp_time_0
-        if time_without_att < 15:
+        if time_without_att < 15 and att_value_0 is not None:
             how_much_too_bright = 15 / time_without_att
 
             lamda_f = lambda x: func_att_diff(x, 1 / how_much_too_bright)
@@ -83,7 +83,7 @@ def defocused_exposure_times(exp_time_0, att_value_0):
     return (np.round(defocused_exposure_times).astype(int), np.round(att_values).astype(int))
 
 
-def defocused_exposure_times_single_position(exp_time_0, att_value_0, defocused_value):
+def defocused_exposure_times_single_position(exp_time_0, defocused_value, att_value_0=None):
     """ gives list of exposure time and attenatuor values for defocused experiment
 
     @param[in] exp_time_0            exposure time for focus
@@ -96,7 +96,7 @@ def defocused_exposure_times_single_position(exp_time_0, att_value_0, defocused_
     defocused_exposure_times = []
     att_values = []
 
-    if att_value_0 == 0:
+    if att_value_0 is None:
         effective_exp_time_0 = exp_time_0
     else:
         effective_exp_time_0 = exp_time_0 * (func_att(att_value_0))
@@ -104,7 +104,7 @@ def defocused_exposure_times_single_position(exp_time_0, att_value_0, defocused_
     i = defocused_value
     time_without_att = p2(i) * effective_exp_time_0
 
-    if time_without_att < 15:
+    if time_without_att < 15 and att_value_0 is not None:
         how_much_too_bright = 15 / time_without_att
 
         lamda_f = lambda x: func_att_diff(x, 1 / how_much_too_bright)
