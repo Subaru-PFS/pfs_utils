@@ -109,6 +109,7 @@ class Butler(object):
         """ Get the PFS 'day', which determines where data gets stored.
 
         We use GMT: day rollover there is midday at Subaru.
+        Should include a per-site offset.
         """
 
         if forTime is None:
@@ -161,7 +162,7 @@ class Butler(object):
 
         return tray, root
 
-    def getPath(self, objectType, idDict=None, noJoinRoot=False):
+    def getPath(self, objectType, idDict=None, noJoinRoot=False, **kw):
         """ Return the path to an object.
 
         Args
@@ -173,6 +174,8 @@ class Butler(object):
            we are looking for.
         noJoinRoot : bool
            Do not append the template to the root, but return both
+        kw : keys
+           Keys to add to idDict
 
         Returns
         -------
@@ -186,6 +189,9 @@ class Butler(object):
         except NameError:
             raise KeyError(f"no path template available for: {objectType}")
 
+        if idDict is None:
+            idDict = dict()
+        idDict.update(kw)
         idDict = self._addInternalKeys(idDict)
         try:
             path = eval(f'f"{template}"', globals(), idDict)
@@ -197,8 +203,8 @@ class Butler(object):
         else:
             return root / path
 
-    def search(self, objectType, idDict=None):
-        root, globPattern = self.getPath(objectType, idDict, noJoinRoot=True)
+    def search(self, objectType, idDict=None, **kw):
+        root, globPattern = self.getPath(objectType, idDict, noJoinRoot=True, **kw)
 
         matches = root.glob(globPattern)
         return sorted(matches)
@@ -248,7 +254,7 @@ class Butler(object):
         self.logger.debug(f'loading {objectType} from {path}, using {loader}')
         return loader(path)
 
-    def get(self, objectType, idDict=None):
+    def get(self, objectType, idDict=None, **kw):
         """ Find and load an object.
 
         Args
@@ -258,18 +264,20 @@ class Butler(object):
         idDict : `dict`
            The type-specific keys which identify the specific object
            we are looking for.
+        kw : keys
+           Keys to add to idDict
 
         Returns
         -------
         object : the loaded object
         """
 
-        path = self.getPath(objectType, idDict)
+        path = self.getPath(objectType, idDict, **kw)
         obj = self.getFromPath(objectType, path)
 
         return obj
 
-    def put(self, obj, objectType=None, idDict=None):
+    def put(self, obj, objectType=None, idDict=None, **kw):
         """Persist an object.
 
         Args
@@ -281,6 +289,8 @@ class Butler(object):
         idDict : `dict`
            The type-specific keys which identify the specific object
            we are looking for.
+        kw : keys
+           Keys to add to idDict
 
         Todo
         ----
@@ -289,7 +299,7 @@ class Butler(object):
         `butlerType` and `butlerDict` in the `obj`.
         """
 
-        path = self.getPath(objectType, idDict)
+        path = self.getPath(objectType, idDict, **kw)
         tray, root = self.getTray(objectType)
 
         if not hasattr(obj, 'dump'):
