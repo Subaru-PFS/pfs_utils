@@ -4,24 +4,22 @@ import re
 import socket
 
 def idFromHostname(hostname=None):
-    """ Return the module or cryostat id by looking at the hostname. 
+    """ Return the cryostat id by looking at the hostname. 
+
+    This is only useful for BEEs, since the enu actors do not run on per-SM hosts.
 
     Returns:
     id : str
-      Either "smM" or "[brmn]N", or None
+      "[brn]N", or None
     """
 
     if hostname is None:
         hostname = socket.gethostname()
     hostname = os.path.splitext(hostname)[0]
 
-    m = re.match('^(enu)-(sm[1-4])', hostname)
+    m = re.match('^(bee)-([brn][1-489])', hostname)
     if m is not None:
-        return m.groups[-1]
-
-    m = re.match('^(xcu|ccd)-([brnm][1-489])', hostname)
-    if m is not None:
-        return m.groups[-1]
+        return m.group(2)
 
     return None
 
