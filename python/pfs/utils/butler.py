@@ -115,7 +115,7 @@ class Butler(object):
         if forTime is None:
             forTime = time.time()
         forTime = time.gmtime(forTime) # minus 86400?
-        day = time.strftime('%Y%m%d', forTime)
+        day = time.strftime('%Y-%m-%d', forTime)
 
         return day
 
