@@ -152,6 +152,18 @@ class SpectroIds(object):
 
         return _idDict
 
+    @classmethod
+    def fromNum(cls, specNum, armNum):
+        """ Instantiate SpectroIds from specNum and armNum"""
+        armNum = int(armNum)
+        specNum = int(specNum)
+
+        if armNum not in SpectroIds.validArms.values():
+            raise KeyError(f'{armNum} is not a valid armNum : {list(SpectroIds.validArms.values())}')
+
+        num2arm = dict([(v, k) for k, v in SpectroIds.validArms.items()])
+        return cls(f'{num2arm[armNum]}{specNum}')
+
     def makeSpsFitsName(self, visit, fileType='A', extension='.fits'):
         """ Create a complete filename 
 
