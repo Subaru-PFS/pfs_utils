@@ -3,6 +3,7 @@ import os
 import re
 import socket
 
+
 def idFromHostname(hostname=None):
     """ Return the cryostat id by looking at the hostname. 
 
@@ -23,6 +24,7 @@ def idFromHostname(hostname=None):
 
     return None
 
+
 def getSite():
     """ Return the site name. Extracted from a DNS TXT record. """
 
@@ -38,10 +40,11 @@ def getSite():
 
     return site
 
+
 class SpectroIds(object):
     validArms = dict(b=1, r=2, n=3, m=4)
-    validSites = {'A','J','L','S','C','X','Z'}
-    validModules = tuple(range(1,5))
+    validSites = {'A', 'J', 'L', 'S', 'C', 'X', 'Z'}
+    validModules = tuple(range(1, 5))
 
     def __init__(self, partName=None, hostname=None, site=None):
         """ Track, and optionally detect, spectrograph/camera names and ids. 
@@ -76,7 +79,7 @@ class SpectroIds(object):
         self.site = site
 
         if self.site == 'J':
-            self.validModules += (8,9)
+            self.validModules += (8, 9)
 
         if partName is None:
             partName = idFromHostname(hostname=hostname)
@@ -112,6 +115,13 @@ class SpectroIds(object):
         if self.arm is None:
             return None
         return "%s%d" % (self.arm, self.specNum)
+
+    @property
+    def camId(self):
+        if self.arm is None:
+            return None
+
+        return (self.specNum - 1) * len(SpectroIds.validArms) + self.armNum
 
     @property
     def specName(self):
