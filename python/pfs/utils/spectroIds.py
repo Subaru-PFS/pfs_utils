@@ -43,6 +43,7 @@ def getSite():
 
 class SpectroIds(object):
     validArms = dict(b=1, r=2, n=3, m=4)
+    validFpas = dict(b=0, r=1, n=2)
     validSites = {'A', 'J', 'L', 'S', 'C', 'X', 'Z'}
     validModules = tuple(range(1, 5))
 
@@ -117,11 +118,28 @@ class SpectroIds(object):
         return "%s%d" % (self.arm, self.specNum)
 
     @property
+    def fpa(self):
+        """The arm name, but treating 'm' as equal to 'r' """
+        if self.arm is None:
+            return None
+
+        return 'r' if self.arm == 'm' else self.arm
+
+    @property
     def camId(self):
+        """The canonical camera number, treating 'm' as its own arm, but 1-based. So 1..16"""
         if self.arm is None:
             return None
 
         return (self.specNum - 1) * len(SpectroIds.validArms) + self.armNum
+
+    @property
+    def fpaId(self):
+        """The canonical camera number, treating 'm' == 'r' and 0-based. So 0..11. Matches obs.pfs.pfsMapper """
+        if self.arm is None:
+            return None
+
+        return (self.specNum - 1) * len(SpectroIds.validFpas) + self.validFpas[self.fpa]
 
     @property
     def specName(self):
@@ -149,6 +167,7 @@ class SpectroIds(object):
             _idDict['armNum'] = self.armNum
             _idDict['camName'] = self.camName
             _idDict['cam'] = self.camName
+            _idDict['fpaId'] = self.fpaId
 
         return _idDict
 
