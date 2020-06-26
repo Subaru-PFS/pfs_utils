@@ -21,6 +21,30 @@ mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 # input x,y point list, zenith angle, mode, rotator angle, centerposition
 def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
+    """ Transform Coordinates given za and inr
+
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS.
+    za : `float`
+        Zenith angle in degree.
+    mode : `str`
+        Transformation mode. Available mode is "sky_pfi", "sky_pfi_hsc"
+        "pfi_mcs", "pfi_mcs_wofe", "mcs_pfi"
+    inr : `float`, optional
+        Instrument rotator andle in degree. Default is 0.
+    cent : `np.ndarray`, (1, 2), optional
+        The center of input coordinates. Unit is the same as xyin.
+        Defaut is x=0. , y=0.
+
+    Returns
+    -------
+    xyout : `np.ndarray`, (N, 8)
+        Output coordinates etc.. The first two rows are the coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS.
+    """
 
     c = DCoeff.Coeff(mode)
 
@@ -76,6 +100,25 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
 
 # differential : z
 def DeviationZenithAngle(xyin, za, c):
+    """ Calculate displacement at a given zenith angle
+
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS
+    za : `float`
+        Zenith angle in degree
+    c : `DCoeff` class
+       Distortion Coefficients
+
+    Returns
+    -------
+    offx : `np.ndarray`, (N, 1)
+        Displacement in x-axis
+    offy : `np.ndarray`, (N, 1)
+        Displacement in y-axis
+    """
 
     if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
         # Reference: zenith angle 60 deg
@@ -127,6 +170,22 @@ def DeviationZenithAngle(xyin, za, c):
 
 
 def DiffCoeff(za, c, axis='x'):
+    """ Calculate coefficients of displacement at a given zenith angle
+
+    Parameters
+    ----------
+    za : `float`
+        Zenith angle in degree.
+    c : `DCoeff` class
+        Distortion Coefficients.
+    axix : `str`, optional
+        Axis to calculate.
+
+    Returns
+    -------
+    `float`
+        Coefficianct.
+    """
 
     za *= np.pi/180.
     if (c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe') and (axis == 'y'):
@@ -135,8 +194,35 @@ def DiffCoeff(za, c, axis='x'):
         return c.dsc[0]*(c.dsc[1]*np.sin(za)+(1-np.cos(za)))
 
 
-# treat rotated pattern (Sep. 2018)
 def RotationPattern(za, c, x, y):
+    """ Calculate rotate displacement at a given angle
+
+    Parameters
+    ----------
+    za : `float`
+        Zenith angle in degree.
+    c : `DCoeff` class
+        Distortion Coefficients.
+    axix : `str`, optional
+        Axis to calculate. Default is x-axis.
+    x: `float`
+        Position in x-axis.
+    y: `float`
+        Position in y-axis.
+
+    Returns
+    -------
+    rx: `float`
+        Position in x-axis.
+    ry: `float`
+        Position in y-axis.
+
+    Note
+    ----
+    This function is implemented from stdy in Sep. 2018. However,
+    Recent stuty in 2019 and 2020 found that rotation of displacement
+    is not needed. This function will be removed in the near future.
+    """
 
     ra = -1.*(60.-za)
 
@@ -145,8 +231,24 @@ def RotationPattern(za, c, x, y):
     return rx, ry
 
 
-# Offset at base
 def OffsetBase(xyin, c):
+    """ Derive Displacement at the zenith
+
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS.
+    c : `DCoeff` class
+        Distortion Coefficients.
+
+    Returns
+    -------
+    offsetx : `np.ndarray`, (N, 1)
+        Displacement in x-axis.
+    offsety : `np.ndarray`, (N, 1)
+        Displacement in y-axis.
+    """
 
     # sky-x sky-y off-x off-y
     dfile = mypath+"data/offset_base_"+c.mode+".dat"
@@ -170,8 +272,24 @@ def OffsetBase(xyin, c):
     return offsetx, offsety
 
 
-# Scaling Factor: function of r + interpol
 def ScalingFactor(xyin, c):
+    """ Derive Axi-symmetric scaling factor
+        It consifts of polynomial component and additional component
+        by iterpolation.
+
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS.
+    c : `DCoeff` class
+        Distortion Coefficients.
+
+    Returns
+    -------
+    scale : `float`
+        Scaling factor.
+    """
 
     dist = [mt.sqrt(i*i+j*j) for i, j in zip(*xyin)]
 
@@ -206,8 +324,21 @@ def ScalingFactor(xyin, c):
     return scale
 
 
-# Scaling Factor: function of r
 def ScalingFactor_Rfunc(r, c):
+    """ Calculate polynomial component of the scaling factor
+
+    Parameters
+    ----------
+    r : `float`
+        Distance from the coordinte center
+    c : `DCoeff` class
+        Distortion Coefficients
+
+    Returns
+    -------
+    `float`
+        Scaling factor (polinomial component)
+    """
 
     rc = c.rsc
 
@@ -217,8 +348,20 @@ def ScalingFactor_Rfunc(r, c):
         rc[3] * np.power(r, 7.)
 
 
-# Scaling Factor: interpolation func.
 def ScalingFactor_Inter(c):
+    """ Calculate additional component of the scaling factor
+        Using interpolation
+
+    Parameters
+    ----------
+    c : `DCoeff` class
+        Distortion Coefficients
+
+    Returns
+    -------
+    r_itrp : `float`
+        Scaling factor (additional component)
+    """
 
     dfile = mypath+"data/scale_interp_"+c.mode+".dat"
     fi = open(dfile)
@@ -234,6 +377,28 @@ def ScalingFactor_Inter(c):
 
 
 def Pixel2mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
+    """ Convert MCS Unit from pixel to mm
+
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates in pixel.
+    inr : `float`, optional
+        Instrument rotator andle in degree. Default is 0.
+    cent : `np.ndarray`, (1, 2), optional
+        The center of input coordinates.
+    pix : `float`, optional
+        pixel scale in mm/pix
+    invx : `float`, optional
+        Invert x axis (-1.) or not (1.). Default is No (1.).
+    invy : `float`, optional
+        Invert y axis (-1.) or not (1.). Default is No (1.).
+
+    Returns
+    -------
+    xyin : `np.ndarray`, (N, 2)
+        Output coordinates in mm.
+    """
 
     offxy = xyin - cent
 
@@ -250,6 +415,24 @@ def Pixel2mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
 
 
 def mm2Pixel(x, y, cent):
+    """ Convert MCS Unit from mm to pixel.
+
+    Parameters
+    ----------
+    x : `float`
+        Input coordinates in x-axis in mm.
+    y : `float`
+        Input coordinates in y-axis in mm.
+    cent : `np.ndarray`, (1, 2), optional
+        The center of onput coordinates.
+
+    Returns
+    -------
+    sx : `float`
+        Coordinates in x-axis in pixel.
+    sy : `float`
+        Coordinates in y-axis in pixel.
+    """
 
     sx = x/DCoeff.mcspixel + cent[0]
     sy = (-1.)*y/DCoeff.mcspixel + cent[1]
@@ -257,8 +440,25 @@ def mm2Pixel(x, y, cent):
     return sx, sy
 
 
-# Rotation (angle in degree)
 def Rotation(x, y, rot):
+    """ Rotate position
+
+    Parameters
+    ----------
+    x : `float`
+        Input coordinates in x-axis.
+    y : `float`
+        Input coordinates in y-axis.
+    rot : `float`
+        Rotation angle in degree.
+
+    Returns
+    -------
+    rx : `float`
+        Coordinates in x-axis.
+    ry : `float`
+        Coordinates in y-axis.
+    """
 
     ra = np.deg2rad(rot)
 
