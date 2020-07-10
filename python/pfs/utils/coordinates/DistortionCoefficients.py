@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
+import os
+import sys
 import numpy as np
+from scipy import interpolate as ipol
 
 """
 Distortion Coefficients
@@ -17,6 +20,21 @@ Distortion Coefficients
            add MCS to F3C withot Field Element (mcs_pfi_wofe) coefficients
            using data in January 2020
 """
+
+"""
+Global Parameters
+"""
+
+mypath = os.path.dirname(os.path.abspath(__file__))+'/'
+
+# MCS pixel scale: 3.2um/pixel
+mcspixel = 3.2e-3
+mcspixel_asrd = 3.1e-3
+
+# Distortion Center of Temporary MCS on PFI coordinates
+# distc_x_asrd=-15.5764 -(-1.568) ; distc_y_asrd = -2.62071 -(1.251)
+distc_x_asrd = -15.5764
+distc_y_asrd = -2.62071
 
 
 class Coeff:
@@ -218,6 +236,122 @@ class Coeff:
 
         return dy
 
+    def diff_coeff(self, za, za0=60.):
+        """ Calculate coefficients of displacement at a given zenith angle
+
+        Parameters
+        ----------
+        za : `float`
+            Zenith angle in degree.
+        za0 : `float`, optional
+            Zenith angle in degree where Coeff is unity. Default is 60.
+        axix : `str`, optional
+            Axis to calculate.
+
+        Returns
+        -------
+        `float`
+            Coefficianct.
+        """
+
+        za = np.deg2rad(za)
+        if (self.mode == 'mcs_pfi' or self.mode == 'mcs_pfi_wofe'):
+            coeffx = self.dsc[0]*(self.dsc[1]*np.sin(za) +
+                                  (1-np.cos(za)))
+            coeffy = self.dsc[2]*(self.dsc[3]*np.sin(za) +
+                                  (1-np.cos(za)))
+        else:
+            coeffx = coeffy = \
+                self.dsc[0]*(self.dsc[1]*np.sin(za)+(1-np.cos(za)))
+
+        return coeffx, coeffy
+
+    def offset_base(self, xyin):
+        """ Derive Displacement at the zenith
+
+        Parameters
+        ----------
+        xyin : `np.ndarray`, (N, 2)
+            Input coordinates.
+            Unit is degree for sky, mm for PFI, and pixel for MCS.
+
+        Returns
+        -------
+        offsetx : `np.ndarray`, (N, 1)
+            Displacement in x-axis.
+        offsety : `np.ndarray`, (N, 1)
+            Displacement in y-axis.
+        """
+
+        if self.skip1_off:
+            print("------ Skipped.")
+            offsetx = offsety = np.zeros(xyin.shape[1])
+        else:
+            # sky-x sky-y off-x off-y
+            dfile = mypath+"data/offset_base_"+self.mode+".dat"
+            IpolD = np.loadtxt(dfile).T
+
+            x_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :],
+                                                IpolD[2, :], kx=5, ky=5, s=1)
+            y_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :],
+                                                IpolD[3, :], kx=5, ky=5, s=1)
+
+            print("Interpol Done.", file=sys.stderr)
+
+            offsetx = np.array([x_itrp.ev(i, j) for i, j in zip(*xyin)])
+            offsety = np.array([y_itrp.ev(i, j) for i, j in zip(*xyin)])
+
+        return offsetx, offsety
+
+    def scaling_factor(self, xyin):
+        """ Derive Axi-symmetric scaling factor
+            It consifts of polynomial component and additional component
+            by iterpolation.
+
+        Parameters
+        ----------
+        xyin : `np.ndarray`, (N, 2)
+            Input coordinates.
+            Unit is degree for sky, mm for PFI, and pixel for MCS.
+
+        Returns
+        -------
+        scale : `float`
+            Scaling factor.
+        """
+
+        dist = [np.sqrt(i*i+j*j) for i, j in zip(*xyin)]
+
+        # at ASRD
+        if self.mode == 'mcs_pfi_asrd':
+            dist1 = [np.sqrt((i * self.rsc[0] - distc_x_asrd) *
+                             (i * self.rsc[0] - distc_x_asrd) +
+                             (j * self.rsc[0] - distc_y_asrd) *
+                             (j * self.rsc[0] - distc_y_asrd))
+                     for i, j in zip(*xyin)]
+            scale = [r * self.rsc[0] - (self.rsc[1] +
+                                        self.rsc[2] * s +
+                                        self.rsc[3] * s * s +
+                                        self.rsc[4] * np.power(s, 3.))
+                     for r, s in zip(dist, dist1)]
+
+        # at the Summit
+        else:
+            # scale1 : rfunction
+            # scale2 : interpolation
+            scale1 = [self.scaling_factor_rfunc(r) for r in dist]
+
+            if self.mode == 'pfi_mcs' or self.mode == 'pfi_mcs_wofe':
+                scale2 = np.zeros(len(scale1))
+            else:
+                # Derive Interpolation function
+                sc_intf = self.scaling_factor_inter()
+                scale2 = ipol.splev(dist, sc_intf)
+
+            scale = np.array([x+y for x, y in zip(scale1, scale2)])
+
+        return scale
+
     # Scaling Factor: function of r
     def scaling_factor_rfunc(self, r):
         """ Calculate polynomial component of the scaling factor
@@ -240,16 +374,22 @@ class Coeff:
 
         return sf
 
+    def scaling_factor_inter(self):
+        """ Calculate additional component of the scaling factor
+            Using interpolation
 
-"""
-Other Parameters
-"""
+        Parameters
+        ----------
 
-# MCS pixel scale: 3.2um/pixel
-mcspixel = 3.2e-3
-mcspixel_asrd = 3.1e-3
+        Returns
+        -------
+        r_itrp : `float`
+            Scaling factor (additional component)
+        """
 
-# Distortion Center of Temporary MCS on PFI coordinates
-# distc_x_asrd=-15.5764 -(-1.568) ; distc_y_asrd = -2.62071 -(1.251)
-distc_x_asrd = -15.5764
-distc_y_asrd = -2.62071
+        dfile = mypath+"data/scale_interp_"+self.mode+".dat"
+        IpolD = np.loadtxt(dfile)
+
+        r_itrp = ipol.splrep(IpolD[:, 0], IpolD[:, 1], s=0)
+
+        return r_itrp
