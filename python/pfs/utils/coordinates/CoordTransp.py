@@ -49,7 +49,7 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     c = DCoeff.Coeff(mode)
 
     # convert pixel to mm: mcs_pfi and mcs_pfi_asrd
-    if c.mode == 'mcs_pfi' or 'mcs_pfi_wofe':
+    if (c.mode == 'mcs_pfi') or (c.mode == 'mcs_pfi_wofe'):
         xyin = Pixel2mm(xyin, inr, cent,
                         pix=DCoeff.mcspixel, invx=1., invy=-1.)
     elif c.mode == 'mcs_pfi_asrd':
@@ -93,6 +93,10 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
         xx, yy = mm2Pixel(xx, yy, cent)
 
+    # Rotation to PFI coordinates
+    if c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
+        xx, yy = Rotation(xx, yy, -1.*inr)
+
     xyout = np.array([xx, yy, scale, arg, offx1, offy1, offx2, offy2])
 
     return xyout
@@ -128,11 +132,6 @@ def DeviationZenithAngle(xyin, za, c):
         # Reference: zenith angle 30 deg
         coeffz = DiffCoeff(za, c)/DiffCoeff(30., c)
 
-    # x : dx = c0*x*y
-    cx = c.cx
-    # y : dy = c0*x^2 + c1*y^2 + c2*y^4 + c3*x^2*y^2 + c4
-    cy = c.cy
-
     # y : slope cy5(z) * y
     za_a = [0., 30., 60.]
     sl_a = c.slp
@@ -144,27 +143,15 @@ def DeviationZenithAngle(xyin, za, c):
         tarr = np.array([RotationPattern(za, c, x, y) for x, y in zip(*xyin)])
         rotxy = tarr.transpose()
 
-        offx = np.array([coeffzx *
-                        (cx[0] * x * x + cx[1] * y * y + cx[2] * x * y + cx[3])
-                        for x, y in zip(*rotxy)])
-        offy = np.array([coeffzy * (
-                                    cy[0] * x * x +
-                                    cy[1] * y * y +
-                                    cy[2] * np.power(y, 4.) +
-                                    cy[3] * x * x * y * y +
-                                    cy[4]) +
-                        cy5*y
-                        for x, y in zip(*rotxy)])
+        offx = np.array([coeffzx*(c.dev_pattern_x(x, y)) 
+                         for x, y in zip(*rotxy)])
+        offy = np.array([coeffzy*(c.dev_pattern_y(x, y)) + cy5 * y
+                         for x, y in zip(*rotxy)])
     else:
-        offx = np.array([coeffz*cx*x*y for x, y in zip(*xyin)])
-        offy = np.array([coeffz * (
-                                   cy[0]*x*x +
-                                   cy[1] * y * y +
-                                   cy[2] * np.power(y, 4.) +
-                                   cy[3] * x * x * y * y +
-                                   cy[4]) +
-                        cy5 * y
-                        for x, y in zip(*xyin)])
+        offx = np.array([coeffz*(c.dev_pattern_x(x, y))
+                         for x, y in zip(*xyin)])
+        offy = np.array([coeffz * (c.dev_pattern_y(x, y)) + cy5 * y
+                         for x, y in zip(*xyin)])
 
     return offx, offy
 
@@ -252,12 +239,7 @@ def OffsetBase(xyin, c):
 
     # sky-x sky-y off-x off-y
     dfile = mypath+"data/offset_base_"+c.mode+".dat"
-    fi = open(dfile)
-    line = fi.readlines()
-    fi.close
-
-    lines = [i.split() for i in line]
-    IpolD = np.swapaxes(np.array(lines, dtype=float), 0, 1)
+    IpolD = np.loadtxt(dfile).T
 
     x_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :], IpolD[2, :],
                                         kx=5, ky=5, s=1)
@@ -310,7 +292,7 @@ def ScalingFactor(xyin, c):
     else:
         # scale1 : rfunction
         # scale2 : interpolation
-        scale1 = [ScalingFactor_Rfunc(r, c) for r in dist]
+        scale1 = [c.scaling_factor_rfunc(r) for r in dist]
         if c.mode != 'pfi_mcs' and c.mode != 'pfi_mcs_wofe':
             # Derive Interpolation function
             sc_intf = ScalingFactor_Inter(c)
@@ -322,30 +304,6 @@ def ScalingFactor(xyin, c):
             scale = np.array([x+y for x, y in zip(scale1, scale2)])
 
     return scale
-
-
-def ScalingFactor_Rfunc(r, c):
-    """ Calculate polynomial component of the scaling factor
-
-    Parameters
-    ----------
-    r : `float`
-        Distance from the coordinte center
-    c : `DCoeff` class
-        Distortion Coefficients
-
-    Returns
-    -------
-    `float`
-        Scaling factor (polinomial component)
-    """
-
-    rc = c.rsc
-
-    return rc[0] * r + \
-        rc[1] * np.power(r, 3.) + \
-        rc[2] * np.power(r, 5.) + \
-        rc[3] * np.power(r, 7.)
 
 
 def ScalingFactor_Inter(c):
@@ -364,14 +322,9 @@ def ScalingFactor_Inter(c):
     """
 
     dfile = mypath+"data/scale_interp_"+c.mode+".dat"
-    fi = open(dfile)
-    line = fi.readlines()
-    fi.close
+    IpolD = np.loadtxt(dfile)
 
-    lines = [i.split() for i in line]
-    IpolD = list(map(list, zip(*lines)))
-
-    r_itrp = ipol.splrep(IpolD[0], IpolD[1], s=0)
+    r_itrp = ipol.splrep(IpolD[:, 0], IpolD[:, 1], s=0)
 
     return r_itrp
 

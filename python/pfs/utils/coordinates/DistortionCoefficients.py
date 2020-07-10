@@ -39,8 +39,8 @@ class Coeff:
 
         # Differential pattern
         # x : dx = c0*x*y or = c0*x*x + c1*y*y + c2*x*y +c3*x^3*y^3+c4
-        dic_cx = {"sky_pfi": 0.0750466788561,
-                  "sky_pfi_hsc": 0.06333788071803437,
+        dic_cx = {"sky_pfi": [0., 0., 0.0750466788561, 0.],
+                  "sky_pfi_hsc": [0., 0., 0.06333788071803437, 0.],
                   "pfi_mcs": np.nan,
                   "pfi_mcs_wofe": np.nan,
                   "mcs_pfi": [-0.00021573669065476386,
@@ -168,6 +168,77 @@ class Coeff:
         self.slp = dic_slp[mode]
         self.dsc = dic_dsc[mode]
         self.rsc = dic_rsc[mode]
+
+    def dev_pattern_x(self, x, y):
+        """ Calc patterned deviation in x-axis
+
+        Parameters
+        ----------
+        x : float
+            position in x-axis
+        y : float
+            position in y-axis
+        Returns
+        -------
+        dx : float
+            deviation in x-axis
+        """
+
+        ccx = self.cx
+
+        dx = (ccx[0]*x*x +
+              ccx[1]*y*y +
+              ccx[2]*x*y +
+              ccx[3])
+
+        return dx
+
+    def dev_pattern_y(self, x, y):
+        """ Calc patterned deviation in y-axis
+
+        Parameters
+        ----------
+        x : float
+            position in x-axis
+        y : float
+            position in y-axis
+        Returns
+        -------
+        dy : float
+            deviation in x-axis
+        """
+
+        ccy = self.cy
+
+        dy = (ccy[0]*x*x +
+              ccy[1]*y*y +
+              ccy[2]*np.power(y, 4.) +
+              ccy[3]*x*x*y*y +
+              ccy[4])
+
+        return dy
+
+    # Scaling Factor: function of r
+    def scaling_factor_rfunc(self, r):
+        """ Calculate polynomial component of the scaling factor
+
+        Parameters
+        ----------
+        r : `float`
+            Distance from the coordinte center
+
+        Returns
+        -------
+        sf : `float`
+            Scaling factor (polinomial component)
+        """
+
+        sf = (self.rsc[0]*r +
+              self.rsc[1]*np.power(r, 3.) +
+              self.rsc[2]*np.power(r, 5.) +
+              self.rsc[3]*np.power(r, 7.))
+
+        return sf
 
 
 """
