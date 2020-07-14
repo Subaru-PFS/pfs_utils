@@ -47,22 +47,11 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
 
     c = DCoeff.Coeff(mode)
 
-    # convert pixel to mm: mcs_pfi and mcs_pfi_asrd
-    if (c.mode == 'mcs_pfi') or (c.mode == 'mcs_pfi_wofe'):
-        xyin = pixel_to_mm(xyin, inr, cent,
-                           pix=DCoeff.mcspixel, invx=1., invy=-1.)
-    elif c.mode == 'mcs_pfi_asrd':
-        xyin = pixel_to_mm(xyin, inr, cent,
-                           pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
+    # Transform iput coordinates to those the same as WFC as-built model
+    xyin = convert_in_position(xyin, inr, c, cent)
 
-    arg = np.array([np.arctan2(j, i) for i, j in zip(*xyin)])
-    # MCS and PFI : xy is flipped
-    if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
-        arg = arg+np.pi
-
-    # PFI to MCS: input argument depends on rotator angle
-    if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
-        arg = arg+np.deg2rad(inr)+np.pi
+    # Calculate Argument
+    arg = calc_argumet(xyin, inr, c)
 
     # Scale conversion
     print("Scaling", file=sys.stderr)
@@ -84,17 +73,81 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     xx = scale*np.cos(arg)+offx1+offx2
     yy = scale*np.sin(arg)+offy1+offy2
 
-    # convert pixel to mm: mcs_pfi
-    if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
-        xx, yy = mm_to_pixel(xx, yy, cent)
-
-    # Rotation to PFI coordinates
-    if c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
-        xx, yy = rotation(xx, yy, -1.*inr)
+    xx, yy = convert_out_position(xx, yy, inr, c, cent)
 
     xyout = np.array([xx, yy, scale, arg, offx1, offy1, offx2, offy2])
 
     return xyout
+
+
+def convert_out_position(x, y, inr, c, cent):
+    """ convert outputs position on WFC-as built model to those on the PFS
+    coordinates.
+    Parameters
+    ----------
+    x : `float`,
+       input positio in x-axis
+    y : `float`,
+       input positio in y-axis
+    inr : `float`
+        Instrument rotator andle in degree.
+    c : `DCoeff` class
+       Distortion Coefficients
+    cent : `np.ndarray`, (1, 2)
+        The center of input coordinates. Unit is the same as xyin.
+
+    Returns
+    -------
+    xx : `float`,
+       converted positio in x-axis
+    yy : `float`,
+       converted positio in y-axis
+    """
+    # convert pixel to mm: mcs_pfi
+    if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
+        xx, yy = mm_to_pixel(x, y, cent)
+    # Rotation to PFI coordinates
+    elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
+        xx, yy = rotation(x, y, -1.*inr)
+    else:
+        xx = x
+        yy = y
+
+    return xx, yy
+
+
+def convert_in_position(xyin, inr, c, cent):
+    """ convert input position to those on the same coordinates as
+        the WFC as-built model.
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS
+    inr : `float`
+        Instrument rotator andle in degree.
+    c : `DCoeff` class
+       Distortion Coefficients
+    cent : `np.ndarray`, (1, 2)
+        The center of input coordinates. Unit is the same as xyin.
+
+    Returns
+    -------
+    arg : `np.ndarray`, (N, 1)
+       argument angle of positions in radian
+    """
+
+    # convert pixel to mm: mcs_pfi and mcs_pfi_asrd
+    if (c.mode == 'mcs_pfi') or (c.mode == 'mcs_pfi_wofe'):
+        xyconv = pixel_to_mm(xyin, inr, cent,
+                             pix=DCoeff.mcspixel, invx=1., invy=-1.)
+    elif c.mode == 'mcs_pfi_asrd':
+        xyconv = pixel_to_mm(xyin, inr, cent,
+                             pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
+    else:
+        xyconv = xyin
+
+    return xyconv
 
 
 # differential : z
@@ -182,6 +235,36 @@ def rotation_pattern(za, x, y):
     rx, ry = rotation(x, y, ra)
 
     return rx, ry
+
+
+def calc_argumet(xyin, inr, c):
+    """ Calculate argumet angle of input position
+    Parameters
+    ----------
+    xyin : `np.ndarray`, (N, 2)
+        Input coordinates.
+        Unit is degree for sky, mm for PFI, and pixel for MCS
+    inr : `float`
+        Instrument rotator andle in degree. 
+    c : `DCoeff` class
+       Distortion Coefficients
+
+    Returns
+    -------
+    arg : `np.ndarray`, (N, 1)
+       argument angle of positions in radian
+    """
+
+    arg = np.array([np.arctan2(j, i) for i, j in zip(*xyin)])
+    # MCS and PFI : xy is flipped
+    if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
+        arg = arg+np.pi
+
+    # PFI to MCS: input argument depends on rotator angle
+    if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
+        arg = arg+np.deg2rad(inr)+np.pi
+
+    return arg
 
 
 def pixel_to_mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
