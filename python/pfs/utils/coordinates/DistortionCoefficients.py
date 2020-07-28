@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import sys
+import logging
 import numpy as np
 from scipy import interpolate as ipol
 
@@ -284,7 +284,7 @@ class Coeff:
         """
 
         if self.skip1_off:
-            print("------ Skipped.")
+            logging.info("------ Skipped.")
             offsetx = offsety = np.zeros(xyin.shape[1])
         else:
             # sky-x sky-y off-x off-y
@@ -296,7 +296,7 @@ class Coeff:
             y_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :],
                                                 IpolD[3, :], kx=5, ky=5, s=1)
 
-            print("Interpol Done.", file=sys.stderr)
+            logging.info("Interpolated the base offset")
 
             offsetx = np.array([x_itrp.ev(i, j) for i, j in zip(*xyin)])
             offsety = np.array([y_itrp.ev(i, j) for i, j in zip(*xyin)])

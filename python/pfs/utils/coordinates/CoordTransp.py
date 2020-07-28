@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import sys
+import logging
 import numpy as np
 from scipy import interpolate as ipol
 
@@ -54,12 +54,12 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     arg = calc_argumet(xyin, inr, c)
 
     # Scale conversion
-    print("Scaling", file=sys.stderr)
+    logging.info("Scaling")
     scale = c.scaling_factor(xyin)
 
     # deviation
     # base
-    print("Offset 1", file=sys.stderr)
+    logging.info("Offset 1, at zenith")
     offx1, offy1 = c.offset_base(xyin)
 
     if c.skip2_off:
@@ -67,7 +67,7 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
         offy2 = np.zeros(xyin.shape[1])
     else:
         # z-dependent
-        print("Offset 2", file=sys.stderr)
+        logging.info("Offset 2, from zenith")
         offx2, offy2 = deviation_zenith_angle(xyin, za, c)
 
     xx = scale*np.cos(arg)+offx1+offx2
