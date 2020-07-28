@@ -38,7 +38,7 @@ distc_y_asrd = -2.62071
 
 
 class Coeff:
-    """ Distortion Coefficiens and Methods
+    """Distortion Coefficients and Methods
 
     Parameters
     ----------
@@ -188,7 +188,7 @@ class Coeff:
         self.rsc = dic_rsc[mode]
 
     def dev_pattern_x(self, x, y):
-        """ Calc patterned deviation in x-axis
+        """Calc patterned deviation in x-axis
 
         Parameters
         ----------
@@ -212,7 +212,7 @@ class Coeff:
         return dx
 
     def dev_pattern_y(self, x, y):
-        """ Calc patterned deviation in y-axis
+        """Calc patterned deviation in y-axis
 
         Parameters
         ----------
@@ -237,7 +237,7 @@ class Coeff:
         return dy
 
     def diff_coeff(self, za, za0=60.):
-        """ Calculate coefficients of displacement at a given zenith angle
+        """Calculate coefficients of displacement at a given zenith angle
 
         Parameters
         ----------
@@ -245,13 +245,13 @@ class Coeff:
             Zenith angle in degree.
         za0 : `float`, optional
             Zenith angle in degree where Coeff is unity. Default is 60.
-        axix : `str`, optional
-            Axis to calculate.
 
         Returns
         -------
-        `float`
-            Coefficianct.
+        coeffx: `float`
+            Coefficient in x-axis.
+        coeffy: `float`
+            Coefficient in y-axis.
         """
 
         za = np.deg2rad(za)
@@ -267,7 +267,7 @@ class Coeff:
         return coeffx, coeffy
 
     def offset_base(self, xyin):
-        """ Derive Displacement at the zenith
+        """Derive Displacement at the zenith
 
         Parameters
         ----------
@@ -304,9 +304,9 @@ class Coeff:
         return offsetx, offsety
 
     def scaling_factor(self, xyin):
-        """ Derive Axi-symmetric scaling factor
+        """Derive axi-symmetric scaling factor
             It consifts of polynomial component and additional component
-            by iterpolation.
+            by interpolation.
 
         Parameters
         ----------
@@ -337,7 +337,7 @@ class Coeff:
 
         # at the Summit
         else:
-            # scale1 : rfunction
+            # scale1 : r-function
             # scale2 : interpolation
             scale1 = [self.scaling_factor_rfunc(r) for r in dist]
 
@@ -354,17 +354,17 @@ class Coeff:
 
     # Scaling Factor: function of r
     def scaling_factor_rfunc(self, r):
-        """ Calculate polynomial component of the scaling factor
+        """Calculate polynomial component of the scaling factor
 
         Parameters
         ----------
         r : `float`
-            Distance from the coordinte center
+            Distance from the coordinate center
 
         Returns
         -------
         sf : `float`
-            Scaling factor (polinomial component)
+            Scaling factor (polynomial component)
         """
 
         sf = (self.rsc[0]*r +
@@ -375,7 +375,7 @@ class Coeff:
         return sf
 
     def scaling_factor_inter(self):
-        """ Calculate additional component of the scaling factor
+        """Calculate additional component of the scaling factor
             Using interpolation
 
         Parameters

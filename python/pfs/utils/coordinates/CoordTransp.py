@@ -18,9 +18,9 @@ from . import DistortionCoefficients as DCoeff
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-# input x,y point list, zenith angle, mode, rotator angle, centerposition
 def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
-    """ Transform Coordinates given za and inr
+    """Transform Coordinates given za and inr. Inputs are x,y point list,
+    zenith angle, mode, rotator angle, centerposition
 
     Parameters
     ----------
@@ -33,10 +33,10 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
         Transformation mode. Available mode is "sky_pfi", "sky_pfi_hsc"
         "pfi_mcs", "pfi_mcs_wofe", "mcs_pfi"
     inr : `float`, optional
-        Instrument rotator andle in degree. Default is 0.
+        Instrument rotator angle in degree. Default is 0.
     cent : `np.ndarray`, (1, 2), optional
         The center of input coordinates. Unit is the same as xyin.
-        Defaut is x=0. , y=0.
+        Default is x=0. , y=0.
 
     Returns
     -------
@@ -51,7 +51,7 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     xyin = convert_in_position(xyin, inr, c, cent)
 
     # Calculate Argument
-    arg = calc_argumet(xyin, inr, c)
+    arg = calc_argument(xyin, inr, c)
 
     # Scale conversion
     logging.info("Scaling")
@@ -70,8 +70,8 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
         logging.info("Offset 2, from zenith")
         offx2, offy2 = deviation_zenith_angle(xyin, za, c)
 
-    xx = scale*np.cos(arg)+offx1+offx2
-    yy = scale*np.sin(arg)+offy1+offy2
+    xx = scale*np.cos(arg)+offx1 + offx2
+    yy = scale*np.sin(arg)+offy1 + offy2
 
     xx, yy = convert_out_position(xx, yy, inr, c, cent)
 
@@ -81,16 +81,16 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
 
 
 def convert_out_position(x, y, inr, c, cent):
-    """ convert outputs position on WFC-as built model to those on the PFS
+    """convert outputs position on WFC-as built model to those on the PFS
     coordinates.
     Parameters
     ----------
     x : `float`,
-       input positio in x-axis
+       input position in x-axis
     y : `float`,
-       input positio in y-axis
+       input position in y-axis
     inr : `float`
-        Instrument rotator andle in degree.
+        Instrument rotator angle in degree.
     c : `DCoeff` class
        Distortion Coefficients
     cent : `np.ndarray`, (1, 2)
@@ -99,9 +99,9 @@ def convert_out_position(x, y, inr, c, cent):
     Returns
     -------
     xx : `float`,
-       converted positio in x-axis
+       converted position in x-axis
     yy : `float`,
-       converted positio in y-axis
+       converted position in y-axis
     """
     # convert pixel to mm: mcs_pfi
     if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
@@ -117,7 +117,7 @@ def convert_out_position(x, y, inr, c, cent):
 
 
 def convert_in_position(xyin, inr, c, cent):
-    """ convert input position to those on the same coordinates as
+    """convert input position to those on the same coordinates as
         the WFC as-built model.
     Parameters
     ----------
@@ -125,7 +125,7 @@ def convert_in_position(xyin, inr, c, cent):
         Input coordinates.
         Unit is degree for sky, mm for PFI, and pixel for MCS
     inr : `float`
-        Instrument rotator andle in degree.
+        Instrument rotator angle in degree.
     c : `DCoeff` class
        Distortion Coefficients
     cent : `np.ndarray`, (1, 2)
@@ -152,7 +152,7 @@ def convert_in_position(xyin, inr, c, cent):
 
 # differential : z
 def deviation_zenith_angle(xyin, za, c):
-    """ Calculate displacement at a given zenith angle
+    """Calculate displacement at a given zenith angle
     Parameters
     ----------
     xyin : `np.ndarray`, (N, 2)
@@ -201,16 +201,12 @@ def deviation_zenith_angle(xyin, za, c):
 
 
 def rotation_pattern(za, x, y):
-    """ Calculate rotate displacement at a given angle
+    """Calculate rotate displacement at a given angle
 
     Parameters
     ----------
     za : `float`
         Zenith angle in degree.
-    c : `DCoeff` class
-        Distortion Coefficients.
-    axix : `str`, optional
-        Axis to calculate. Default is x-axis.
     x: `float`
         Position in x-axis.
     y: `float`
@@ -225,8 +221,8 @@ def rotation_pattern(za, x, y):
 
     Note
     ----
-    This function is implemented from stdy in Sep. 2018. However,
-    Recent stuty in 2019 and 2020 found that rotation of displacement
+    This function is implemented from study in Sep. 2018. However,
+    Recent study in 2019 and 2020 found that rotation of displacement
     is not needed. This function will be removed in the near future.
     """
 
@@ -237,15 +233,15 @@ def rotation_pattern(za, x, y):
     return rx, ry
 
 
-def calc_argumet(xyin, inr, c):
-    """ Calculate argumet angle of input position
+def calc_argument(xyin, inr, c):
+    """Calculate argument angle of input position
     Parameters
     ----------
     xyin : `np.ndarray`, (N, 2)
         Input coordinates.
         Unit is degree for sky, mm for PFI, and pixel for MCS
     inr : `float`
-        Instrument rotator andle in degree. 
+        Instrument rotator angle in degree. 
     c : `DCoeff` class
        Distortion Coefficients
 
@@ -268,14 +264,14 @@ def calc_argumet(xyin, inr, c):
 
 
 def pixel_to_mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
-    """ Convert MCS Unit from pixel to mm
+    """Convert MCS Unit from pixel to mm
 
     Parameters
     ----------
     xyin : `np.ndarray`, (N, 2)
         Input coordinates in pixel.
     inr : `float`, optional
-        Instrument rotator andle in degree. Default is 0.
+        Instrument rotator angle in degree. Default is 0.
     cent : `np.ndarray`, (1, 2), optional
         The center of input coordinates.
     pix : `float`, optional
@@ -306,7 +302,7 @@ def pixel_to_mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
 
 
 def mm_to_pixel(x, y, cent):
-    """ Convert MCS Unit from mm to pixel.
+    """Convert MCS Unit from mm to pixel.
 
     Parameters
     ----------
@@ -315,7 +311,7 @@ def mm_to_pixel(x, y, cent):
     y : `float`
         Input coordinates in y-axis in mm.
     cent : `np.ndarray`, (1, 2), optional
-        The center of onput coordinates.
+        The center of input coordinates.
 
     Returns
     -------
@@ -332,7 +328,7 @@ def mm_to_pixel(x, y, cent):
 
 
 def rotation(x, y, rot):
-    """ Rotate position
+    """Rotate position
 
     Parameters
     ----------
@@ -353,7 +349,7 @@ def rotation(x, y, rot):
 
     ra = np.deg2rad(rot)
 
-    rx = np.cos(ra)*x-np.sin(ra)*y
-    ry = np.sin(ra)*x+np.cos(ra)*y
+    rx = np.cos(ra)*x - np.sin(ra)*y
+    ry = np.sin(ra)*x + np.cos(ra)*y
 
     return rx, ry
