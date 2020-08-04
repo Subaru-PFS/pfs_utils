@@ -5,6 +5,13 @@ import logging
 import numpy as np
 from scipy import interpolate as ipol
 
+import astropy
+from astropy import units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+import astroplan
+from astroplan import Observer
+
 # Dictionary keys ( argument name is mode)
 # sky_pfi : sky to F3C
 # sky_pfi_hsc : sky to hsc focal plane
@@ -18,7 +25,8 @@ from . import DistortionCoefficients as DCoeff
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
+def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]]),
+                        time='2020-01-01 10:00:00'):
     """Transform Coordinates given za and inr. Inputs are x,y point list,
     zenith angle, mode, rotator angle, centerposition
 
@@ -37,6 +45,9 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     cent : `np.ndarray`, (1, 2), optional
         The center of input coordinates. Unit is the same as xyin.
         Default is x=0. , y=0.
+    time : `str`, optional
+        Observation time UTC in format of %Y-%m-%d %H:%M:%S
+        Defalt is 2020-01-01 00:00:00
 
     Returns
     -------
@@ -48,7 +59,10 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]])):
     c = DCoeff.Coeff(mode)
 
     # Transform iput coordinates to those the same as WFC as-built model
-    xyin = convert_in_position(xyin, inr, c, cent)
+    xyin, inr, za1 = convert_in_position(xyin, za, inr, c, cent, time)
+    if (mode == 'sky_pfi') and (za1 != za):
+        logging.info("Zenith angle for your field should be %s", za1)
+        za = za1
 
     # Calculate Argument
     arg = calc_argument(xyin, inr, c)
@@ -116,7 +130,7 @@ def convert_out_position(x, y, inr, c, cent):
     return xx, yy
 
 
-def convert_in_position(xyin, inr, c, cent):
+def convert_in_position(xyin, za, inr, c, cent, time):
     """convert input position to those on the same coordinates as
         the WFC as-built model.
     Parameters
@@ -124,17 +138,21 @@ def convert_in_position(xyin, inr, c, cent):
     xyin : `np.ndarray`, (N, 2)
         Input coordinates.
         Unit is degree for sky, mm for PFI, and pixel for MCS
+    za : `float`
+        Zenith angle in degree
     inr : `float`
         Instrument rotator angle in degree.
     c : `DCoeff` class
        Distortion Coefficients
     cent : `np.ndarray`, (1, 2)
         The center of input coordinates. Unit is the same as xyin.
+    time : `str`
+        Observation time UTC in format of %Y-%m-%d %H:%M:%S
 
     Returns
     -------
-    arg : `np.ndarray`, (N, 1)
-       argument angle of positions in radian
+    xyconv : `np.ndarray`, (N, 2)
+       converted xy position in the format of WFC as-built model
     """
 
     # convert pixel to mm: mcs_pfi and mcs_pfi_asrd
@@ -144,10 +162,56 @@ def convert_in_position(xyin, inr, c, cent):
     elif c.mode == 'mcs_pfi_asrd':
         xyconv = pixel_to_mm(xyin, inr, cent,
                              pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
+    elif (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_hsc'):
+        # Set Observation Site (Subaru)
+        tel = EarthLocation.of_site('Subaru')
+        tel2 = Observer.at_site("Subaru", timezone="US/Hawaii")
+        obs_time = Time(time)
+
+        aref_file = mypath+'data/Refraction_data_635nm.txt'
+        atm_ref = np.loadtxt(aref_file)
+        atm_interp = ipol.splrep(atm_ref[:, 0], atm_ref[:, 1], s=0)
+
+        # Ra-Dec to Az-El (Center)
+        coord_cent = SkyCoord(cent[0], cent[1], unit=u.deg)
+        altaz_cent = coord_cent.transform_to(AltAz(obstime=obs_time, location=tel))
+
+        # Instrument rotator angle
+        paa = tel2.parallactic_angle(obs_time, coord_cent).deg
+        lat = tel2.location.lat.deg
+        dc = coord_cent.dec.deg
+        if dc > lat:
+            inr = paa-180.
+        else:
+            inr = paa
+
+        az0 = altaz_cent.az.deg
+        el0 = altaz_cent.alt.deg
+        za = 90. - el0
+        eld0 = el0 + ipol.splev(za, atm_interp)/3600.
+        za = za[0]
+
+        center = SkyCoord(az0, eld0, unit=u.deg)
+        aframe = center.skyoffset_frame()
+        logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
+                     cent[0], cent[1], az0, eld0, inr)
+
+        # Ra-Dec to Az-El (Targets)
+        coord = SkyCoord(xyin[0, :], xyin[1, :], unit=u.deg)
+        altaz = coord.transform_to(AltAz(obstime=obs_time, location=tel))
+        el = altaz.alt.deg
+        az = altaz.az.deg
+
+        eld = el + ipol.splev(90.-el, atm_interp)/3600.
+
+        # Az-El to offset angle from the center (Targets)
+        target = SkyCoord(az, eld, unit=u.deg)
+        off = target.transform_to(aframe)
+        xyconv = np.vstack((off.lon.deg, off.lat.deg))
     else:
         xyconv = xyin
 
-    return xyconv
+    return xyconv, inr, za
 
 
 # differential : z
