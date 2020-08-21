@@ -5,11 +5,9 @@ import logging
 import numpy as np
 from scipy import interpolate as ipol
 
-import astropy
 from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-import astroplan
 from astroplan import Observer
 
 # Dictionary keys ( argument name is mode)
@@ -28,23 +26,27 @@ mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 def CoordinateTransform(xyin, za, mode, inr=0., pa=0.,
                         cent=np.array([[0.], [0.]]),
                         time='2020-01-01 10:00:00'):
-    """Transform Coordinates given za and inr. Inputs are x,y point list,
-    zenith angle, mode, rotator angle, centerposition
+    """Transform Coordinates with given observing conditions.
 
     Parameters
     ----------
-    xyin : `np.ndarray`, (N, 2)
-        Input coordinates.
-        Unit is degree for sky, mm for PFI, and pixel for MCS.
+    xyin : `np.ndarray`, (2, N)
+        Input coordinates. Namely. (Ra, Dec) in unit of degree for sky, 
+        (X, Y) in unit of mm for PFI, and (X, Y) in unit of pixel for MCS.
     za : `float`
-        Zenith angle in degree.
+        Zenith angle in unit of degree.
     mode : `str`
         Transformation mode. Available mode is "sky_pfi", "sky_pfi_hsc"
         "pfi_mcs", "pfi_mcs_wofe", "mcs_pfi"
     inr : `float`, optional
-        Instrument rotator angle in degree. Default is 0.
-    cent : `np.ndarray`, (1, 2), optional
-        The center of input coordinates. Unit is the same as xyin.
+        Instrument rotator angle in unit of degree. Default is 0. Note that
+        this value is automatically calculated and overwritten by this routine
+        for sky_pfi* transformation.
+    pa : `float`, optional
+        Position angle in unit of degree for sky_pfi* transformation. Default
+        is 0.
+    cent : `np.ndarray`, (2, 1), optional
+        The center of input coordinates in the same unit as xyin.
         Default is x=0. , y=0.
     time : `str`, optional
         Observation time UTC in format of %Y-%m-%d %H:%M:%S
@@ -52,7 +54,7 @@ def CoordinateTransform(xyin, za, mode, inr=0., pa=0.,
 
     Returns
     -------
-    xyout : `np.ndarray`, (N, 8)
+    xyout : `np.ndarray`, (8, N)
         Output coordinates etc.. The first two rows are the coordinates.
         Unit is degree for sky, mm for PFI, and pixel for MCS.
     """
@@ -105,11 +107,11 @@ def convert_out_position(x, y, inr, c, cent):
     y : `float`,
        input position in y-axis
     inr : `float`
-        Instrument rotator angle in degree.
+        Instrument rotator angle in unit of degree.
     c : `DCoeff` class
        Distortion Coefficients
-    cent : `np.ndarray`, (1, 2)
-        The center of input coordinates. Unit is the same as xyin.
+    cent : `np.ndarray`, (2, 1)
+        The center of input coordinates in the same unit of as xyin.
 
     Returns
     -------
@@ -136,23 +138,25 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         the WFC as-built model.
     Parameters
     ----------
-    xyin : `np.ndarray`, (N, 2)
-        Input coordinates.
-        Unit is degree for sky, mm for PFI, and pixel for MCS
+    xyin : `np.ndarray`, (2, N)
+        Input coordinates, in unit of degree for sky, mm for PFI,
+        and pixel for MCS
     za : `float`
-        Zenith angle in degree
+        Zenith angle in unit of degree
     inr : `float`
-        Instrument rotator angle in degree.
+        Instrument rotator angle in unit of degree.
+    pa : `float`
+        Position angle in unit of degree.
     c : `DCoeff` class
        Distortion Coefficients
-    cent : `np.ndarray`, (1, 2)
-        The center of input coordinates. Unit is the same as xyin.
+    cent : `np.ndarray`, (2, 1)
+        The center of input coordinates in the same unit as xyin.
     time : `str`
         Observation time UTC in format of %Y-%m-%d %H:%M:%S
 
     Returns
     -------
-    xyconv : `np.ndarray`, (N, 2)
+    xyconv : `np.ndarray`, (2, N)
        converted xy position in the format of WFC as-built model
     """
 
@@ -175,7 +179,8 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
 
         # Ra-Dec to Az-El (Center)
         coord_cent = SkyCoord(cent[0], cent[1], unit=u.deg)
-        altaz_cent = coord_cent.transform_to(AltAz(obstime=obs_time, location=tel))
+        altaz_cent = coord_cent.transform_to(AltAz(obstime=obs_time,
+                                                   location=tel))
 
         # Instrument rotator angle
         paa = tel2.parallactic_angle(obs_time, coord_cent).deg
@@ -221,19 +226,19 @@ def deviation_zenith_angle(xyin, za, c):
     """Calculate displacement at a given zenith angle
     Parameters
     ----------
-    xyin : `np.ndarray`, (N, 2)
-        Input coordinates.
-        Unit is degree for sky, mm for PFI, and pixel for MCS
+    xyin : `np.ndarray`, (2, N)
+        Input coordinates in unit of degree for sky, mm for PFI,
+        and pixel for MCS
     za : `float`
-        Zenith angle in degree
+        Zenith angle in unit of degree
     c : `DCoeff` class
        Distortion Coefficients
 
     Returns
     -------
-    offx : `np.ndarray`, (N, 1)
+    offx : `np.ndarray`, (1, N)
         Displacement in x-axis
-    offy : `np.ndarray`, (N, 1)
+    offy : `np.ndarray`, (1, N)
         Displacement in y-axis
     """
 
@@ -272,7 +277,7 @@ def rotation_pattern(za, x, y):
     Parameters
     ----------
     za : `float`
-        Zenith angle in degree.
+        Zenith angle in unit of degree.
     x: `float`
         Position in x-axis.
     y: `float`
@@ -303,18 +308,18 @@ def calc_argument(xyin, inr, c):
     """Calculate argument angle of input position
     Parameters
     ----------
-    xyin : `np.ndarray`, (N, 2)
-        Input coordinates.
-        Unit is degree for sky, mm for PFI, and pixel for MCS
+    xyin : `np.ndarray`, (2, N)
+        Input coordinates in  unit of degree for sky, mm for PFI,
+        and pixel for MCS
     inr : `float`
-        Instrument rotator angle in degree. 
+        Instrument rotator angle in unit of degree.
     c : `DCoeff` class
        Distortion Coefficients
 
     Returns
     -------
-    arg : `np.ndarray`, (N, 1)
-       argument angle of positions in radian
+    arg : `np.ndarray`, (1, N)
+       argument angle of positions in unit of radian
     """
 
     arg = np.array([np.arctan2(j, i) for i, j in zip(*xyin)])
@@ -334,14 +339,14 @@ def pixel_to_mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
 
     Parameters
     ----------
-    xyin : `np.ndarray`, (N, 2)
-        Input coordinates in pixel.
+    xyin : `np.ndarray`, (2, N)
+        Input coordinates in unit of pixel.
     inr : `float`, optional
-        Instrument rotator angle in degree. Default is 0.
-    cent : `np.ndarray`, (1, 2), optional
+        Instrument rotator angle in unit of degree. Default is 0.
+    cent : `np.ndarray`, (2, 1), optional
         The center of input coordinates.
     pix : `float`, optional
-        pixel scale in mm/pix
+        pixel scale in unit of mm/pix
     invx : `float`, optional
         Invert x axis (-1.) or not (1.). Default is No (1.).
     invy : `float`, optional
@@ -349,8 +354,8 @@ def pixel_to_mm(xyin, inr, cent, pix=1., invx=1., invy=1.):
 
     Returns
     -------
-    xyin : `np.ndarray`, (N, 2)
-        Output coordinates in mm.
+    xyin : `np.ndarray`, (2, N)
+        Output coordinates in unit of mm.
     """
 
     offxy = xyin - cent
@@ -373,18 +378,18 @@ def mm_to_pixel(x, y, cent):
     Parameters
     ----------
     x : `float`
-        Input coordinates in x-axis in mm.
+        Input coordinates in x-axis in unit of mm.
     y : `float`
-        Input coordinates in y-axis in mm.
-    cent : `np.ndarray`, (1, 2), optional
+        Input coordinates in y-axis in unit of mm.
+    cent : `np.ndarray`, (2, 1), optional
         The center of input coordinates.
 
     Returns
     -------
     sx : `float`
-        Coordinates in x-axis in pixel.
+        Coordinates in x-axis in unit of pixel.
     sy : `float`
-        Coordinates in y-axis in pixel.
+        Coordinates in y-axis in unit of pixel.
     """
 
     sx = x/DCoeff.mcspixel + cent[0]
@@ -403,7 +408,7 @@ def rotation(x, y, rot):
     y : `float`
         Input coordinates in y-axis.
     rot : `float`
-        Rotation angle in degree.
+        Rotation angle in unit of degree.
 
     Returns
     -------
