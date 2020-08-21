@@ -25,7 +25,8 @@ from . import DistortionCoefficients as DCoeff
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]]),
+def CoordinateTransform(xyin, za, mode, inr=0., pa=0.,
+                        cent=np.array([[0.], [0.]]),
                         time='2020-01-01 10:00:00'):
     """Transform Coordinates given za and inr. Inputs are x,y point list,
     zenith angle, mode, rotator angle, centerposition
@@ -59,7 +60,7 @@ def CoordinateTransform(xyin, za, mode, inr=0., cent=np.array([[0.], [0.]]),
     c = DCoeff.Coeff(mode)
 
     # Transform iput coordinates to those the same as WFC as-built model
-    xyin, inr, za1 = convert_in_position(xyin, za, inr, c, cent, time)
+    xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c, cent, time)
     if (mode == 'sky_pfi') and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
@@ -130,7 +131,7 @@ def convert_out_position(x, y, inr, c, cent):
     return xx, yy
 
 
-def convert_in_position(xyin, za, inr, c, cent, time):
+def convert_in_position(xyin, za, inr, pa, c, cent, time):
     """convert input position to those on the same coordinates as
         the WFC as-built model.
     Parameters
@@ -181,9 +182,9 @@ def convert_in_position(xyin, za, inr, c, cent, time):
         lat = tel2.location.lat.deg
         dc = coord_cent.dec.deg
         if dc > lat:
-            inr = paa-180.
+            inr = paa + pa - 180.
         else:
-            inr = paa
+            inr = paa - pa
 
         az0 = altaz_cent.az.deg
         el0 = altaz_cent.alt.deg
@@ -191,6 +192,7 @@ def convert_in_position(xyin, za, inr, c, cent, time):
         eld0 = el0 + ipol.splev(za, atm_interp)/3600.
         za = za[0]
 
+        # define WFC frame
         center = SkyCoord(az0, eld0, unit=u.deg)
         aframe = center.skyoffset_frame()
         logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
