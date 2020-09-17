@@ -55,6 +55,30 @@ class InstData(object):
         cmd.inform(f'text="loading {keyName} from instdata"')
         return self.loadPersisted(actorName, keyName)
 
+    def loadKeys(self, actorName=None, cmd=None):
+        """ Load all keys values from disk. """
+
+        cmd = self.actor.bcast if cmd is None else cmd
+        actorName = self.actorName if actorName is None else actorName
+        cmd.inform(f'text="loading keys from instdata"')
+        return InstData.loadFile(actorName)
+
+    def safeLoad(self, cmd=None):
+        """ Load all keys values from disk. """
+
+        try:
+            cfg = self.loadKeys(self.actorName)
+        except FileNotFoundError:
+            cmd.warn(f'text="instdata : {self.actorName} file does not exist, creating empty file"')
+            cfg = dict()
+
+        return cfg
+
+    def _dump(self, cfg):
+        """ Dump cfg dictionary to disk. """
+        with self.openFile(self.actorName, mode='w') as cfgFile:
+            yaml.dump(cfg, cfgFile)
+
     def persist(self, keyName, *values, cmd=None):
         """ Save mhs keyword values to disk.
         Create per-actor file if it does not yet exist.
@@ -64,17 +88,24 @@ class InstData(object):
         keyName : str
             keyword name.
         """
-        cmd = self.actor.bcast if cmd is None else cmd
-
-        try:
-            cfg = self.loadFile(self.actorName)
-        except FileNotFoundError:
-            cmd.warn(f'text="instdata : {self.actorName} file does not exist, creating empty file"')
-            cfg = dict()
-
+        cfg = self.safeLoad(cmd)
         cfg[keyName] = values
 
-        with self.openFile(self.actorName, mode='w') as cfgFile:
-            yaml.dump(cfg, cfgFile)
-
+        self._dump(cfg)
         cmd.inform(f'text="dumped {keyName} to instdata"')
+
+    def persistKeys(self, keys, cmd=None):
+        """ Save mhs keyword dictionary to disk.
+        Create per-actor file if it does not yet exist.
+
+        Args
+        ----
+        keys : dict
+            keyword dictionary.
+        """
+
+        cfg = self.safeLoad(cmd)
+        cfg.update(keys)
+
+        self._dump(cfg)
+        cmd.inform(f'text="dumped keys to instdata"')
