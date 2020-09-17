@@ -27,7 +27,7 @@ class InstData(object):
         if root == InstData.varName:
             raise RuntimeError(f'{InstData.varName} is not defined')
 
-        return open(os.path.join(root, 'data', f'{actorName}.yaml'), mode)
+        return open(os.path.join(root, 'data/sps', f'{actorName}.yaml'), mode)
 
     @staticmethod
     def loadFile(actorName):
