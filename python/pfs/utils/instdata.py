@@ -4,6 +4,7 @@ import yaml
 
 
 class InstData(object):
+    varName = '$PFS_INSTDATA_DIR'
 
     def __init__(self, actor):
         """ Load /save mhs keywords values from/to disk.
@@ -22,7 +23,11 @@ class InstData(object):
     @staticmethod
     def openFile(actorName, mode='r'):
         """ Open per-actor instdata file. """
-        return open(os.path.expandvars(f'$PFS_INSTDATA_DIR/data/{actorName}.yaml'), mode)
+        root = os.path.expandvars(InstData.varName)
+        if root == InstData.varName:
+            raise RuntimeError(f'{InstData.varName} is not defined')
+
+        return open(os.path.join(root, 'data', f'{actorName}.yaml'), mode)
 
     @staticmethod
     def loadFile(actorName):
