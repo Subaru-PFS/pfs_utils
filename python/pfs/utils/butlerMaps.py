@@ -11,7 +11,7 @@ dataMap['spsFile'] = dict(template="raw/{pfsDay}/sps/PF{site}A{visit:06d}{spectr
 dataMap['rampFile'] = dict(template="raw/{pfsDay}/sps/PF{site}B{visit:06d}{spectrograph}{armNum}.fits")
 dataMap['mcsFile'] = dict(template="raw/{pfsDay}/mcs/PF{site}C{visit:06d}{frame:02d}.fits")
 
-configMap['pfi'] = dict(template="pfi/PFI.yaml",
+configMap['pfi'] = dict(template="pfi/PFI{version}.yaml",
                         loader=yaml.load)
 configMap['modulePath'] = dict(template="pfi/cobras/{moduleName}")
 configMap['cobraGeometry'] = dict(template="pfi/cobras/{moduleName}/{cobraInModule}/geometry.yaml",
