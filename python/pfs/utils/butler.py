@@ -1,7 +1,11 @@
 import importlib
 from importlib import reload
 
-import opscore.utility.sdss3logging
+try:
+    import opscore.utility.sdss3logging
+except ImportError:
+    pass
+
 import logging
 import pathlib
 import time
@@ -32,7 +36,7 @@ class Butler(object):
         """
 
         self.logger = logging.getLogger('butler')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.INFO)
 
         self.dataRoot = pathlib.Path(dataRoot) if dataRoot is not None else defaultDataRoot
         if configRoot is not None:
@@ -93,9 +97,9 @@ class Butler(object):
           Dictionary to _update_ our internal keys with.
           NOTE: this *overwrites* any values in the existing dict.
         """
-
+        self.logger.info(f'loaded butler with configRoot={self.configRoot}, dataRoot={self.dataRoot}')
         self.addDict.update(addDict)
-        
+
     def getKnownDataMaps(self):
         return sorted(self.dataMap.keys())
 
@@ -230,8 +234,10 @@ class Butler(object):
         """
 
         tray, _ = self.getTray(objectType)
+        loaderName = "unknown"
         try:
             loader = tray['loader']
+            loaderName = loader
         except KeyError:
             try:
                 loaderModuleName = tray['loaderModule']
@@ -248,10 +254,11 @@ class Butler(object):
 
             try:
                 loader = getattr(loaderModule, 'load')
+                loaderName = f"{loaderModuleName}.load()"
             except:
                 raise KeyError(f'no "load" attribute in {loaderModuleName}')
 
-        self.logger.debug(f'loading {objectType} from {path}, using {loader}')
+        self.logger.debug(f'loading {objectType} from {path}, using {loaderName}')
         return loader(path)
 
     def get(self, objectType, idDict=None, **kw):
