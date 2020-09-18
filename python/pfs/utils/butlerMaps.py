@@ -19,5 +19,5 @@ configMap['cobraGeometry'] = dict(template="pfi/cobras/{moduleName}/{cobraInModu
 configMap['moduleXml'] = dict(template="pfi/modules/{moduleName}/{moduleName}{version}.xml",
                               loaderModule='ics.cobraCharmer.pfiDesign')
 configMap['motorMap'] = \
-    dict(template="pfi/cobras/{moduleName}/{cobraModuleId}/maps/{motor}_{direction}_{mapName}.yaml",
+    dict(template="pfi/cobras/{moduleName}/{cobraInModule}/maps/{motor}_{direction}_{mapName}.yaml",
          loaderModule='ics.cobraCharmer.motormap')
