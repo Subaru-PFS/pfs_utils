@@ -34,7 +34,7 @@ def getSite():
     try:
         ans = dns.resolver.query('pfs-site.', 'TXT')
         site = ans[0].strings[0].decode('latin-1')
-    except dns.resolver.NXDOMAIN:
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         logging.warn(f'no "pfs-site." record found in DNS, using "{defaultSite}"')
         site = defaultSite
 
@@ -185,6 +185,8 @@ class SpectroIds(object):
 
     def makeSpsFitsName(self, visit, fileType='A', extension='.fits'):
         """ Create a complete filename 
+
+        DEPRECATED : use butler.get('spsFile') instead
 
         Args
         ====
