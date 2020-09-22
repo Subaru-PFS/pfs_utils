@@ -27,7 +27,10 @@ class InstData(object):
         if root == InstData.varName:
             raise RuntimeError(f'{InstData.varName} is not defined')
 
-        return open(os.path.join(root, 'data/sps', f'{actorName}.yaml'), mode)
+        print(root, actorName)
+        path = os.path.join(root, 'data/sps', f'{actorName}.yaml')
+        print(path)
+        return open(path, mode)
 
     @staticmethod
     def loadFile(actorName):
@@ -42,7 +45,7 @@ class InstData(object):
         """ Load persisted actor keyword from outside mhs world. """
         return InstData.loadFile(actorName)[keyName]
 
-    def load(self, keyName, actorName=None, cmd=None):
+    def loadKey(self, keyName, actorName=None, cmd=None):
         """ Load mhs keyword values from disk.
 
         Args
@@ -53,7 +56,8 @@ class InstData(object):
         cmd = self.actor.bcast if cmd is None else cmd
         actorName = self.actorName if actorName is None else actorName
         cmd.inform(f'text="loading {keyName} from instdata"')
-        return self.loadPersisted(actorName, keyName)
+
+        return InstData.loadPersisted(actorName, keyName)
 
     def loadKeys(self, actorName=None, cmd=None):
         """ Load all keys values from disk. """
@@ -61,10 +65,24 @@ class InstData(object):
         cmd = self.actor.bcast if cmd is None else cmd
         actorName = self.actorName if actorName is None else actorName
         cmd.inform(f'text="loading keys from instdata"')
+
         return InstData.loadFile(actorName)
 
-    def safeLoad(self, cmd=None):
-        """ Load all keys values from disk. """
+    def _dump(self, data):
+        """ Dump data dictionary to disk. """
+        with self.openFile(self.actorName, mode='w') as dataFile:
+            yaml.dump(data, dataFile)
+
+    def _persist(self, keys, cmd=None):
+        """ Load and update persisted data.
+        Create a new file if it does not exist yet.
+
+        Args
+        ----
+        keys : dict
+            keyword dictionary.
+        """
+        cmd = self.actor.bcast if cmd is None else cmd
 
         try:
             data = self.loadKeys(self.actorName)
@@ -72,40 +90,32 @@ class InstData(object):
             cmd.warn(f'text="instdata : {self.actorName} file does not exist, creating empty file"')
             data = dict()
 
-        return data
+        data.update(keys)
+        self._dump(data)
 
-    def _dump(self, data):
-        """ Dump data dictionary to disk. """
-        with self.openFile(self.actorName, mode='w') as dataFile:
-            yaml.dump(data, dataFile)
-
-    def persist(self, keyName, *values, cmd=None):
-        """ Save mhs keyword values to disk.
-        Create per-actor file if it does not yet exist.
+    def persistKey(self, keyName, *values, cmd=None):
+        """ Save single mhs keyword values to disk.
 
         Args
         ----
         keyName : str
             keyword name.
         """
-        data = self.safeLoad(cmd)
-        data[keyName] = values
+        cmd = self.actor.bcast if cmd is None else cmd
+        data = dict([(keyName, values)])
 
-        self._dump(data)
+        self._persist(data)
         cmd.inform(f'text="dumped {keyName} to instdata"')
 
     def persistKeys(self, keys, cmd=None):
         """ Save mhs keyword dictionary to disk.
-        Create per-actor file if it does not yet exist.
 
         Args
         ----
         keys : dict
             keyword dictionary.
         """
+        cmd = self.actor.bcast if cmd is None else cmd
 
-        data = self.safeLoad(cmd)
-        data.update(keys)
-
-        self._dump(data)
+        self._persist(keys)
         cmd.inform(f'text="dumped keys to instdata"')
