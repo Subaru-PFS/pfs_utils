@@ -195,7 +195,10 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         el0 = altaz_cent.alt.deg
         za = 90. - el0
         eld0 = el0 + ipol.splev(za, atm_interp)/3600.
-        za = za[0]
+        try:
+            za = za[0]
+        except IndexError:
+            pass
 
         # define WFC frame
         center = SkyCoord(az0, eld0, unit=u.deg)
