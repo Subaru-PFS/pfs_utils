@@ -27,9 +27,7 @@ class InstData(object):
         if root == InstData.varName:
             raise RuntimeError(f'{InstData.varName} is not defined')
 
-        print(root, actorName)
         path = os.path.join(root, 'data/sps', f'{actorName}.yaml')
-        print(path)
         return open(path, mode)
 
     @staticmethod
