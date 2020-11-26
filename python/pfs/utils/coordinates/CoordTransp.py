@@ -145,7 +145,6 @@ def convert_out_position(x, y, inr, c, cent, time):
 
         az0 = altaz_cent.az.deg
         el0 = altaz_cent.alt.deg
-        eld0 = el0 - ipol.splev(90-el0, atm_interp)/3600.
 
         # offser frame in WFC
         center = SkyCoord(0., 0., unit=u.deg)
@@ -153,14 +152,9 @@ def convert_out_position(x, y, inr, c, cent, time):
         coord = SkyCoord(x, y, frame=aframe, unit=u.deg,
                          obstime=obs_time, location=tel)
 
-        logging.info("(%s %s)", az0, eld0)
+        logging.info("(%s %s)", az0, el0)
 
-        # azel_cent = SkyCoord(ra=az0, dec=eld0, unit=u.deg,
-        #                      obstime=obs_time, location=tel)
-
-        # azel = coord.transform_to(azel_cent)
-
-        r = R.from_euler('ZYZ', [az0, -1*eld0, 0.], degrees=True)
+        r = R.from_euler('ZYZ', [az0, -1*el0, 0.], degrees=True)
         xc, yc, zc = ascor.spherical_to_cartesian(1., np.deg2rad(y),
                                                   np.deg2rad(x))
         xyz = np.vstack((xc, yc, zc)).T
@@ -170,9 +164,13 @@ def convert_out_position(x, y, inr, c, cent, time):
         rs, lats, lons = ascor.cartesian_to_spherical(azel[:, 0], azel[:, 1],
                                                       azel[:, 2])
 
+        az = np.array(np.rad2deg(lons))
+        el = np.array(np.rad2deg(lats))
+
+        # eld = el - ipol.splev(90.-el, atm_interp)/3600.
+
         # Az-El to Ra-Dec (Targets)
-        coord = SkyCoord(alt=np.rad2deg(lats), az=np.rad2deg(lons),
-                         frame='altaz', unit=u.deg,
+        coord = SkyCoord(alt=el, az=az, frame='altaz', unit=u.deg,
                          obstime=obs_time, location=tel)
         radec = coord.transform_to('icrs')
         xx = radec.ra.deg
