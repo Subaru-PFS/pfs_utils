@@ -115,6 +115,8 @@ def convert_out_position(x, y, inr, c, cent, time):
        Distortion Coefficients
     cent : `np.ndarray`, (2, 1)
         The center of input coordinates in the same unit of as xyin.
+    time : `str`
+        Observation time UTC in format of %Y-%m-%d %H:%M:%S
 
     Returns
     -------
