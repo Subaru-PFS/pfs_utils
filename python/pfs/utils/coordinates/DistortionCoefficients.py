@@ -159,10 +159,10 @@ class Coeff:
         # Scaling factor w.r.t radius
         # mcs_pfi_asrd :
         # scale factor + distortion (3rd order from distotion center)
-        dic_rsc = {"sky_pfi": [319.97094550870497,
-                               14.307946849934524,
-                               6.6009649162879214,
-                               0.],
+        dic_rsc = {"sky_pfi": [319.8849288008787,
+                               15.455002704868093,
+                               2.521741084754467,
+                               4.231324795167893],
                    "sky_pfi_hsc": [320.0107640966762,
                                    14.297123404641752,
                                    6.586014956556028,
