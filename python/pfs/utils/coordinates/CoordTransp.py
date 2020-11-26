@@ -7,8 +7,11 @@ from scipy import interpolate as ipol
 
 from astropy import units as u
 from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, SkyOffsetFrame
 from astroplan import Observer
+import astropy.coordinates as ascor
+
+from scipy.spatial.transform import Rotation as R
 
 # Dictionary keys ( argument name is mode)
 # sky_pfi : sky to F3C
@@ -90,14 +93,14 @@ def CoordinateTransform(xyin, za, mode, inr=0., pa=0.,
     xx = scale*np.cos(arg)+offx1 + offx2
     yy = scale*np.sin(arg)+offy1 + offy2
 
-    xx, yy = convert_out_position(xx, yy, inr, c, cent)
+    xx, yy = convert_out_position(xx, yy, inr, c, cent, time)
 
     xyout = np.array([xx, yy, scale, arg, offx1, offy1, offx2, offy2])
 
     return xyout
 
 
-def convert_out_position(x, y, inr, c, cent):
+def convert_out_position(x, y, inr, c, cent, time):
     """convert outputs position on WFC-as built model to those on the PFS
     coordinates.
     Parameters
@@ -126,6 +129,54 @@ def convert_out_position(x, y, inr, c, cent):
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
         xx, yy = rotation(x, y, -1.*inr)
+    elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
+        # Set Observation Site (Subaru)
+        tel = EarthLocation.of_site('Subaru')
+        obs_time = Time(time)
+
+        aref_file = mypath+'data/Refraction_data_635nm.txt'
+        atm_ref = np.loadtxt(aref_file)
+        atm_interp = ipol.splrep(atm_ref[:, 0], atm_ref[:, 1], s=0)
+
+        # Ra-Dec to Az-El (Center)
+        coord_cent = SkyCoord(cent[0], cent[1], unit=u.deg)
+        altaz_cent = coord_cent.transform_to(AltAz(obstime=obs_time,
+                                                   location=tel))
+
+        az0 = altaz_cent.az.deg
+        el0 = altaz_cent.alt.deg
+        eld0 = el0 - ipol.splev(90-el0, atm_interp)/3600.
+
+        # offser frame in WFC
+        center = SkyCoord(0., 0., unit=u.deg)
+        aframe = center.skyoffset_frame()
+        coord = SkyCoord(x, y, frame=aframe, unit=u.deg,
+                         obstime=obs_time, location=tel)
+
+        logging.info("(%s %s)", az0, eld0)
+
+        # azel_cent = SkyCoord(ra=az0, dec=eld0, unit=u.deg,
+        #                      obstime=obs_time, location=tel)
+
+        # azel = coord.transform_to(azel_cent)
+
+        r = R.from_euler('ZYZ', [az0, -1*eld0, 0.], degrees=True)
+        xc, yc, zc = ascor.spherical_to_cartesian(1., np.deg2rad(y),
+                                                  np.deg2rad(x))
+        xyz = np.vstack((xc, yc, zc)).T
+        logging.info("(%s)", xyz.shape)
+        logging.info("(%s)", r.as_rotvec())
+        azel = r.apply(xyz)
+        rs, lats, lons = ascor.cartesian_to_spherical(azel[:, 0], azel[:, 1],
+                                                      azel[:, 2])
+
+        # Az-El to Ra-Dec (Targets)
+        coord = SkyCoord(alt=np.rad2deg(lats), az=np.rad2deg(lons),
+                         frame='altaz', unit=u.deg,
+                         obstime=obs_time, location=tel)
+        radec = coord.transform_to('icrs')
+        xx = radec.ra.deg
+        yy = radec.dec.deg
     else:
         xx = x
         yy = y
@@ -218,6 +269,26 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         target = SkyCoord(az, eld, unit=u.deg)
         off = target.transform_to(aframe)
         xyconv = np.vstack((off.lon.deg, off.lat.deg))
+    elif c.mode == 'pfi_sky':  # Rotate PFI to WFC
+        # Set Observation Site (Subaru)
+        tel = EarthLocation.of_site('Subaru')
+        tel2 = Observer.at_site("Subaru", timezone="US/Hawaii")
+        obs_time = Time(time)
+
+        # Ra-Dec to Az-El (Center)
+        coord_cent = SkyCoord(cent[0], cent[1], unit=u.deg)
+
+        # Instrument rotator angle
+        paa = tel2.parallactic_angle(obs_time, coord_cent).deg
+        lat = tel2.location.lat.deg
+        dc = coord_cent.dec.deg
+        if dc > lat:
+            inr = paa + pa - 180.
+        else:
+            inr = paa - pa
+
+        xx, yy = rotation(xyin[0, :], xyin[1, :], inr)
+        xyconv = np.vstack((xx, yy))
     else:
         xyconv = xyin
 

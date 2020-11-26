@@ -19,6 +19,10 @@ Distortion Coefficients
  ver 5.0 :  (2019.02.23)
            add MCS to F3C withot Field Element (mcs_pfi_wofe) coefficients
            using data in January 2020
+ ver 6.0 :  (2020.11.24)
+           update scale function of sky-pfi coordinates with 7th order,
+           and add scale function of pfi_sky transformation.
+           Here, old data in May 2017 was used
 """
 
 """
@@ -47,6 +51,7 @@ class Coeff:
         sky_pfi : sky to F3C
         sky_pfi_hsc : sky to hsc focal plane
         sky_mcs : sky to MCS
+        pfi_sky : F3C to sky
         pfi_mcs : F3C to MCS
         pfi_mcs_wofe : F3C to MCS w/o the field element
         mcs_pfi : MCS to F3C
@@ -59,6 +64,7 @@ class Coeff:
         # x : dx = c0*x*y or = c0*x*x + c1*y*y + c2*x*y +c3*x^3*y^3+c4
         dic_cx = {"sky_pfi": [0., 0., 0.0750466788561, 0.],
                   "sky_pfi_hsc": [0., 0., 0.06333788071803437, 0.],
+                  "pfi_sky": np.nan,
                   "pfi_mcs": np.nan,
                   "pfi_mcs_wofe": np.nan,
                   "mcs_pfi": [-0.00021573669065476386,
@@ -81,6 +87,7 @@ class Coeff:
                                   0.04699568361118014,
                                   0.05799533522450577,
                                   -0.01739380213343191],
+                  "pfi_sky": [],
                   "pfi_mcs": [],
                   "pfi_mcs_wofe": [],
                   "mcs_pfi": [0.0003810242955129456,
@@ -97,6 +104,7 @@ class Coeff:
         # Whether to skip use offset base
         skip1_off = {"sky_pfi": False,
                      "sky_pfi_hsc": False,
+                     "pfi_sky": False,
                      "pfi_mcs": True,
                      "pfi_mcs_wofe": True,
                      "mcs_pfi": False,
@@ -105,6 +113,7 @@ class Coeff:
         # Whether to skip use differential pattern
         skip2_off = {"sky_pfi": False,
                      "sky_pfi_hsc": False,
+                     "pfi_sky": True,
                      "pfi_mcs": True,
                      "pfi_mcs_wofe": True,
                      "mcs_pfi": False,
@@ -118,6 +127,7 @@ class Coeff:
                    "sky_pfi_hsc": [0.,
                                    -0.00015428320350572582,
                                    -7.358026105602118e-05],
+                   "pfi_sky": [],
                    "pfi_mcs": [],
                    "pfi_mcs_wofe": [],
                    "mcs_pfi": [0.,
@@ -133,6 +143,7 @@ class Coeff:
                                1.741161],
                    "sky_pfi_hsc": [0.116418996679199,
                                    16.9113776962136],
+                   "pfi_sky": [],
                    "pfi_mcs": [],
                    "pfi_mcs_wofe": [],
                    "mcs_pfi": [-0.304865874392984,
@@ -156,6 +167,10 @@ class Coeff:
                                    14.297123404641752,
                                    6.586014956556028,
                                    0.],
+                   "pfi_sky": [0.003126049416499188,
+                               -1.4608970079526195e-09,
+                               -1.1573407216548699e-15,
+                               -1.3201189804972364e-20],
                    "pfi_mcs": [0.03802405803382136,
                                1.7600554217409373e-08,
                                -1.5297627440776523e-14,
