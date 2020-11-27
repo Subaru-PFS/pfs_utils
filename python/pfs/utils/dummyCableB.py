@@ -162,6 +162,23 @@ class DummyCableBDatabase:
         self.add("12mtpS34", next(hexIt), "Left science fibers without some",
                  [ff for ff in science if ff > 273 and ff not in set([281, 309, 359])])
 
+    def check(self, *names):
+        """Check that all the provided names are defined
+
+        Parameters
+        ----------
+        *names : `str`
+            Setups.
+
+        Raises
+        ------
+        RuntimeError
+            If any of the names aren't defined.
+        """
+        bad = set(names) - set(self.names)
+        if bad:
+            raise RuntimeError(f"Unrecognised setup names: {bad}")
+
     def getFiberIds(self, *names):
         """Convert a list of setups to an array of fiber IDs
 
@@ -175,6 +192,7 @@ class DummyCableBDatabase:
         fiberId : `numpy.ndarray`
             Array of fiber IDs.
         """
+        self.check(*names)
         names = set(names)
         return np.array(sorted(set(sum([ff for nn, ff in zip(self.names, self.fiberIds) if nn in names],
                                        []))))
@@ -192,6 +210,7 @@ class DummyCableBDatabase:
         hash : `int`
             Hash, for the pfsDesignId.
         """
+        self.check(*names)
         names = set(names)
         return sum(vv for nn, vv in zip(self.names, self.values) if nn in names)
 
