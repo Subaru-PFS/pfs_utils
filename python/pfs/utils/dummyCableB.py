@@ -237,12 +237,11 @@ def makePfsDesign(pfsDesignId, fiberId):
     dec = np.zeros_like(fiberId, dtype=float)
     pfiNominal = np.zeros((num, 2), dtype=float)
 
-    fiberMags = [[] for _ in fiberId]
-    filterNames = [[] for _ in fiberId]
+    empty = [[] for _ in fiberId]
 
     return PfsDesign(pfsDesignId, raBoresight, decBoresight,
                      fiberId, tract, patch, ra, dec, catId, objId, targetTypes, fiberStatus,
-                     fiberMags, filterNames, pfiNominal)
+                     empty, empty, empty, empty, empty, empty, empty, pfiNominal)
 
 
 def main():
