@@ -267,8 +267,14 @@ def makePfsDesign(pfsDesignId, fiberId):
                      empty, empty, empty, empty, empty, empty, empty, pfiNominal)
 
 
-def main():
-    """Command-line interface to create PfsDesign files"""
+def main(args=None):
+    """Command-line interface to create PfsDesign files
+
+    Parameters
+    ----------
+    args : `list` of `str`, optional
+        Command-line arguments to parse. If ``None``, will use ``sys.argv``.
+    """
     import argparse
 
     dcb = DummyCableBDatabase()
@@ -281,7 +287,7 @@ def main():
     parser.add_argument("--directory", default=".", help="Directory in which to write file")
     parser.add_argument("setups", nargs="+", type=str, choices=dcb.names,
                         help="Setup(s) specifying fibers that were lit")
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
 
     fiberId = dcb.getFiberIds(*args.setups)
     pfsDesignId = dcb.getHash(*args.setups)
