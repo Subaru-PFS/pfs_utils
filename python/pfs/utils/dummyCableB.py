@@ -104,6 +104,10 @@ class DummyCableBDatabase:
             assert (value & vv) == 0
             value |= vv
 
+    def __len__(self):
+        """Length"""
+        return len(self.names)
+
     def add(self, name, value, description, fiberIds):
         """Add a setup
 
