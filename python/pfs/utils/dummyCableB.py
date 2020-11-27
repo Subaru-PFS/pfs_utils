@@ -104,6 +104,10 @@ class DummyCableBDatabase:
             assert (value & vv) == 0
             value |= vv
 
+    def __len__(self):
+        """Length"""
+        return len(self.names)
+
     def add(self, name, value, description, fiberIds):
         """Add a setup
 
@@ -158,6 +162,23 @@ class DummyCableBDatabase:
         self.add("12mtpS34", next(hexIt), "Left science fibers without some",
                  [ff for ff in science if ff > 273 and ff not in set([281, 309, 359])])
 
+    def check(self, *names):
+        """Check that all the provided names are defined
+
+        Parameters
+        ----------
+        *names : `str`
+            Setups.
+
+        Raises
+        ------
+        RuntimeError
+            If any of the names aren't defined.
+        """
+        bad = set(names) - set(self.names)
+        if bad:
+            raise RuntimeError(f"Unrecognised setup names: {bad}")
+
     def getFiberIds(self, *names):
         """Convert a list of setups to an array of fiber IDs
 
@@ -171,6 +192,7 @@ class DummyCableBDatabase:
         fiberId : `numpy.ndarray`
             Array of fiber IDs.
         """
+        self.check(*names)
         names = set(names)
         return np.array(sorted(set(sum([ff for nn, ff in zip(self.names, self.fiberIds) if nn in names],
                                        []))))
@@ -188,6 +210,7 @@ class DummyCableBDatabase:
         hash : `int`
             Hash, for the pfsDesignId.
         """
+        self.check(*names)
         names = set(names)
         return sum(vv for nn, vv in zip(self.names, self.values) if nn in names)
 
@@ -237,16 +260,21 @@ def makePfsDesign(pfsDesignId, fiberId):
     dec = np.zeros_like(fiberId, dtype=float)
     pfiNominal = np.zeros((num, 2), dtype=float)
 
-    fiberMags = [[] for _ in fiberId]
-    filterNames = [[] for _ in fiberId]
+    empty = [[] for _ in fiberId]
 
     return PfsDesign(pfsDesignId, raBoresight, decBoresight,
                      fiberId, tract, patch, ra, dec, catId, objId, targetTypes, fiberStatus,
-                     fiberMags, filterNames, pfiNominal)
+                     empty, empty, empty, empty, empty, empty, empty, pfiNominal)
 
 
-def main():
-    """Command-line interface to create PfsDesign files"""
+def main(args=None):
+    """Command-line interface to create PfsDesign files
+
+    Parameters
+    ----------
+    args : `list` of `str`, optional
+        Command-line arguments to parse. If ``None``, will use ``sys.argv``.
+    """
     import argparse
 
     dcb = DummyCableBDatabase()
@@ -259,7 +287,7 @@ def main():
     parser.add_argument("--directory", default=".", help="Directory in which to write file")
     parser.add_argument("setups", nargs="+", type=str, choices=dcb.names,
                         help="Setup(s) specifying fibers that were lit")
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
 
     fiberId = dcb.getFiberIds(*args.setups)
     pfsDesignId = dcb.getHash(*args.setups)
