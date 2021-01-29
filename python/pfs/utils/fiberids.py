@@ -31,6 +31,7 @@ class FiberIds(object):
      - scienceFiberId: 1..2394
 
      - USCONEC ID: This encodes the USCONEC and USCONEC hole ids.
+     - fiberId: a unique identifier for each fiber (both science and engineering; 1..2604).
 
     Yes, ids are 1-indexed. Water under the bridge.
 
@@ -82,7 +83,9 @@ class FiberIds(object):
                  ('spectrographId', 'u2'),
                  ('fiberHoleId', 'u2'),
                  ('scienceFiberId', 'u2'),
-                 ('USCONECId', 'U15')]
+                 ('USCONECId', 'U15'),
+                 ('fiberId', 'u2'),
+                 ]
 
         self.data = np.genfromtxt(flist[0], dtype=dtype,
                                   comments='\\')
