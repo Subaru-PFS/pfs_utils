@@ -22,19 +22,15 @@ class SpecModule(SpectroIds):
 
     @property
     def cams(self):
-        return [self.bcu, self.rcu, self.ncu]
-
-    @property
-    def shutters(self):
-        return [self.bsh, self.rsh]
+        return dict([(cam.arm, cam) for cam in [self.bcu, self.rcu, self.ncu]])
 
     @property
     def parts(self):
-        return self.cams + self.shutters + [self.rda]
+        return list(self.cams.values()) + [self.bsh, self.rsh, self.fca, self.rda, self.bia, self.iis]
 
     @property
-    def allCams(self):
-        return dict([(cam.arm, cam) for cam in self.cams if cam.operational])
+    def opeCams(self):
+        return [cam for cam in self.cams.values() if cam.operational]
 
     @property
     def genSpecParts(self):
@@ -93,28 +89,24 @@ class SpecModule(SpectroIds):
         self.bcu = Cam(self, 'b', bcu)
         self.rcu = Cam(self, 'r', rcu)
         self.ncu = Cam(self, 'n', ncu)
-        self.bsh = Shutter('b', bsh)
-        self.rsh = Shutter('r', rsh)
-        self.fca = Fca(fca)
-        self.rda = Rda(rda)
-        self.bia = Bia(bia)
-        self.iis = Iis(iis)
+        self.bsh = Shutter(self, 'b', bsh)
+        self.rsh = Shutter(self, 'r', rsh)
+        self.fca = Fca(self, fca)
+        self.rda = Rda(self, rda)
+        self.bia = Bia(self, bia)
+        self.iis = Iis(self, iis)
 
-    def declareLightSource(self, lightSource, spsData=None):
-        if lightSource not in SpecModule.lightSources:
-            raise RuntimeError(f'lightSource: {lightSource} must be one of: {",".join(SpecModule.lightSources)}')
-
-        return spsData.persistKey(f'{self.specName}LightSource', lightSource)
-
-    def camFromArm(self, arm):
+    def camera(self, arm):
         if arm not in SpecModule.validArms:
             raise RuntimeError(f'arm {arm} must be one of: {list(SpecModule.validArms.keys())}')
 
         fpa = SpecModule.armToFpa[arm]
-        if fpa not in self.allCams.keys():
-            raise RuntimeError(f'{fpa}{self.specNum} cam is not operational ({",".join(self.allCams.keys())})')
+        cam = self.cams[fpa]
 
-        return self.allCams[fpa]
+        if not cam.operational:
+            raise RuntimeError(f'{str(cam)} cam state: {cam.state}, not operational ...')
+
+        return cam
 
     def lightSolver(self, arm, openShutter, inputLight='continuous'):
         shutters = [self.rsh, self.bsh] if arm == 'b' else [self.rsh]
@@ -212,9 +204,9 @@ class SpsConfig(object):
 
     def selectArms(self, specModules, arms=None):
         if arms is not None:
-            cams = [specModule.camFromArm(arm) for specModule in specModules for arm in arms]
+            cams = [specModule.camera(arm) for specModule in specModules for arm in arms]
         else:
-            cams = sum([list(specModule.allCams.values()) for specModule in specModules], [])
+            cams = sum([specModule.opeCams for specModule in specModules], [])
 
         return cams
 
@@ -224,5 +216,21 @@ class SpsConfig(object):
 
         arm, specNum = cam[0], int(cam[1])
 
-        [spec] = self.identify(sm=[specNum], arm=[arm])
-        return spec
+        [cam] = self.identify(sm=[specNum], arm=[arm])
+        return cam
+
+    def declareLightSource(self, lightSource, specNum=None, spsData=None):
+        if lightSource not in SpecModule.lightSources:
+            raise RuntimeError(f'lightSource: {lightSource} must be one of: {",".join(SpecModule.lightSources)}')
+
+        specModules = self.selectModules([specNum]) if specNum is not None else self.spsModules.values()
+        if lightSource != 'pfi':
+            if len(specModules) > 1:
+                raise RuntimeError(f'{lightSource} can only be plugged to a single SM')
+
+            toUndeclare = [module for module in self.specModules.values() if module.lightSource == lightSource]
+            for specModule in toUndeclare:
+                spsData.persistKey(f'{specModule.specName}LightSource', None)
+
+        for specModule in specModules:
+            spsData.persistKey(f'{specModule.specName}LightSource', lightSource)
