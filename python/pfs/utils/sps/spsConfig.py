@@ -89,7 +89,7 @@ class SpecModule(SpectroIds):
         try:
             spsModules = [specName.strip() for specName in config.get('sps', 'spsModules').split(',')]
         except:
-            spsModules = SpecModule.validNames
+            spsModules = [specName for specName in SpecModule.validNames if specName in config.sections()]
 
         spsModule = specName in spsModules
         specModule = cls(specName, spsModule=spsModule, lightSource=lightSource)
@@ -122,12 +122,7 @@ class SpecModule(SpectroIds):
         specModule : `SpecModule`
             SpecModule object.
         """
-        try:
-            spsModules = spsModel.keyVarDict['spsModules'].getValue()
-        except:
-            spsModules = SpecModule.validNames
-
-        spsModule = specName in spsModules
+        spsModule = specName in spsModel.keyVarDict['spsModules'].getValue()
         specParts = spsModel.keyVarDict[f'{specName}Parts'].getValue()
         lightSource = spsModel.keyVarDict[f'{specName}LightSource'].getValue()
 
@@ -336,15 +331,15 @@ class SpsConfig(object):
         spsConfig : `SpsConfig`
             SpsConfig object.
         """
-        described = [specName for specName in SpecModule.validNames if specName in spsActor.config.sections()]
-        specModules = [SpecModule.fromConfig(specName, spsActor.config, spsActor.instData) for specName in described]
+        specNames = [specName for specName in SpecModule.validNames if specName in spsActor.config.sections()]
+        specModules = [SpecModule.fromConfig(specName, spsActor.config, spsActor.instData) for specName in specNames]
 
         return cls([specModule for specModule in specModules])
 
     @classmethod
     def fromModel(cls, spsModel):
         """Instantiate SpsConfig class from spsActor model.
-        Instantiate only SpecModule which are in the model.
+        Instantiate only SpecModule which are in specModules.
 
         Parameters
         ----------
@@ -356,14 +351,8 @@ class SpsConfig(object):
         spsConfig : `SpsConfig`
             SpsConfig object.
         """
-        specModules = []
-        for specName in SpecModule.validNames:
-            try:
-                specModules.append(SpecModule.fromModel(specName, spsModel))
-            except ValueError:
-                continue
-
-        return cls(specModules)
+        specNames = spsModel.keyVarDict['specModules'].getValue()
+        return cls([SpecModule.fromModel(specName, spsModel) for specName in specNames])
 
     def identify(self, sm=None, arm=None, cams=None):
         """Identify which camera(s) to expose from outer product(sm*arm) or cams.
@@ -376,8 +365,8 @@ class SpsConfig(object):
             List of required spectrograph module number (1,2,..).
         arm : list of `str`
             List of required arm (b,r,n,m)
-        cams : list of `int`
-            List of required camera.
+        cams : list of `str`
+            List of camera names.
 
         Returns
         -------
@@ -388,7 +377,7 @@ class SpsConfig(object):
             specModules = self.selectModules(sm) if sm is not None else list(self.spsModules.values())
             cams = self.selectArms(specModules, arm)
         else:
-            cams = [self.selectCam(c) for c in cams]
+            cams = [self.selectCam(camName) for camName in cams]
 
         return cams
 
