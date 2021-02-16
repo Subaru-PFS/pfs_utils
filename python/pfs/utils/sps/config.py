@@ -285,13 +285,15 @@ class SpecModule(SpectroIds):
         names : `list` of `Part`
             List of required parts.
         """
-
         if 'dcb' in self.lightSource:
             if seqObj.lightBeam:
                 if not seqObj.shutterRequired:
                     return []
             else:
                 return [self.lightSource]
+
+        elif 'sunss' in self.lightSource:
+            return []
 
         raise
 
