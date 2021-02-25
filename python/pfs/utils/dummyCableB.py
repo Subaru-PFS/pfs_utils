@@ -230,7 +230,7 @@ class DummyCableBDatabase:
         return [nn for nn, vv in zip(self.names, self.values) if (value & vv) > 0]
 
 
-def makePfsDesign(pfsDesignId, fiberId):
+def makePfsDesign(pfsDesignId, fiberId, arms):
     """Build a ``Pfsdesign``
 
     Parameters
@@ -240,6 +240,9 @@ def makePfsDesign(pfsDesignId, fiberId):
         unique integer.
     fiberId : `numpy.ndarray` of `int`
         Array of identifiers for fibers that will be lit.
+    arms : `str`
+        One-character identifiers for arms that will be exposed,
+        eg 'brn'.
 
     Returns
     -------
@@ -248,7 +251,6 @@ def makePfsDesign(pfsDesignId, fiberId):
     """
     raBoresight = 0.0
     decBoresight = 0.0
-    arms = 'brn'
     tract = np.zeros_like(fiberId, dtype=int)
     patch = ["0,0" for _ in fiberId]
 
@@ -288,11 +290,14 @@ def main(args=None):
     parser.add_argument("--directory", default=".", help="Directory in which to write file")
     parser.add_argument("setups", nargs="+", type=str, choices=dcb.names,
                         help="Setup(s) specifying fibers that were lit")
+    parser.add_argument("--arms", type=str, default='brn',
+                        help="single-character identifier for arms that will be exposed, eg 'brn'.")
+                
     args = parser.parse_args(args=args)
 
     fiberId = dcb.getFiberIds(*args.setups)
     pfsDesignId = dcb.getHash(*args.setups)
-    design = makePfsDesign(pfsDesignId, fiberId)
+    design = makePfsDesign(pfsDesignId, fiberId, args.arms)
     design.write(dirName=args.directory)
     print("Wrote %s" % (design.filename,))
 
