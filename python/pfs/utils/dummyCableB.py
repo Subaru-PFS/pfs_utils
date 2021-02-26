@@ -251,6 +251,7 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
     """
     raBoresight = 0.0
     decBoresight = 0.0
+    posAng = 0.0
     tract = np.zeros_like(fiberId, dtype=int)
     patch = ["0,0" for _ in fiberId]
 
@@ -265,7 +266,8 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
 
     empty = [[] for _ in fiberId]
 
-    return PfsDesign(pfsDesignId, raBoresight, decBoresight, arms,
+    return PfsDesign(pfsDesignId, raBoresight, decBoresight,
+                     posAng, arms,
                      fiberId, tract, patch, ra, dec, catId, objId, targetTypes, fiberStatus,
                      empty, empty, empty, empty, empty, empty, empty, pfiNominal)
 
