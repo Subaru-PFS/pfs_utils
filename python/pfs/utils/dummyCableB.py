@@ -6,7 +6,7 @@ of fibers used.
 """
 
 import numpy as np
-from pfs.datamodel import PfsDesign, TargetType, FiberStatus
+from pfs.datamodel import PfsDesign, TargetType, FiberStatus, GuideStars
 from .fibers import calculateFiberId
 
 __all__ = ["HexIterator", "DummyCableBDatabase", "makePfsDesign"]
@@ -269,8 +269,11 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
 
     return PfsDesign(pfsDesignId, raBoresight, decBoresight,
                      posAng, arms,
-                     fiberId, tract, patch, ra, dec, catId, objId, targetTypes, fiberStatus,
-                     empty, empty, empty, empty, empty, empty, empty, pfiNominal)
+                     fiberId, tract, patch, ra, dec, catId, objId, targetTypes,
+                     fiberStatus,
+                     empty, empty, empty, empty, empty, empty, empty,
+                     pfiNominal,
+                     GuideStars.empty())
 
 
 def main(args=None):
