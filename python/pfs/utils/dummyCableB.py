@@ -7,8 +7,9 @@ of fibers used.
 
 import numpy as np
 from pfs.datamodel import PfsDesign, TargetType, FiberStatus
+from .fibers import calculateFiberId
 
-__all__ = ["HexIterator", "DummyCableBDatabase", "makePfsDesign", "main"]
+__all__ = ["HexIterator", "DummyCableBDatabase", "makePfsDesign"]
 
 
 class HexIterator:
@@ -297,7 +298,11 @@ def main(args=None):
                 
     args = parser.parse_args(args=args)
 
-    fiberId = dcb.getFiberIds(*args.setups)
+    fiberHoles = dcb.getFiberIds(*args.setups)
+    numFibers = len(fiberHoles)
+    spectrograph = np.array([1]*numFibers + [2]*numFibers + [3]*numFibers + [4]*numFibers)
+    fiberId = calculateFiberId(spectrograph, np.concatenate([fiberHoles, fiberHoles, fiberHoles, fiberHoles]))
+
     pfsDesignId = dcb.getHash(*args.setups)
     design = makePfsDesign(pfsDesignId, fiberId, args.arms)
     design.write(dirName=args.directory)
