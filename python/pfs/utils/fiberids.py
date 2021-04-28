@@ -4,6 +4,7 @@ import os
 
 import eups
 
+
 class FiberIds(object):
     """ Track all fiber ids and positions.
 
@@ -44,6 +45,11 @@ class FiberIds(object):
     fiducials? Separate class, probably.
     Identify engineering/blank holes?
     """
+
+    # When reading in the grand fiber map, missing
+    # values for integer fields
+    # are assigned this
+    MISSING_VALUE = 65535
 
     def __init__(self, path=None):
         if path is None:
@@ -87,14 +93,42 @@ class FiberIds(object):
                  ('fiberHoleId', 'u2'),
                  ('scienceFiberId', 'u2'),
                  ('fiberId', 'u2'),
-                 ('sunssFiberId', 'u2'),
-                 ('USCONNECMTPAId', 'U15'),
-                 ('USCONNECMTPCId', 'U15'),
-                 ('USCONNECMTPBAId', 'U15'),
-                 ('USCONNECMTPBCId', 'U15'),
+                 ('sunssFiberId', 'U4'),
+                 ('mtp_A', 'U15'),
+                 ('mtp_C', 'U15'),
+                 ('mtp_BA', 'U15'),
+                 ('mtp_BC', 'U15'),
                  ]
 
+        # Read in data from grand fiber map text file
+        #
+        # Note that providing an explicit list of fill values
+        # rather than the default so that they can be checked in the unit test.
+        # For string fields original value needs to be propagated.
+        # To do that, using filling_value of np.nan
+        # to instruct np.genfromtxt to just propagate the literal field value.
         self.data = np.genfromtxt(flist[0], dtype=dtype,
+                                  filling_values=[self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  self.MISSING_VALUE,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan],
                                   comments='\\')
         for name in [d[0] for d in dtype]:
             def _fetchOne(self, name=name):

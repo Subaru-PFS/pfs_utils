@@ -3,3 +3,8 @@
 .sconsign.dblite
 python/pfs/utils/version.py
 bin/*
+tests/.tests
+.coverage
+.pytest_cache
+pytest_session.txt
+
