@@ -45,6 +45,11 @@ class FiberIds(object):
     Identify engineering/blank holes?
     """
 
+    # When reading in the grandfibermap,
+    # missing values for unsigned 16-bit integer types
+    # are assigned the following
+    MISSING_VALUE_UINT16 = 65535
+
     def __init__(self, path=None):
         if path is None:
             path = os.path.join(eups.productDir('PFS_UTILS'),
@@ -87,15 +92,37 @@ class FiberIds(object):
                  ('fiberHoleId', 'u2'),
                  ('scienceFiberId', 'u2'),
                  ('fiberId', 'u2'),
-                 ('sunssFiberId', 'u2'),
-                 ('USCONNECMTPAId', 'U15'),
-                 ('USCONNECMTPCId', 'U15'),
-                 ('USCONNECMTPBAId', 'U15'),
-                 ('USCONNECMTPBCId', 'U15'),
+                 ('sunssFiberId', 'U4'),
+                 ('mtp_A', 'U15'),
+                 ('mtp_PC', 'U15'),
+                 ('mtp_BA', 'U15'),
+                 ('mtp_BC', 'U15'),
                  ]
 
         self.data = np.genfromtxt(flist[0], dtype=dtype,
-                                  comments='\\')
+                                  comments='\\',
+                                  missing_values='-',
+                                  filling_values=[self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  self.MISSING_VALUE_UINT16,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan,
+                                                  np.nan])
         for name in [d[0] for d in dtype]:
             def _fetchOne(self, name=name):
                 return self.data.__getitem__(name)

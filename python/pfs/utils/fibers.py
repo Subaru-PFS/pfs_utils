@@ -1,6 +1,6 @@
-__all__ = ("FIBERS_PER_SPECTROGRAPH", "calculateFiberId", "spectrographFromFiberId", "fiberHoleFromFiberId")
+from pfs.utils.constants import FIBERS_PER_SPECTROGRAPH
 
-FIBERS_PER_SPECTROGRAPH = 651  # Number of fibers per spectrograph
+__all__ = ("FIBERS_PER_SPECTROGRAPH", "calculateFiberId", "spectrographFromFiberId", "fiberHoleFromFiberId")
 
 
 def calculateFiberId(spectrograph, fiberHole):
