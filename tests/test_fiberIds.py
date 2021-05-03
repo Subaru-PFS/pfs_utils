@@ -36,21 +36,21 @@ class FiberIdsTestCase(unittest.TestCase):
             getattr(fbi, name)
 
         # Check cobraIds
-        cobraId = fbi.cobraId[fbi.cobraId != FiberIds.MISSING_VALUE_UINT16
-]
+        cobraId = fbi.cobraId[fbi.cobraId
+                              != FiberIds.MISSING_VALUE_UINT16]
+        self.assertTrue(len(np.unique(cobraId)) == len(cobraId))
         self.assertEqual(min(cobraId), 1)
         self.assertEqual(max(cobraId), constants.N_SCIENCE_FIBERS)
 
         # Check fieldId
-        fieldId = fbi.fieldId[fbi.fieldId != FiberIds.MISSING_VALUE_UINT16
-]
+        fieldId = fbi.fieldId[fbi.fieldId
+                              != FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(fieldId), 1)
         self.assertEqual(max(fieldId), constants.N_FIELDS_PFI)
 
         # Check cobraInFieldId
         cobraInFieldId = fbi.cobraInFieldId[fbi.cobraInFieldId !=
-                                            FiberIds.MISSING_VALUE_UINT16
-]
+                                            FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(cobraInFieldId), 1)
         self.assertEqual(max(cobraInFieldId),
                          constants.N_MODULES_PER_FIELD *
@@ -58,8 +58,7 @@ class FiberIdsTestCase(unittest.TestCase):
 
         # Check cobraModuleId
         cobraModuleId = fbi.cobraModuleId[fbi.cobraModuleId !=
-                                          FiberIds.MISSING_VALUE_UINT16
-]
+                                          FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(cobraModuleId), 1)
         self.assertEqual(max(cobraModuleId),
                          constants.N_FIELDS_PFI *
@@ -67,17 +66,29 @@ class FiberIdsTestCase(unittest.TestCase):
 
         # Check moduleInFieldId
         moduleInFieldId = fbi.moduleInFieldId[fbi.moduleInFieldId !=
-                                              FiberIds.MISSING_VALUE_UINT16
-]
+                                              FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(moduleInFieldId), 1)
         self.assertEqual(max(moduleInFieldId), constants.N_MODULES_PER_FIELD)
 
         # Check cobraInModuleId
         cobraInModuleId = fbi.cobraInModuleId[fbi.cobraInModuleId !=
-                                              FiberIds.MISSING_VALUE_UINT16
-]
+                                              FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(cobraInModuleId), 1)
         self.assertEqual(max(cobraInModuleId), constants.N_COBRAS_PER_MODULE)
+
+        # Check that (cobraModuleId, cobraInModuleId) is unique
+        for module in range(constants.N_FIELDS_PFI
+                            * constants.N_MODULES_PER_FIELD):
+            for cobraInModule in range(constants.N_COBRAS_PER_MODULE):
+                cobraIdsInCombo = cobraId[np.logical_and(
+                                          cobraModuleId == module,
+                                          cobraInModuleId == cobraInModule)]
+                self.assertEqual(len(np.unique(cobraIdsInCombo)),
+                                 len(cobraIdsInCombo),
+                                 msg=f'For module={module} '
+                                      f'and cobraInModule={cobraInModule}: '
+                                      f'cobraIds are not unique. '
+                                      f'cobraIds = {cobraIdsInCombo}')
 
         # Check cobraInFieldId in more detail
         #  Using 57*(moduleInFieldId-1)+cobraInModuleId
@@ -86,14 +97,12 @@ class FiberIdsTestCase(unittest.TestCase):
 
         # Check cobraInBoardId
         cobraInBoardId = fbi.cobraInBoardId[fbi.cobraInBoardId !=
-                                            FiberIds.MISSING_VALUE_UINT16
-]
+                                            FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(cobraInBoardId), 1)
         self.assertEqual(max(cobraInBoardId), 29)
 
         # Check boardId
-        boardId = fbi.boardId[fbi.boardId != FiberIds.MISSING_VALUE_UINT16
-]
+        boardId = fbi.boardId[fbi.boardId != FiberIds.MISSING_VALUE_UINT16]
         self.assertEqual(min(boardId), 1)
         self.assertEqual(max(boardId), 84)
 
@@ -201,3 +210,31 @@ class FiberIdsTestCase(unittest.TestCase):
                                 msg=f"MTP value '{mtp}'"
                                     f" in column 'mtp_{field}'"
                                     " does not match expected pattern.")
+
+        for m in range(42):
+            module = m+1
+            cobraIndices = fbi.cobrasForModule(module)
+            print(f'cobraIndices={cobraIndices}')
+            modules = np.unique(fbi.cobraModuleId[cobraIndices])
+            self.assertTrue(len(modules), 1)
+            self.assertEqual(modules[0], module)
+
+    # def cobrasForSpectrograph(self, spectrographId, holeIds=None):
+
+        # Check cobra methods
+        self.assertEqual(fbi.cobraIdForModulePlusCobra(2, 2), 59)
+        self.assertEqual(fbi.cobraIdForModulePlusCobra(4, 1), 172)
+
+        for c in range(2394):
+            cobra = c+1
+            module, cobraInModule = fbi.moduleNumsForCobra(cobra)
+            self.assertEqual(fbi.cobraIdForModulePlusCobra(module, cobraInModule), cobra)
+
+        # xyForCobras
+        for c in range(2394):
+            cobra = c+1
+            xyValues = fbi.xyForCobras(fbi.cobraId == cobra)
+            xVal = fbi.x[fbi.cobraId == cobra]
+            yVal = fbi.y[fbi.cobraId == cobra]
+            np.testing.assert_allclose(xyValues['x'], xVal)
+            np.testing.assert_allclose(xyValues['y'], yVal)

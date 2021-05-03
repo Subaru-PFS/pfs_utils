@@ -145,8 +145,8 @@ class FiberIds(object):
 
         if moduleId < 1 or moduleId > 42:
             raise ValueError(f'moduleId ({moduleId}) must be 1..42')
-        mod_w = np.where(np.logical_or(self.boardId == f'{moduleId}A',
-                                       self.boardId == f'{moduleId}B'))
+        mod_w = np.where(np.logical_or(self.cobraModuleIdInMTP == f'{moduleId}A',
+                                       self.cobraModuleIdInMTP == f'{moduleId}B'))
         return mod_w
 
     def cobrasForSpectrograph(self, spectrographId, holeIds=None):
@@ -180,22 +180,21 @@ class FiberIds(object):
 
     def moduleNumsForCobra(self, cobraId):
         row = np.where(self.cobraId == cobraId)[0][0]
-        board = self.boardId[row]
-        moduleNum = int(board[:-1])
+        moduleNum = self.cobraModuleId[row]
         cobraInModule = self.cobraInModuleId[row]
 
         return moduleNum, cobraInModule
 
     def cobraIdForModulePlusCobra(self, module, cobraInModule):
         """ Return the global cobraId for given (module, cobraInModule) ids. """
-
-        if cobraInModule <= 29:
-            boardName = f"{module}A"
-        else:
-            boardName = f"{module}B"
-
-        w = (self.boardId == boardName) & (self.cobraInModuleId == cobraInModule)
-        return self.cobraId[w][0]
+        result = self.cobraId[np.logical_and(self.cobraModuleId == module,
+                              self.cobraInModuleId == cobraInModule)]
+        if len(result) != 1:
+            raise ValueError(f"No unique cobraId found for "
+                             f"module={module} and "
+                             f"cobraInModule={cobraInModule}."
+                             f"Got following results: {result}")
+        return result[0]
 
     def xyForCobras(self, cobras):
         """ Return the (x,y) positions of the given cobras.
