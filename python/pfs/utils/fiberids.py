@@ -169,6 +169,9 @@ class FiberIds(object):
 
         sCobras = self.data[self.data['spectrographId'] == spectrographId]
 
+        # Filter out invalid values
+        sCobras = sCobras[sCobras['cobraId'] != FiberIds.MISSING_VALUE_UINT16]
+
         if holeIds is not None:
             fh_w = np.argsort(sCobras['fiberHoleId'])
             res_w = np.searchsorted(sCobras['fiberHoleId'], holeIds, sorter=fh_w)

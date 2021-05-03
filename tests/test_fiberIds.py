@@ -214,12 +214,19 @@ class FiberIdsTestCase(unittest.TestCase):
         for m in range(42):
             module = m+1
             cobraIndices = fbi.cobrasForModule(module)
-            print(f'cobraIndices={cobraIndices}')
             modules = np.unique(fbi.cobraModuleId[cobraIndices])
             self.assertTrue(len(modules), 1)
             self.assertEqual(modules[0], module)
 
-    # def cobrasForSpectrograph(self, spectrographId, holeIds=None):
+        for s in range(4):
+            spectrograph = s+1
+            cobraIndices = fbi.cobrasForSpectrograph(spectrograph)
+            print(f'cobraIndices={cobraIndices}, spectrograph={fbi.spectrographId[cobraIndices]}')
+            spectrographs = np.unique(fbi.spectrographId[cobraIndices])
+            print(f'spectrographs={spectrographs}')
+            self.assertEqual(len(spectrographs), 1)
+            print(f'spectrograph={spectrograph}')
+            self.assertEqual(spectrographs[0], spectrograph)
 
         # Check cobra methods
         self.assertEqual(fbi.cobraIdForModulePlusCobra(2, 2), 59)
@@ -228,7 +235,9 @@ class FiberIdsTestCase(unittest.TestCase):
         for c in range(2394):
             cobra = c+1
             module, cobraInModule = fbi.moduleNumsForCobra(cobra)
-            self.assertEqual(fbi.cobraIdForModulePlusCobra(module, cobraInModule), cobra)
+            self.assertEqual(fbi.cobraIdForModulePlusCobra(module,
+                                                           cobraInModule),
+                             cobra)
 
         # xyForCobras
         for c in range(2394):
