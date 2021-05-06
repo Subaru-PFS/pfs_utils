@@ -29,10 +29,7 @@ class FiberIdsTestCase(unittest.TestCase):
         self.assertEqual(len(fbi.data.dtype), 21)
 
         # And the number of rows
-        # FIXME: currently this is 6 fewer than expected.
-        # This will be fixed in INSTRM-1260
-        # self.assertEqual(fbi.data.shape[0], TOTAL_NUMBER_FIBERS)
-        self.assertEqual(fbi.data.shape[0], self.TOTAL_NUMBER_SLIT_HOLES - 6)
+        self.assertEqual(fbi.data.shape[0], self.TOTAL_NUMBER_SLIT_HOLES)
 
         # Check properties are accessible
         for name in fbi.data.dtype.names:
