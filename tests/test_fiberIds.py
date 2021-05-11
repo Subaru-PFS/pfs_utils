@@ -47,7 +47,6 @@ class FiberIdsTestCase(unittest.TestCase):
         self.assertEqual(max(fieldId), constants.N_FIELDS_PFI)
 
         # Check cobraInFieldId
-        print(f'fbi.cobraInFieldId {fbi.cobraInFieldId}')
         cobraInFieldId = fbi.cobraInFieldId[fbi.cobraInFieldId
                                             != self.MISSING_VALUE]
         self.assertEqual(min(cobraInFieldId), 1)
@@ -164,13 +163,37 @@ class FiberIdsTestCase(unittest.TestCase):
                                    rtol=1.0, atol=0)
 
         # Check spectrographId
-        self.assertEqual(min(fbi.spectrographId), 1)
-        self.assertEqual(max(fbi.spectrographId),
+        spectrographId = fbi.spectrographId[fbi.spectrographId
+                                            != self.MISSING_VALUE]
+        self.assertEqual(min(spectrographId), 1)
+        self.assertEqual(max(spectrographId),
                          constants.N_SPECTROGRAPHS)
 
+        # Check fiberHoleId
+        fiberHoleId = fbi.fiberHoleId[fbi.fiberHoleId
+                                      != self.MISSING_VALUE]
+        self.assertEqual(min(fiberHoleId), 1)
+        self.assertEqual(max(fiberHoleId),
+                         constants.FIBERS_PER_SPECTROGRAPH)
+
+        # Check scienceFiberId
+        scienceFiberId = fbi.scienceFiberId[fbi.scienceFiberId
+                                            != self.MISSING_VALUE]
+        self.assertEqual(min(scienceFiberId), 1)
+        self.assertEqual(max(scienceFiberId), 2394)
+
         # Check fiberId
-        self.assertEqual(min(fbi.fiberId), 1)
-        self.assertEqual(max(fbi.fiberId), self. TOTAL_NUMBER_SLIT_HOLES)
+        fiberId = fbi.fiberId[fbi.fiberId
+                              != self.MISSING_VALUE]
+        self.assertEqual(min(fiberId), 1)
+        self.assertEqual(max(fiberId), self. TOTAL_NUMBER_SLIT_HOLES)
+
+        # Check relationship between fiberId, spectograph
+        # and fiberHoleId
+        expectedFiberId = (((spectrographId-1) *
+                            constants.FIBERS_PER_SPECTROGRAPH) +
+                           fiberHoleId)
+        np.testing.assert_array_equal(fiberId, expectedFiberId)
 
         # Check SuNSS fiber IDs
         sunssImagingFibers = []
