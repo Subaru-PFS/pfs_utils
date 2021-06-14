@@ -5,6 +5,7 @@ Executable script to create a PfsDesign for a LAM exposure, given the colors
 of fibers used.
 """
 
+import sys
 import numpy as np
 from pfs.datamodel import PfsDesign, TargetType, FiberStatus, GuideStars
 from .fibers import calculateFiberId
@@ -294,12 +295,20 @@ def main(args=None):
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=epilog)
     parser.add_argument("--directory", default=".", help="Directory in which to write file")
-    parser.add_argument("setups", nargs="+", type=str, choices=dcb.names,
+    parser.add_argument("setups", nargs="*", type=str,
                         help="Setup(s) specifying fibers that were lit")
     parser.add_argument("--arms", type=str, default='brn',
                         help="single-character identifier for arms that will be exposed, eg 'brn'.")
                 
     args = parser.parse_args(args=args)
+
+    nbad = 0
+    for s in args.setups:
+        if s not in dcb.names:
+            print(f"Setup {s} is not valid (please choose one of {' '.join(dcb.names)})", file=sys.stderr)
+            nbad += 1
+    if nbad:
+        sys.exit(1)
 
     fiberHoles = dcb.getFiberIds(*args.setups)
     numFibers = len(fiberHoles)
