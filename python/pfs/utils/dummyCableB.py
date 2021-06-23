@@ -139,7 +139,7 @@ class DummyCableBDatabase:
         # Colored cables at LAM
         # Constructed from a snippet by Fabrice Madec, "dummy cable B fibers"
         # https://sumire-pfs.slack.com/files/U3MLENNHH/FFS6P4UR5/dummy_cable_b_fibers.txt
-        self.add("blue", next(hexIt), "LAM blue cable", [32, 111, 223, 289, 418, 518, 620])
+        self.add("blue", next(hexIt), "LAM blue cable", [32, 111, 223, 289, 418, 518, 621])
         self.add("green", next(hexIt), "LAM green cable", [63, 192, 255, 401, 464, 525, 587])
         self.add("orange", next(hexIt), "LAM orange cable", [12, 60, 110, 161, 210, 259, 341])
         self.add("red1", next(hexIt), "LAM red #1 cable", [2])
@@ -150,7 +150,7 @@ class DummyCableBDatabase:
         self.add("red6", next(hexIt), "LAM red #6 cable", [342])
         self.add("red7", next(hexIt), "LAM red #7 cable", [649])
         self.add("red8", next(hexIt), "LAM red #8 cable", [650])
-        self.add("yellow", next(hexIt), "LAM yellow cable", [347, 400, 449, 466, 545, 593, 641])
+        self.add("yellow", next(hexIt), "LAM yellow cable", [360, 400, 449, 497, 545, 593, 643])
 
         # Additional LAM setups
         allFibers = list(range(1, 652))
