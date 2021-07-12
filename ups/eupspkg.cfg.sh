@@ -10,15 +10,8 @@ install ()
     fi
 
     default_install
-}
 
-decl ()
-{
-    echo "decl VERSION=$VERSION PREFIX=$PREFIX"
     VERSION=$CLEAN_VERSION
     PREFIX=$CLEAN_PREFIX
-    echo "decl fixed VERSION=$VERSION PREFIX=$PREFIX"
-    
-    default_decl
 }
 
