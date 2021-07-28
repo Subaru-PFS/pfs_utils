@@ -40,6 +40,10 @@ mcspixel_asrd = 3.1e-3
 distc_x_asrd = -15.5764
 distc_y_asrd = -2.62071
 
+# AG pixel scale : 13um/pixel
+agpixel = 1.3e-2
+agcent = 241.292  # mm
+
 
 class Coeff:
     """Distortion Coefficients and Methods
