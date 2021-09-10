@@ -270,7 +270,27 @@ class SpecModule(SpectroIds):
         except NoShutterException:
             deps = self.askAnEngineer(seqObj)
 
+        deps.extend(self.rdaDeps(arm, seqObj.lightBeam))
         return deps
+
+    def rdaDeps(self, arm, lightBeam):
+        """Return rda dependency for a given arm and lightBeam.
+
+        Parameters
+        ----------
+        arm : `str`
+            Spectrograph arm.
+        lightBeam : `bool`
+            Are you measuring photons ?
+
+        Returns
+        -------
+        requiredRda : `pfs.utils.sps.part.Rda`
+        """
+        if lightBeam and arm == 'r':
+            return self.rda
+        else:
+            return []
 
     def askAnEngineer(self, seqObj):
         """If NoShutterException is raised, check for special cases, timed dcb exposure is one of them.
@@ -376,14 +396,14 @@ class SpsConfig(object):
             List of Cam object.
         """
         if cams is None:
-            specModules = self.selectModules(sm) if sm is not None else list(self.spsModules.values())
+            specModules = self.selectModules(sm)
             cams = self.selectArms(specModules, arm)
         else:
             cams = [self.selectCam(camName) for camName in cams]
 
         return cams
 
-    def selectModules(self, specNums):
+    def selectModules(self, specNums=None):
         """Select spectrograph modules for a given list of spectrograph number.
 
         Parameters
@@ -397,6 +417,11 @@ class SpsConfig(object):
             List of SpecModule object.
         """
         specModules = []
+
+        if specNums is None:
+            specNums = []
+            specModules = list(self.spsModules.values())
+
         for specNum in specNums:
             try:
                 specModules.append(self.specModules[f'sm{specNum}'])
