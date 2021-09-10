@@ -43,6 +43,13 @@ class Rda(Part):
         """Part identifier."""
         return f'rda_{self.specModule.specName}'
 
+    def checkTarget(self, targetPosition):
+        """Check if rda operational state allow reaching the targetPosition. """
+        if self.state == targetPosition:
+            return True
+        else:
+            return self.operational
+
 
 class Fca(Part):
     """Placeholder to handle fiber cable A operational state and special rules that apply to it.
