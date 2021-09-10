@@ -2,6 +2,24 @@ from pfs.utils.spectroIds import SpectroIds
 from pfs.utils.sps.parts import Cam, Shutter, Rda, Fca, Bia, Iis
 
 
+class LightSource(str):
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def lampsActor(self):
+        if self.isDcb:
+            return self.name
+        elif self.name == 'pfi':
+            return 'pfilamps'
+        else:
+            raise ValueError(f'unknown lampsActor for {self.name}')
+
+    @property
+    def isDcb(self):
+        return 'dcb' in self.name
+
+
 class NoShutterException(Exception):
     """Exception raised when an exposure is required without any working shutter to ensure exposure time.
 
@@ -36,7 +54,7 @@ class SpecModule(SpectroIds):
     def __init__(self, specName, spsModule=True, lightSource=None):
         SpectroIds.__init__(self, specName)
         self.spsModule = spsModule
-        self.lightSource = lightSource
+        self.lightSource = LightSource(lightSource)
 
     @property
     def cams(self):
@@ -288,7 +306,7 @@ class SpecModule(SpectroIds):
         requiredRda : `pfs.utils.sps.part.Rda`
         """
         if lightBeam and arm == 'r':
-            return self.rda
+            return [self.rda]
         else:
             return []
 
