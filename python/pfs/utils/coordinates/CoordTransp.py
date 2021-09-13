@@ -472,6 +472,72 @@ def mm_to_pixel(x, y, cent):
     return sx, sy
 
 
+def ag_pfimm_to_pixel(icam, xpfi, ypfi):
+    """Convert AG PFI coorrdinates to detector coordinates.
+
+    Convert PFI Cartesian coordinates in mm to one of the AG detectors
+    in pixel (1024 x 1024).
+    Note that the pixel coordinates is on the imaging area of AG detecor.
+
+    Parameters
+    ----------
+    icam : `int`
+        The detector identifiers ([0, 5])
+    xpfi : `float`
+        The Cartesian coordinates x's of points on the focal plane in PFI
+        coordinate system (mm)
+    ypfi : `float`
+        The Cartesian coordinates y's of points on the focal plane in PFI
+        coordinate system (mm)
+
+    Returns
+    -------
+    xag : `float`
+        The Cartesian coordinates x's of points in AG detecor (pix)
+    yag : `float`
+        The Cartesian coordinates y's of points in AG detecor (pix)
+    """
+
+    x, y = rotation(xpfi, ypfi, icam*60.)
+    xag = y/DCoeff.agpixel + 511.5
+    yag = - (x - DCoeff.agcent)/DCoeff.agpixel + 511.5
+
+    return xag, yag
+
+
+def ag_pixel_to_pfimm(icam, xag, yag):
+    """Convert AG detector coordinates to PFI coordinates.
+
+    Convert AG detetor coordinates (1024 x 1024) in pixel to PFI Cartesian
+    coordinates in mm.
+    Note that the pixel coordinates is on the imaging area of AG detecor.
+
+    Parameters
+    ----------
+    icam : `int`
+        The detector identifiers ([0, 5])
+    xag : `float`
+        The Cartesian coordinates x's of points in AG detecor (pix)
+    yag : `float`
+        The Cartesian coordinates y's of points in AG detecor (pix)
+
+    Returns
+    -------
+    xpfi : `float`
+        The Cartesian coordinates x's of points on the focal plane in PFI
+        coordinate system (mm)
+    ypfi : `float`
+        The Cartesian coordinates y's of points on the focal plane in PFI
+        coordinate system (mm)
+    """
+
+    y = (xag - 511.5)*DCoeff.agpixel
+    x = - (yag - 511.5)*DCoeff.agpixel + DCoeff.agcent
+    xpfi, ypfi = rotation(x, y, icam*(-60.))
+
+    return xpfi, ypfi
+
+
 def rotation(x, y, rot):
     """Rotate position
 
