@@ -238,7 +238,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         lat = tel2.location.lat.deg
         dc = coord_cent.dec.deg
         if dc > lat:
-            inr = paa + pa - 180.
+            inr = paa + pa
         else:
             inr = paa - pa
 
