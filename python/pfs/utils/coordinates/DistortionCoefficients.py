@@ -44,6 +44,10 @@ distc_y_asrd = -2.62071
 agpixel = 1.3e-2
 agcent = 241.292  # mm
 
+# PFI InR offset from the telescope telescope
+inr_pfi = -90
+inr_min = -180
+inr_max = +270
 
 class Coeff:
     """Distortion Coefficients and Methods

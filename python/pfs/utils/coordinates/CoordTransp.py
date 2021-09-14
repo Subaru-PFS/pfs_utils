@@ -130,7 +130,9 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = mm_to_pixel(x, y, cent)
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
-        xx, yy = rotation(x, y, -1.*inr)
+        xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
+    elif  c.mode == 'mcs_pfi':
+        xx, yy = rotation(x, y, 0., rot_off=DCoeff.inr_pfi)
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
         tel = EarthLocation.of_site('Subaru')
@@ -286,6 +288,14 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
             inr = paa + pa - 180.
         else:
             inr = paa - pa
+
+        # check inr range
+        if inr <= -180.:
+            logging.info("InR will exceed the lower limit (-180 deg)")
+            inr = inr + 360.
+        elif inr >= +270:
+            logging.info("InR will exceed the upper limit (+270 deg)")
+            inr = inr - 360.
 
         xx, yy = rotation(xyin[0, :], xyin[1, :], inr)
         xyconv = np.vstack((xx, yy))
@@ -538,7 +548,7 @@ def ag_pixel_to_pfimm(icam, xag, yag):
     return xpfi, ypfi
 
 
-def rotation(x, y, rot):
+def rotation(x, y, rot, rot_off=0.):
     """Rotate position
 
     Parameters
@@ -558,7 +568,7 @@ def rotation(x, y, rot):
         Coordinates in y-axis.
     """
 
-    ra = np.deg2rad(rot)
+    ra = np.deg2rad(rot + rot_off)
 
     rx = np.cos(ra)*x - np.sin(ra)*y
     ry = np.sin(ra)*x + np.cos(ra)*y
