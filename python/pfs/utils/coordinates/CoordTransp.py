@@ -26,7 +26,7 @@ from . import DistortionCoefficients as DCoeff
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-def CoordinateTransform(xyin, za, mode, inr=0., pa=0.,
+def CoordinateTransform(xyin, za, mode, inr=0., pa=0., adc=0.,
                         cent=np.array([[0.], [0.]]),
                         time='2020-01-01 10:00:00'):
     """Transform Coordinates with given observing conditions.
@@ -306,7 +306,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
 
 
 # differential : z
-def deviation_zenith_angle(xyin, za, c):
+def deviation_zenith_angle(xyin, za, c, adc=0.):
     """Calculate displacement at a given zenith angle
     Parameters
     ----------
@@ -340,12 +340,20 @@ def deviation_zenith_angle(xyin, za, c):
     cy5 = ipol.splev(za, sl_itrp)
 
     if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
-        tarr = np.array([rotation_pattern(za, x, y) for x, y in zip(*xyin)])
-        rotxy = tarr.transpose()
-        offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
-                         for x, y in zip(*rotxy)])
-        offy = np.array([coeffzy*(c.dev_pattern_y(x, y)) + cy5 * y
-                         for x, y in zip(*rotxy)])
+        coeffadc = (adc/20.)
+        # print(cx2,cy2)
+        logging.info("coeff:%s %s %s", coeffzx, coeffzy, coeffadc)
+
+        offx1 = np.array([coeffzx*(c.dev_pattern_x(x, y, adc=False))
+                          for x, y in zip(*xyin)])
+        offy1 = np.array([coeffzy*(c.dev_pattern_y(x, y, adc=False)) + cy5*y
+                          for x, y in zip(*xyin)])
+        offx2 = np.array([coeffadc*(c.dev_pattern_x(x, y, adc=True))
+                          for x, y in zip(*xyin)])
+        offy2 = np.array([coeffadc*(c.dev_pattern_y(x, y, adc=True))
+                          for x, y in zip(*xyin)])
+        offx = offx1+offx2
+        offy = offy1+offy2
     else:
         offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
                          for x, y in zip(*xyin)])
