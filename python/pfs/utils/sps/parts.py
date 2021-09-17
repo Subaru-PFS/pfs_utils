@@ -195,7 +195,7 @@ class Cam(SpectroIds, Part):
     @property
     def operational(self):
         """sci/eng is considered as an operational state with dcb-dcb2, but not for other sources."""
-        if 'dcb' in self.lightSource:
+        if self.lightSource.isDcb:
             return self.state in ['sci', 'eng']
         else:
             return self.state == 'sci'
@@ -214,3 +214,21 @@ class Cam(SpectroIds, Part):
             List of required parts.
         """
         return self.specModule.dependencies(self.arm, seqObj)
+
+
+class VisCam(Cam):
+    def __init__(self, specModule, fpa, state='none'):
+        Cam.__init__(self, specModule, fpa, state)
+
+    @property
+    def actorName(self):
+        return f'ccd_{self.camName}'
+
+
+class NirCam(Cam):
+    def __init__(self, specModule, state='none'):
+        Cam.__init__(self, specModule, 'n', state)
+
+    @property
+    def actorName(self):
+        return f'hx_{self.camName}'

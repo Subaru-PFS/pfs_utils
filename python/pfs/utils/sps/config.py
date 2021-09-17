@@ -1,5 +1,23 @@
 from pfs.utils.spectroIds import SpectroIds
-from pfs.utils.sps.parts import Cam, Shutter, Rda, Fca, Bia, Iis
+from pfs.utils.sps.parts import VisCam, NirCam, Shutter, Rda, Fca, Bia, Iis
+
+
+class LightSource(str):
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def lampsActor(self):
+        if self.isDcb:
+            return self.name
+        elif self.name == 'pfi':
+            return 'pfilamps'
+        else:
+            raise ValueError(f'unknown lampsActor for {self.name}')
+
+    @property
+    def isDcb(self):
+        return 'dcb' in self.name
 
 
 class NoShutterException(Exception):
@@ -36,7 +54,7 @@ class SpecModule(SpectroIds):
     def __init__(self, specName, spsModule=True, lightSource=None):
         SpectroIds.__init__(self, specName)
         self.spsModule = spsModule
-        self.lightSource = lightSource
+        self.lightSource = LightSource(lightSource)
 
     @property
     def cams(self):
@@ -62,6 +80,10 @@ class SpecModule(SpectroIds):
     def genLightSource(self):
         """Generate string that describe the spectrograph light source."""
         return f'{self.specName}LightSource={self.lightSource}'
+
+    @property
+    def enuName(self):
+        return f'enu_{self.specName}'
 
     @classmethod
     def fromConfig(cls, specName, config, spsData):
@@ -156,9 +178,9 @@ class SpecModule(SpectroIds):
         iis : `str`
             Internal Illumination Sources operating state.
         """
-        self.bcu = Cam(self, 'b', bcu)
-        self.rcu = Cam(self, 'r', rcu)
-        self.ncu = Cam(self, 'n', ncu)
+        self.bcu = VisCam(self, 'b', bcu)
+        self.rcu = VisCam(self, 'r', rcu)
+        self.ncu = NirCam(self,  ncu)
         self.bsh = Shutter(self, 'b', bsh)
         self.rsh = Shutter(self, 'r', rsh)
         self.fca = Fca(self, fca)
@@ -288,7 +310,7 @@ class SpecModule(SpectroIds):
         requiredRda : `pfs.utils.sps.part.Rda`
         """
         if lightBeam and arm == 'r':
-            return self.rda
+            return [self.rda]
         else:
             return []
 
