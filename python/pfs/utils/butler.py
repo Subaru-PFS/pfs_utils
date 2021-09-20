@@ -35,7 +35,7 @@ class Butler(object):
         """
 
         self.logger = logging.getLogger('butler')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.WARN)
 
         self.dataRoot = pathlib.Path(dataRoot) if dataRoot is not None else defaultDataRoot
         if configRoot is not None:
