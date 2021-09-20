@@ -130,28 +130,27 @@ class PfiTransform:
 
         self.mcsDistort.setArgs(args)
 
-    def updateTransform(self, mcs_x_pix, mcs_y_pix, x_fid_mm, y_fid_mm, fiducialId, matchRadius=1, nMatchMin=0.75):
+    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75):
         """Update our estimate of the transform, based on the positions of fiducial fibres
 
-        mcs_x_pix, mcs_y_pix:  Measured positions in pixels in metrology camera
-        x_fid_mm, y_fid_mm:    Fiducial positions in mm on PFI
+        mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
+                               (measured positions in pixels in metrology camera)
+        fiducials:             Pandas DataFrame containing x_mm, y_mm, fiducialId
+                               (Fiducial positions in mm on PFI)
+                               As returned by `butler.get("fiducials")
         matchRadius:           Radius to match points and fiducials (mm)
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
         """
         if nMatchMin <= 1:
-            nMatchMin *= len(fiducialId)
+            nMatchMin *= len(fiducials.fiducialId)
 
-        if isinstance(mcs_x_pix, pd.Series):
-            mcs_x_pix = mcs_x_pix.to_numpy()
-        if isinstance(mcs_y_pix, pd.Series):
-            mcs_y_pix = mcs_y_pix.to_numpy()
-        if isinstance(x_fid_mm, pd.Series):
-            x_fid_mm = x_fid_mm.to_numpy()
-        if isinstance(y_fid_mm, pd.Series):
-            y_fid_mm = y_fid_mm.to_numpy()
-        if isinstance(fiducialId, pd.Series):
-            fiducialId = fiducialId.to_numpy()
+        mcs_x_pix = mcs_data.mcs_center_x_pix.to_numpy()
+        mcs_y_pix = mcs_data.mcs_center_y_pix.to_numpy()
+
+        x_fid_mm = fiducials.x_mm.to_numpy()
+        y_fid_mm = fiducials.y_mm.to_numpy()
+        fiducialId = fiducials.fiducialId.to_numpy()
 
         # Get our best estimate of the transformed positions to give ourselves the
         # best chance of matching to the fiducial fibres
