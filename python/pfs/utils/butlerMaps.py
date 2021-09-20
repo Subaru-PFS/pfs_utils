@@ -24,5 +24,5 @@ configMap['motorMap'] = \
          loaderModule='ics.cobraCharmer.motormap')
 configMap['fiducials'] = dict(template="pfi/fiducial_positions.csv",
                               loader=lambda fname: pd.read_csv(fname, comment='#'))
-configMap['black_spots'] = dict(template="pfi/dot/black_spot_mm.csv",
-                                loader=lambda fname: pd.read_csv(fname, comment='#'))
+configMap['black_dots'] = dict(template="pfi/dot/black_dots_mm.csv",
+                               loader=lambda fname: pd.read_csv(fname, comment='#'))
