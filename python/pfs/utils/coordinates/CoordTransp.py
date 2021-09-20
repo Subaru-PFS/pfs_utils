@@ -26,7 +26,7 @@ from . import DistortionCoefficients as DCoeff
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-def CoordinateTransform(xyin, za, mode, inr=0., pa=0.,
+def CoordinateTransform(xyin, za, mode, inr=0., pa=0., adc=0.,
                         cent=np.array([[0.], [0.]]),
                         time='2020-01-01 10:00:00'):
     """Transform Coordinates with given observing conditions.
@@ -130,7 +130,9 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = mm_to_pixel(x, y, cent)
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
-        xx, yy = rotation(x, y, -1.*inr)
+        xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
+    elif  c.mode == 'mcs_pfi':
+        xx, yy = rotation(x, y, 0., rot_off=DCoeff.inr_pfi)
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
         tel = EarthLocation.of_site('Subaru')
@@ -238,7 +240,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         lat = tel2.location.lat.deg
         dc = coord_cent.dec.deg
         if dc > lat:
-            inr = paa + pa - 180.
+            inr = paa + pa
         else:
             inr = paa - pa
 
@@ -287,6 +289,14 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         else:
             inr = paa - pa
 
+        # check inr range
+        if inr <= -180.:
+            logging.info("InR will exceed the lower limit (-180 deg)")
+            inr = inr + 360.
+        elif inr >= +270:
+            logging.info("InR will exceed the upper limit (+270 deg)")
+            inr = inr - 360.
+
         xx, yy = rotation(xyin[0, :], xyin[1, :], inr)
         xyconv = np.vstack((xx, yy))
     else:
@@ -296,7 +306,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
 
 
 # differential : z
-def deviation_zenith_angle(xyin, za, c):
+def deviation_zenith_angle(xyin, za, c, adc=0.):
     """Calculate displacement at a given zenith angle
     Parameters
     ----------
@@ -330,12 +340,20 @@ def deviation_zenith_angle(xyin, za, c):
     cy5 = ipol.splev(za, sl_itrp)
 
     if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
-        tarr = np.array([rotation_pattern(za, x, y) for x, y in zip(*xyin)])
-        rotxy = tarr.transpose()
-        offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
-                         for x, y in zip(*rotxy)])
-        offy = np.array([coeffzy*(c.dev_pattern_y(x, y)) + cy5 * y
-                         for x, y in zip(*rotxy)])
+        coeffadc = (adc/20.)
+        # print(cx2,cy2)
+        logging.info("coeff:%s %s %s", coeffzx, coeffzy, coeffadc)
+
+        offx1 = np.array([coeffzx*(c.dev_pattern_x(x, y, adc=False))
+                          for x, y in zip(*xyin)])
+        offy1 = np.array([coeffzy*(c.dev_pattern_y(x, y, adc=False)) + cy5*y
+                          for x, y in zip(*xyin)])
+        offx2 = np.array([coeffadc*(c.dev_pattern_x(x, y, adc=True))
+                          for x, y in zip(*xyin)])
+        offy2 = np.array([coeffadc*(c.dev_pattern_y(x, y, adc=True))
+                          for x, y in zip(*xyin)])
+        offx = offx1+offx2
+        offy = offy1+offy2
     else:
         offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
                          for x, y in zip(*xyin)])
@@ -538,7 +556,7 @@ def ag_pixel_to_pfimm(icam, xag, yag):
     return xpfi, ypfi
 
 
-def rotation(x, y, rot):
+def rotation(x, y, rot, rot_off=0.):
     """Rotate position
 
     Parameters
@@ -558,7 +576,7 @@ def rotation(x, y, rot):
         Coordinates in y-axis.
     """
 
-    ra = np.deg2rad(rot)
+    ra = np.deg2rad(rot + rot_off)
 
     rx = np.cos(ra)*x - np.sin(ra)*y
     ry = np.sin(ra)*x + np.cos(ra)*y
