@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.optimize
 
-__all__ = ["PfiTransform"]
+__all__ = ["matchIds", "MeasureDistortion", "PfiTransform"]
 
 from .CoordTransp import CoordinateTransform
 
@@ -268,3 +268,81 @@ class PfiTransform:
             self.applyDistortion = applyDistortion
 
         return xyout[0], xyout[1]
+
+
+class ASRDM71Transform(PfiTransform):
+    def __init__(self, altitude=90, insrot=0, applyDistortion=True):
+        self.setParams(altitude, insrot)
+        self.applyDistortion = applyDistortion
+
+    def setParams(self, altitude=90, insrot=0):
+        self.altitude = altitude
+        self.insrot = insrot
+        #
+        # Initial camera distortion; updated using updateTransform
+        #
+        self.mcsDistort = MeasureDistortion([], [], [], [], [], [])
+        self.mcsDistort.setArgs([-3.76006171e+02, -2.68710420e+02, -9.24753269e-01, -5.75212519e-01,  -2.25647580e-13])
+
+
+    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75):
+        """Update our estimate of the transform, based on the positions of fiducial fibres
+
+        mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
+                               (measured positions in pixels in metrology camera)
+        fiducials:             Pandas DataFrame containing x_mm, y_mm, fiducialId
+                               (Fiducial positions in mm on PFI)
+                               As returned by `butler.get("fiducials")
+        matchRadius:           Radius to match points and fiducials (mm)
+        nMatchMin:             Minimum number of permissible matches
+                               (if <= 1, interpreted as the fraction of the number of fiducials)
+        """
+        if nMatchMin <= 1:
+            nMatchMin *= len(fiducials.fiducialId)
+
+        mcs_x_pix = mcs_data.mcs_center_x_pix.to_numpy()
+        mcs_y_pix = mcs_data.mcs_center_y_pix.to_numpy()
+
+        x_fid_mm = fiducials.x_mm.to_numpy()
+        y_fid_mm = fiducials.y_mm.to_numpy()
+        fiducialId = fiducials.fiducialId.to_numpy()
+
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        fid = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+        nMatch = sum(fid > 0)
+        if nMatch < nMatchMin:
+            raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
+
+        asrdDistort = MeasureDistortion(mcs_x_pix, mcs_y_pix, fid, x_fid_mm, y_fid_mm, fiducialId)
+        res = scipy.optimize.minimize(asrdDistort, asrdDistort.getArgs(), method='Powell')
+        asrdDistort.setArgs(res.x)
+        
+    def mcsToPfi(self, x, y):
+        """transform mcs pixels to pfi mm
+        x, y:  position in mcs pixels
+
+        returns:
+            x, y in pfi mm
+        """
+        if isinstance(x, pd.Series):
+            x = x.to_numpy()
+        if isinstance(y, pd.Series):
+            y = y.to_numpy()
+
+        return self.mcsDistort.distort(x, y, inverse=False)
+
+    def pfiToMcs(self, x, y, niter=5, lam=1.0):
+        """transform pfi mm to mcs pixels
+        x, y:  position in pfi mm
+        niter: number of iterations (ignored)
+        lam:   convergence factor for iteration (ignored)
+
+        returns:
+            x, y in mcs pixels
+        """
+        if isinstance(x, pd.Series):
+            x = x.to_numpy()
+        if isinstance(y, pd.Series):
+            y = y.to_numpy()
+
+        return self.mcsDistort.distort(x, y, inverse=True)
