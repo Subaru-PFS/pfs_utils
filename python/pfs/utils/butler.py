@@ -1,7 +1,10 @@
 import importlib
 from importlib import reload
 
-import opscore.utility.sdss3logging
+try:
+    import opscore.utility.sdss3logging
+except ImportError:
+    pass
 import logging
 import pathlib
 import time
