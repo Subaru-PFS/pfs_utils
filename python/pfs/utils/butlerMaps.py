@@ -1,4 +1,5 @@
 import ruamel_yaml
+import pandas as pd
 
 yaml = ruamel_yaml.YAML(typ='safe')
 
@@ -21,3 +22,7 @@ configMap['moduleXml'] = dict(template="pfi/modules/{moduleName}/{moduleName}{ve
 configMap['motorMap'] = \
     dict(template="pfi/cobras/{moduleName}/{cobraModuleId}/maps/{motor}_{direction}_{mapName}.yaml",
          loaderModule='ics.cobraCharmer.motormap')
+configMap['fiducials'] = dict(template="pfi/fiducial_positions.csv",
+                              loader=lambda fname: pd.read_csv(fname, comment='#'))
+configMap['black_dots'] = dict(template="pfi/dot/black_dots_mm.csv",
+                               loader=lambda fname: pd.read_csv(fname, comment='#'))

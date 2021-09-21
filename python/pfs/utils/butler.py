@@ -1,7 +1,10 @@
 import importlib
 from importlib import reload
 
-import opscore.utility.sdss3logging
+try:
+    import opscore.utility.sdss3logging
+except ImportError:
+    pass
 import logging
 import pathlib
 import time
@@ -32,7 +35,7 @@ class Butler(object):
         """
 
         self.logger = logging.getLogger('butler')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.WARN)
 
         self.dataRoot = pathlib.Path(dataRoot) if dataRoot is not None else defaultDataRoot
         if configRoot is not None:
