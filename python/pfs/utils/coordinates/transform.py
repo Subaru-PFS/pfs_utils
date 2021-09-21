@@ -81,8 +81,8 @@ class MeasureDistortion:
         scale = (1 + dscale) + scale2*r**2
 
         if inverse:
-            x -= x0
-            y -= y0
+            x = x - x0   # don't modify x
+            y = y - y0
             s = -s    # change sign of theta
             tx = ( c*x + s*y)/scale
             ty = (-s*x + c*y)/scale
@@ -191,19 +191,18 @@ class PfiTransform:
         if isinstance(y, pd.Series):
             y = y.to_numpy()
 
-        x, y = x.copy(), y.copy()
-        xyin = np.stack((x, y))
+        xyin = np.stack((x, y)).copy()
 
         xyin[0] = -(xyin[0] - self.mcs_boresight_x_pix)   # rotate 180 about centre
         xyin[1] = -(xyin[1] - self.mcs_boresight_y_pix)
 
         xy = CoordinateTransform(xyin, 90.0 - self.altitude, "mcs_pfi", inr=self.insrot)
-        x, y = xy[0], xy[1]
+        xp, yp = xy[0], xy[1]
 
         if self.applyDistortion:
-            x, y = self.mcsDistort.distort(x, y, inverse=False)
+            xp, yp = self.mcsDistort.distort(xp, yp, inverse=False)
 
-        return x, y
+        return xp, yp
 
     def pfiToMcs(self, x, y, niter=5, lam=1.0):
         """transform pfi mm to mcs pixels
@@ -223,12 +222,14 @@ class PfiTransform:
         if isinstance(y, pd.Series):
             y = y.to_numpy()
 
-        x, y = x.copy(), y.copy()
         if self.applyDistortion:
-            x, y = self.mcsDistort.distort(x, y, inverse=True)
+            xm, ym = self.mcsDistort.distort(x, y, inverse=True)
+        else:
+            xm, ym = x.copy(), y.copy()
 
-        xyin = np.stack((x, y))
-        xyout = CoordinateTransform(xyin, 90.0 - self.altitude, "pfi_mcs", inr=self.insrot)  # first guess at MCS coordinates
+        xyin = np.stack((xm, ym))
+        xyout = CoordinateTransform(xyin, 90.0 - self.altitude,
+                                    "pfi_mcs", inr=self.insrot) # first guess at MCS coordinates
         #
         # Apparently there's a missing rotation by pi/2 in the pfs_utils code
         #
@@ -256,7 +257,7 @@ class PfiTransform:
                 xyout[1] -= self.mcs_boresight_y_pix
 
                 nr = np.hypot(nx, ny)
-                r = np.hypot(x, y)
+                r = np.hypot(xm, ym)
                 scale = 1 + lam*np.where(r < 1e-5, 0, (nr - r)/r)
 
                 xyout[0] /= scale
@@ -318,7 +319,7 @@ class ASRDM71Transform(PfiTransform):
         asrdDistort.setArgs(res.x)
         
     def mcsToPfi(self, x, y):
-        """transform mcs pixels to pfi mm
+        """transform ASRD 71M camera pixels to pfi mm
         x, y:  position in mcs pixels
 
         returns:
@@ -332,7 +333,7 @@ class ASRDM71Transform(PfiTransform):
         return self.mcsDistort.distort(x, y, inverse=False)
 
     def pfiToMcs(self, x, y, niter=5, lam=1.0):
-        """transform pfi mm to mcs pixels
+        """transform pfi mm to ASRD 71M camera mcs pixels
         x, y:  position in pfi mm
         niter: number of iterations (ignored)
         lam:   convergence factor for iteration (ignored)
