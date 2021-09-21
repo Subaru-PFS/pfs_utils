@@ -133,7 +133,7 @@ class PfiTransform:
 
         self.mcsDistort.setArgs(args)
 
-    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
+    def updateTransform(self, mcs_data, fiducials, matchRadius=2, nMatchMin=0.75, fig=None):
         """Update our estimate of the transform, based on the positions of fiducial fibres
 
         mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
