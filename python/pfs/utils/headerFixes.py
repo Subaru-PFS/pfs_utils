@@ -1,6 +1,6 @@
 import os
-from collections.abc import Iterable
 from collections import defaultdict
+from collections.abc import Iterable
 
 import yaml
 
@@ -15,6 +15,7 @@ class HeaderFixDatabase:
     method. Further fixes can be added using the ``add`` method. New fixes can
     clobber (or supplement) previous fixes.
     """
+
     def __init__(self):
         self.fixes = defaultdict(dict)  # visit --> header fixes to apply
         self.addStandardFixes()
@@ -64,3 +65,9 @@ class HeaderFixDatabase:
 
         # Early SuNSS observations without the proper pfsDesignId
         self.add(range(45752, 45853), W_PFDSGN=0xdeadbeef)
+
+        pfiFirstNight = list(range(67569, 67574)) + [67587, 67588, 67594, 67605] + \
+                        list(set(range(67611, 67651)) ^ set([67614, 67615, 67620])) + [67685, 67692, 67693]
+
+        # First night with PFI installed without the proper pfsDesignId
+        self.add(pfiFirstNight, W_PFDSGN=0x1f8dc068ce7f1647)
