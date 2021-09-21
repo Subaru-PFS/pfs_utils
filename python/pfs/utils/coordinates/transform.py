@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import scipy.optimize
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 
 __all__ = ["matchIds", "MeasureDistortion", "PfiTransform"]
 
@@ -103,19 +105,20 @@ class PfiTransform:
         self.altitude = altitude
         self.insrot = insrot
         #
-        # Values from Jennifer
+        # Unweighted linear fit to values from Jennifer:
         #
-        if abs(altitude - 90) < 1:
-            self.mcs_boresight_x_pix = 4468.6
-            self.mcs_boresight_y_pix = 2869.6
-        elif abs(altitude - 60) < 1:
-            self.mcs_boresight_x_pix = 4466.9
-            self.mcs_boresight_y_pix = 2867.8
-        elif abs(altitude - 30) < 1:
-            self.mcs_boresight_x_pix = 4474.9
-            self.mcs_boresight_y_pix = 2849.9
-        else:
-            raise RuntimeError(f"I'm afraid that I can't handle altitude={altitude}")
+        # altitude == 90
+        #   self.mcs_boresight_x_pix = 4468.6
+        #   self.mcs_boresight_y_pix = 2869.6
+        # altitude == 60
+        #  self.mcs_boresight_x_pix = 4466.9
+        #  self.mcs_boresight_y_pix = 2867.8
+        # altitude == 30
+        #  self.mcs_boresight_x_pix = 4474.9
+        #  self.mcs_boresight_y_pix = 2849.9
+        #
+        self.mcs_boresight_x_pix = 4476.4 - 0.105*altitude
+        self.mcs_boresight_y_pix = 2842.7 + 0.328*altitude
         #
         # Initial camera distortion; updated using updateTransform
         #
@@ -130,7 +133,7 @@ class PfiTransform:
 
         self.mcsDistort.setArgs(args)
 
-    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75):
+    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
         """Update our estimate of the transform, based on the positions of fiducial fibres
 
         mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
@@ -141,6 +144,7 @@ class PfiTransform:
         matchRadius:           Radius to match points and fiducials (mm)
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
+        fig                    matplotlib figure for displays; or None
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
@@ -160,6 +164,38 @@ class PfiTransform:
 
         fid = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
+
+        if fig is not None:
+            from matplotlib.legend_handler import HandlerPatch
+            class HandlerEllipse(HandlerPatch):
+                def create_artists(self, legend, orig_handle,
+                                   xdescent, ydescent, width, height, fontsize, trans):
+                    center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
+                    p = Circle(center, matchRadius
+                                 #height=height + ydescent
+                    )
+                    self.update_prop(p, orig_handle, legend)
+                    p.set_transform(trans)
+                    return [p]
+
+
+            ax = fig.gca()
+
+            for x, y in zip(x_fid_mm, y_fid_mm):
+                c = Circle((x, y), matchRadius, color='red', alpha=0.5)
+                ax.add_patch(c)
+            #plt.plot(x_fid_mm, y_fid_mm, 'o', label="fiducials")
+            plt.plot(xd, yd, '.', label="detections")
+            plt.plot(xd[fid > 0], yd[fid > 0], '+', color='black', label="matches")
+
+            handles, labels = ax.get_legend_handles_labels()
+            if True:
+                handles += [c]
+                labels += ["search"]
+            plt.legend(handles, labels, handler_map={Circle: HandlerEllipse()})
+            plt.title(f"Matched {nMatch} points")
+            plt.gca().set_aspect('equal')
+        
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
