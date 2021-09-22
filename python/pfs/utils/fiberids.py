@@ -43,13 +43,14 @@ class FiberIds(object):
     Add methods as needed
     cobraId vs. scienceFiberId? Why two, really?
     fiducials? Separate class, probably.
-    Identify engineering/blank holes?
     """
 
     # When reading in the grand fiber map, missing
     # values for integer fields
     # are assigned this
     MISSING_VALUE = 65535
+    EMPTY = MISSING_VALUE - 1
+    ENGINEERING = EMPTY - 1
 
     def __init__(self, path=None):
         if path is None:
@@ -91,7 +92,7 @@ class FiberIds(object):
                  ('rad', 'f4'),
                  ('spectrographId', 'u2'),
                  ('fiberHoleId', 'u2'),
-                 ('scienceFiberId', 'u2'),
+                 ('scienceFiberId', 'U4'),  # we change this to int after parsing the strings
                  ('fiberId', 'u2'),
                  ('sunssFiberId', 'U4'),
                  ('mtp_A', 'U15'),
@@ -130,6 +131,27 @@ class FiberIds(object):
                                                   np.nan,
                                                   np.nan],
                                   comments='\\')
+        #
+        # Build a dtype with the type of scienceFiberId set to int
+        #
+        dt = self.data.dtype
+        ind = [i for i, (k, t) in enumerate(dt.descr) if k == "scienceFiberId"][0]
+        dt = dt.descr
+        dt[ind] = (dt[ind][0], int)
+        dt = np.dtype(dt)
+        #
+        # handle the emp/ang values (still as str!)
+        #
+        sfid = self.data["scienceFiberId"]
+        sfid = np.where(sfid == "emp", str(self.EMPTY),
+                        np.where(sfid == "eng", str(self.ENGINEERING), sfid))
+
+        self.data["scienceFiberId"] = 0  # get rid of invalid literals such as 'eng'
+        self.data = self.data.astype(np.dtype(dt))
+        self.data["scienceFiberId"] = sfid
+        #
+        # Add properties
+        #
         for name in [d[0] for d in dtype]:
             def _fetchOne(self, name=name):
                 return self.data.__getitem__(name)
@@ -217,7 +239,7 @@ class FiberIds(object):
           In mm.
         """
 
-        return self.data[['x','y']][cobras]
+        return self.data[['x', 'y']][cobras]
 
     def fiberIdToMTP(self, fiberIds, pfsConfig=None):
         """Return MTP information for the specified fiberIds
@@ -252,8 +274,6 @@ class FiberIds(object):
 
                 cobraId = self.cobraId[i]
                 if pfsConfig is not None:
-                    from pfs.datamodel.pfsConfig import TargetType
-
                     ll = pfsConfig.fiberId == fid
                     if sum(ll) == 0:
                         raise RuntimeError(f"fiberId {fid} is not found in the pfsConfig file")
@@ -267,7 +287,6 @@ class FiberIds(object):
                         else:
                             assert tt == TargetType.SUNSS_IMAGING
                             cobraId = -sunssId
-
 
                 mtp.append((f"{segment}-{field}-{spectrograph}", holes, cobraId))
 
