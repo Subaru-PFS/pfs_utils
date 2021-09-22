@@ -92,7 +92,7 @@ class FiberIds(object):
                  ('rad', 'f4'),
                  ('spectrographId', 'u2'),
                  ('fiberHoleId', 'u2'),
-                 ('scienceFiberId', 'U4'), # we change this to int after parsing the strings
+                 ('scienceFiberId', 'U4'),  # we change this to int after parsing the strings
                  ('fiberId', 'u2'),
                  ('sunssFiberId', 'U4'),
                  ('mtp_A', 'U15'),
@@ -135,9 +135,9 @@ class FiberIds(object):
         # Build a dtype with the type of scienceFiberId set to int
         #
         dt = self.data.dtype
-        i = [i for i, (k, t) in enumerate(dt.descr) if k == "scienceFiberId"][0]
+        ind = [i for i, (k, t) in enumerate(dt.descr) if k == "scienceFiberId"][0]
         dt = dt.descr
-        dt[i] = (dt[i][0], int)
+        dt[ind] = (dt[ind][0], int)
         dt = np.dtype(dt)
         #
         # handle the emp/ang values (still as str!)
@@ -239,7 +239,7 @@ class FiberIds(object):
           In mm.
         """
 
-        return self.data[['x','y']][cobras]
+        return self.data[['x', 'y']][cobras]
 
     def fiberIdToMTP(self, fiberIds, pfsConfig=None):
         """Return MTP information for the specified fiberIds
@@ -274,8 +274,6 @@ class FiberIds(object):
 
                 cobraId = self.cobraId[i]
                 if pfsConfig is not None:
-                    from pfs.datamodel.pfsConfig import TargetType
-
                     ll = pfsConfig.fiberId == fid
                     if sum(ll) == 0:
                         raise RuntimeError(f"fiberId {fid} is not found in the pfsConfig file")
@@ -289,7 +287,6 @@ class FiberIds(object):
                         else:
                             assert tt == TargetType.SUNSS_IMAGING
                             cobraId = -sunssId
-
 
                 mtp.append((f"{segment}-{field}-{spectrograph}", holes, cobraId))
 
