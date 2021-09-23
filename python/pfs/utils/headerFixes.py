@@ -66,8 +66,16 @@ class HeaderFixDatabase:
         # Early SuNSS observations without the proper pfsDesignId
         self.add(range(45752, 45853), W_PFDSGN=0xdeadbeef)
 
-        pfiFirstNight = list(range(67569, 67574)) + [67587, 67588, 67594, 67605] + \
-                        list(set(range(67611, 67651)) ^ set([67614, 67615, 67620])) + [67685, 67692, 67693]
+        pfiEngineering = list(range(67569, 67574)) + [67587, 67588, 67594, 67605] + \
+                         list(set(range(67611, 67651)) ^ set([67614, 67615, 67620])) + [67685, 67692, 67693, 67694] + \
+                         list(range(67707, 67723)) + list(range(67739, 67744)) + list(range(67752, 67760)) + \
+                         list(range(67781, 67797)) + list(range(67809, 67839)) + list(range(67953, 67962)) + \
+                         list(set(list(range(68072, 68109))) ^ set([68095, 68097, 68098, 68102, 68103, 68105])) + \
+                         [68303, 68306, 68307, 68308] + list(range(68323, 68328)) + [68344, 68345, 68349, 68351] + \
+                         list(range(68417, 68421)) + list(range(68424, 68428))
+
+        pfiEven = [68360, 68361, 68373, 68388, 68391, 68398, 68399]
 
         # First night with PFI installed without the proper pfsDesignId
-        self.add(pfiFirstNight, W_PFDSGN=0x1f8dc068ce7f1647)
+        self.add(pfiEngineering, W_PFDSGN=0x5c11e5e079a85102)
+        self.add(pfiEven, W_PFDSGN=0x0775c81f651aee77)
