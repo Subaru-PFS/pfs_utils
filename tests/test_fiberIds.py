@@ -177,8 +177,8 @@ class FiberIdsTestCase(unittest.TestCase):
                          constants.FIBERS_PER_SPECTROGRAPH)
 
         # Check scienceFiberId
-        scienceFiberId = fbi.scienceFiberId[fbi.scienceFiberId
-                                            != self.MISSING_VALUE]
+        select = ~np.isin(fbi.scienceFiberId, (FiberIds.MISSING_VALUE, FiberIds.EMPTY, FiberIds.ENGINEERING))
+        scienceFiberId = fbi.scienceFiberId[select]
         self.assertEqual(min(scienceFiberId), 1)
         self.assertEqual(max(scienceFiberId), 2394)
 
