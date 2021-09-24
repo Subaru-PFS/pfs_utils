@@ -74,8 +74,17 @@ class HeaderFixDatabase:
                          [68303, 68306, 68307, 68308] + list(range(68323, 68328)) + [68344, 68345, 68349, 68351] + \
                          list(range(68417, 68421)) + list(range(68424, 68428))
 
-        pfiEven = [68360, 68361, 68373, 68388, 68391, 68398, 68399]
+        pfiEven = [68360, 68361, 68373, 68388, 68391, 68398, 68399] + list(range(68480, 68489)) + \
+                  list(range(68491, 68494)) + list(range(68499, 68502))
+        pfiOdd = list(range(68402, 68406)) + list(range(68504, 68507)) + list(range(68509, 68512)) + \
+                 list( range(68514, 68517))
+        pfiBlack = list(range(68410, 68413)) + list(range(68417, 68421)) + list(range(68424, 68428)) + \
+                   list(set(list(range(68519, 68528))) ^ set([68522]))
+        pfiAll = [68432, 68433, 68434, 68475, 68476, 68477]
 
         # First night with PFI installed without the proper pfsDesignId
-        self.add(pfiEngineering, W_PFDSGN=0x5c11e5e079a85102)
-        self.add(pfiEven, W_PFDSGN=0x0775c81f651aee77)
+        self.add(pfiEngineering, W_PFDSGN=0x71c4c79bd4b5d30)
+        self.add(pfiEven, W_PFDSGN=0x1d317decdf389ea8)
+        self.add(pfiOdd, W_PFDSGN=0x31b5b0ab7d661e15)
+        self.add(pfiBlack, W_PFDSGN=0x2ed537b1a10ff1b2)
+        self.add(pfiAll, W_PFDSGN=0x40dbf5546df0d55e)
