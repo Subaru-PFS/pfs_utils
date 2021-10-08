@@ -291,7 +291,33 @@ class FiberIds(object):
                 mtp.append((f"{segment}-{field}-{spectrograph}", holes, cobraId))
 
         return mtp
+    
+    def mtpAToFiberId(self, mtpA, pfsConfig=None):
+        """Return ScienceFiberId for the specified mtp_A 
+        Args
+        ----
+        mtpA :  array of 1-indexed of mtp_A
+        pfsConfig : `pfs.datamodel.PfsConfig`
+           Tell us e.g. which fibres go to SuNSS
+        Returns
+        -------
+        an array of  ("ScienceFiberId")
+        """
+        if pfsConfig is not None:
+            try:
+                from pfs.datamodel.pfsConfig import TargetType
+            except ImportError:
+                raise RuntimeError("You may not specify a pfsConfig file if pfs.datamodel is not setup")
+        
+        sfib = []
+        for usconnect in mtpA:
+            for mtp in self.data['mtp_A']:
+                if (usconnect+'-' in mtp):
+                    sfib.append(self.data[self.data['mtp_A'] == mtp]['scienceFiberId'][0])
+            
+        return sfib
 
+    
     @staticmethod
     def splitConnector(connectorName):
         """Given a connectorName such as "U3-1-1-2-1" return the fields"""
