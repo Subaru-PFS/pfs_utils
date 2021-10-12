@@ -313,7 +313,7 @@ class FiberIds(object):
         for usconnect in mtpA:
             for mtp in self.data['mtp_A']:
                 if (usconnect+'-' in mtp):
-                    sfib.append(self.data[self.data['mtp_A'] == mtp]['scienceFiberId'][0])
+                    sfib.append(self.data[self.data['mtp_A'] == mtp]['fiberId'][0])
             
         return sfib
 
