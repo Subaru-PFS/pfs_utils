@@ -268,10 +268,13 @@ class PfiTransform:
                                     "pfi_mcs", inr=self.insrot) # first guess at MCS coordinates
         #
         # Apparently there's a missing rotation by pi/2 in the pfs_utils code
+        # Implemented under INSRTM-1398
         #
+        """
         tmp = xyout.copy()
         xyout[0], xyout[1] = tmp[1], -tmp[0]
         del tmp
+        """
         #
         # Deal with coordinate transformations on the MCS
         #
