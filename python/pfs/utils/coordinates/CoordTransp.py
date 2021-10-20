@@ -131,7 +131,7 @@ def convert_out_position(x, y, inr, c, cent, time):
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
-    elif  c.mode == 'mcs_pfi':
+    elif c.mode == 'mcs_pfi':
         xx, yy = rotation(x, y, 0., rot_off=DCoeff.inr_pfi)
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
@@ -420,8 +420,9 @@ def calc_argument(xyin, inr, c):
         arg = arg+np.pi
 
     # PFI to MCS: input argument depends on rotator angle
+    # InR has 90-deg offser
     if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
-        arg = arg+np.deg2rad(inr)+np.pi
+        arg = arg+np.deg2rad(inr - DCoeff.inr_pfi)+np.pi
 
     return arg
 
