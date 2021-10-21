@@ -5,26 +5,73 @@ from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 
 
-def makePfsDesignFile(x, y,
-                      raBoresight=100, decBoresight=100, posAng=0, arms='br',
-                      tract=1, patch='1,1', ra=None, dec=None, catId=-1, objId=-1, targetType=TargetType.SCIENCE,
-                      fiberStatus=FiberStatus.GOOD,
-                      fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
-                      fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
-                      filterNames=None, guideStars=None):
+def makePfsDesign(pfiNominal, ra, dec,
+                  raBoresight=100, decBoresight=100, posAng=0, arms='br',
+                  tract=1, patch='1,1', catId=-1, objId=-1, targetType=TargetType.SCIENCE,
+                  fiberStatus=FiberStatus.GOOD,
+                  fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
+                  fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
+                  filterNames=None, guideStars=None):
     """ Make PfsDesign object from cobra x and y required positions.
 
-        Parameters
-        ----------
-        x : array_like
-            cobra x position (1..2394).
-        y: array_like
-            cobra y position (1..2394).
+    Parameters
+    ----------
+    pfiNominal : `numpy.ndarray` of `float`
+        Intended target cobra position (2-vector) of each fiber on the PFI, millimeters.
+    ra : `numpy.ndarray` of `float64`
+        Right Ascension for each fiber, degrees.
+    dec : `numpy.ndarray` of `float64`
+        Declination for each fiber, degrees.
+    raBoresight : `float`, degrees
+        Right Ascension of telescope boresight.
+    decBoresight : `float`, degrees
+        Declination of telescope boresight.
+    posAng : `float`, degrees
+        The position angle from the
+        North Celestial Pole to the PFI_Y axis,
+        measured clockwise with respect to the
+        positive PFI_Z axis
+    arms : `str`
+        arms to expose. Eg 'brn', 'bmn'.
+    fiberId : `numpy.ndarary` of `int32`
+        Fiber identifier for each fiber.
+    tract : `numpy.ndarray` of `int32`
+        Tract index for each fiber.
+    patch : `numpy.ndarray` of `str`
+        Patch indices for each fiber, typically two integers separated by a
+        comma, e.g,. "5,6".
+    catId : `numpy.ndarray` of `int32`
+        Catalog identifier for each fiber.
+    objId : `numpy.ndarray` of `int64`
+        Object identifier for each fiber. Specifies the object within the
+        catalog.
+    targetType : `numpy.ndarray` of `int`
+        Type of target for each fiber. Values must be convertible to
+        `TargetType` (which limits the range of values).
+    fiberStatus : `numpy.ndarray` of `int`
+        Status of each fiber. Values must be convertible to `FiberStatus`
+        (which limits the range of values).
+    fiberFlux : `list` of `numpy.ndarray` of `float`
+        Array of fiber fluxes for each fiber, in [nJy].
+    psfFlux : `list` of `numpy.ndarray` of `float`
+        Array of PSF fluxes for each target/fiber in [nJy]
+    totalFlux : `list` of `numpy.ndarray` of `float`
+        Array of total fluxes for each target/fiber in [nJy].
+    fiberFluxErr : `list` of `numpy.ndarray` of `float`
+        Array of fiber flux errors for each fiber in [nJy].
+    psfFluxErr : `list` of `numpy.ndarray` of `float`
+        Array of PSF flux errors for each target/fiber in [nJy].
+    totalFluxErr : `list` of `numpy.ndarray` of `float`
+        Array of total flux errors for each target/fiber in [nJy].
+    filterNames : `list` of `list` of `str`
+        List of filters used to measure the fiber fluxes for each filter.
+    guideStars : `GuideStars`
+        Guide star data. If `None`, an empty GuideStars instance will be created.
 
-        Returns
-        -------
-        pfsDesign : pfs.datamodel.PfsDesign
-           constructed pfsDesign for all fibers (science + engineering)
+    Returns
+    -------
+    pfsDesign : `pfs.datamodel.PfsDesign`
+       constructed pfsDesign for all fibers (science + engineering)
     """
 
     # Grand Fiber Map
@@ -34,11 +81,18 @@ def makePfsDesignFile(x, y,
     isCobra = ~isEmpty & ~isEng
 
     nFiber = len(gfm.scienceFiberId)
-    nScienceFiber =  len(gfm.scienceFiberId[isCobra])
+    nScienceFiber = len(gfm.scienceFiberId[isCobra])
     fiberId = gfm.fiberId
 
     def setDefaultValues(sciVal, engVal, shape=nFiber, dtype=float):
-        """assign provided sci values to cobra index and default value to engineering fibers. """
+        """assign provided sci values to cobra index and default value to engineering fibers. "
+        Parameters
+        ----------
+        sciVal : array_like of dtype / dtype
+             value(s) for science fibers.
+        engVal: array_like of dtype / dtype
+            value(s) for engineering fibers.
+        """
         array = np.empty(shape, dtype=dtype)
 
         if not isinstance(sciVal, (float, str)):
@@ -53,17 +107,13 @@ def makePfsDesignFile(x, y,
 
         return array
 
+    pfiNominal = setDefaultValues(sciVal=pfiNominal, engVal=np.NaN, shape=(nFiber, 2))
+
     tract = setDefaultValues(sciVal=tract, engVal=-1, dtype='int32')
-    patch = setDefaultValues(sciVal=patch, engVal='0,0', dtype='<U32')
+    patch = setDefaultValues(sciVal=patch, engVal='0,0', dtype='U32')
 
-    if ra is None:
-        ra = raBoresight + 1e-3 * x
-
-    if dec is None:
-        dec = decBoresight + 1e-3 * y
-
-    ra = setDefaultValues(sciVal=ra, engVal=100)
-    dec = setDefaultValues(sciVal=dec, engVal=100)
+    ra = setDefaultValues(sciVal=ra, engVal=999)
+    dec = setDefaultValues(sciVal=dec, engVal=999)
 
     catId = setDefaultValues(sciVal=catId, engVal=-1, dtype='int32')
     objId = setDefaultValues(sciVal=objId, engVal=-1, dtype='int64')
@@ -74,7 +124,7 @@ def makePfsDesignFile(x, y,
     # I might be overaccommodating here but ...
     if filterNames is None:
         # making sure some input data are not discarded silently
-        assert fiberFlux==np.NaN and psfFlux==np.NaN and totalFlux==np.NaN
+        assert np.isnan(fiberFlux) and np.isnan(psfFlux) and np.isnan(totalFlux)
         filterNameArray = np.array(nScienceFiber * [[]], dtype='str')  # list of filter names
 
     elif isinstance(filterNames, str):
@@ -87,6 +137,7 @@ def makePfsDesignFile(x, y,
     nFilter = filterNameArray.shape[1]
     filterNameArray = setDefaultValues(sciVal=filterNameArray, engVal='', dtype=filterNameArray.dtype,
                                        shape=(nFiber, nFilter))
+    filterList = [[filter for filter in filters if filter] for filters in filterNameArray]
 
     fiberFlux = setDefaultValues(sciVal=fiberFlux, engVal=np.NaN, shape=(nFiber, nFilter))
     psfFlux = setDefaultValues(sciVal=psfFlux, engVal=np.NaN, shape=(nFiber, nFilter))
@@ -96,13 +147,9 @@ def makePfsDesignFile(x, y,
     psfFluxErr = setDefaultValues(sciVal=psfFluxErr, engVal=np.NaN, shape=(nFiber, nFilter))
     totalFluxErr = setDefaultValues(sciVal=totalFluxErr, engVal=np.NaN, shape=(nFiber, nFilter))
 
-    x = setDefaultValues(sciVal=x, engVal=np.NaN)
-    y = setDefaultValues(sciVal=y, engVal=np.NaN)
-    pfiNominal = np.stack((x, y)).T
-
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
                           targetType, fiberStatus, fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
-                          totalFluxErr, filterNameArray, pfiNominal, guideStars)
+                          totalFluxErr, filterList, pfiNominal, guideStars)
     # Drop empty fibers
     pfsDesign = pfsDesign[~isEmpty]
     pfsDesign.pfsDesignId = calculate_pfsDesignId(pfsDesign.fiberId, pfsDesign.ra, pfsDesign.dec)
