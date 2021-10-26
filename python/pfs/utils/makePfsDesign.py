@@ -112,8 +112,8 @@ def makePfsDesign(pfiNominal, ra, dec,
     tract = setDefaultValues(sciVal=tract, engVal=-1, dtype='int32')
     patch = setDefaultValues(sciVal=patch, engVal='0,0', dtype='U32')
 
-    ra = setDefaultValues(sciVal=ra, engVal=999)
-    dec = setDefaultValues(sciVal=dec, engVal=999)
+    ra = setDefaultValues(sciVal=ra, engVal=np.NaN)
+    dec = setDefaultValues(sciVal=dec, engVal=np.NaN)
 
     catId = setDefaultValues(sciVal=catId, engVal=-1, dtype='int32')
     objId = setDefaultValues(sciVal=objId, engVal=-1, dtype='int64')
