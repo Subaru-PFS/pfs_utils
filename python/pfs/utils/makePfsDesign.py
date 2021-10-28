@@ -135,17 +135,21 @@ def makePfsDesign(pfiNominal, ra, dec,
         filterNameArray = filterNameArray[:, None] if filterNameArray.ndim == 1 else filterNameArray
 
     nFilter = filterNameArray.shape[1]
-    filterNameArray = setDefaultValues(sciVal=filterNameArray, engVal='', dtype=filterNameArray.dtype,
-                                       shape=(nFiber, nFilter))
-    filterList = [[filter for filter in filters if filter] for filters in filterNameArray]
+    filterNameArray = setDefaultValues(sciVal=filterNameArray, engVal=None, dtype=object, shape=(nFiber, nFilter))
+    fiberFlux = setDefaultValues(sciVal=fiberFlux, engVal=None, dtype=object, shape=(nFiber, nFilter))
+    psfFlux = setDefaultValues(sciVal=psfFlux, engVal=None, dtype=object, shape=(nFiber, nFilter))
+    totalFlux = setDefaultValues(sciVal=totalFlux, engVal=None, dtype=object, shape=(nFiber, nFilter))
+    fiberFluxErr = setDefaultValues(sciVal=fiberFluxErr, engVal=None, dtype=object, shape=(nFiber, nFilter))
+    psfFluxErr = setDefaultValues(sciVal=psfFluxErr, engVal=None, dtype=object, shape=(nFiber, nFilter))
+    totalFluxErr = setDefaultValues(sciVal=totalFluxErr, engVal=None, dtype=object, shape=(nFiber, nFilter))
 
-    fiberFlux = setDefaultValues(sciVal=fiberFlux, engVal=np.NaN, shape=(nFiber, nFilter))
-    psfFlux = setDefaultValues(sciVal=psfFlux, engVal=np.NaN, shape=(nFiber, nFilter))
-    totalFlux = setDefaultValues(sciVal=totalFlux, engVal=np.NaN, shape=(nFiber, nFilter))
-
-    fiberFluxErr = setDefaultValues(sciVal=fiberFluxErr, engVal=np.NaN, shape=(nFiber, nFilter))
-    psfFluxErr = setDefaultValues(sciVal=psfFluxErr, engVal=np.NaN, shape=(nFiber, nFilter))
-    totalFluxErr = setDefaultValues(sciVal=totalFluxErr, engVal=np.NaN, shape=(nFiber, nFilter))
+    filterList = [list(filter(None, filters)) for filters in filterNameArray]
+    fiberFlux = [np.array(list(filter(None, values)), dtype=float) for values in fiberFlux]
+    psfFlux = [np.array(list(filter(None, values)), dtype=float) for values in psfFlux]
+    totalFlux = [np.array(list(filter(None, values)), dtype=float) for values in totalFlux]
+    fiberFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in fiberFluxErr]
+    psfFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in psfFluxErr]
+    totalFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in totalFluxErr]
 
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
                           targetType, fiberStatus, fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
