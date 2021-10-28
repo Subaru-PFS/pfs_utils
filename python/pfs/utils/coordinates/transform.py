@@ -33,7 +33,7 @@ def fromCameraName(cameraName, *args, **kwargs):
     if 'canon' in cameraName.lower():
         return PfiTransform(*args, **kwargs)
     elif 'rmod' == cameraName.lower():
-        return ASRDM71Transform(*args, **kwargs)
+        return ASRD71MTransform(*args, **kwargs)
     else:
         raise ValueError(f'unknown transform for camera : {cameraName}')
 
@@ -326,7 +326,7 @@ class PfiTransform:
         return xyout[0], xyout[1]
 
 
-class ASRDM71Transform(PfiTransform):
+class ASRD71MTransform(PfiTransform):
     def __init__(self, altitude=90, insrot=0, applyDistortion=True):
         self.setParams(altitude, insrot)
         self.applyDistortion = applyDistortion
