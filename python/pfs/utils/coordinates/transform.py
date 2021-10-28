@@ -30,9 +30,9 @@ def fromCameraName(cameraName, *args, **kwargs):
     cameraName : `str`
         camera used to measure fiducials position.
     """
-    if cameraName == 'Canon_50M':
+    if 'canon' in cameraName.lower():
         return PfiTransform(*args, **kwargs)
-    elif cameraName == 'RMOD_71M':
+    elif 'rmod' == cameraName.lower():
         return ASRDM71Transform(*args, **kwargs)
     else:
         raise ValueError(f'unknown transform for camera : {cameraName}')
