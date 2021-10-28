@@ -22,6 +22,22 @@ def matchIds(u, v, x, y, fid, matchRadius=2):
     return fid_out
 
 
+def fromCameraName(cameraName, *args, **kwargs):
+    """ Transform factory, construct pfiTransform from the camera name.
+
+    Parameters
+    ----------
+    cameraName : `str`
+        camera used to measure fiducials position.
+    """
+    if 'canon' in cameraName.lower():
+        return PfiTransform(*args, **kwargs)
+    elif 'rmod' == cameraName.lower():
+        return ASRD71MTransform(*args, **kwargs)
+    else:
+        raise ValueError(f'unknown transform for camera : {cameraName}')
+
+
 class MeasureDistortion:
     def __init__(self, x, y, fid, x_mm, y_mm, fiducialId):
         """x, y: measured positions in pfi coordinates
@@ -310,7 +326,7 @@ class PfiTransform:
         return xyout[0], xyout[1]
 
 
-class ASRDM71Transform(PfiTransform):
+class ASRD71MTransform(PfiTransform):
     def __init__(self, altitude=90, insrot=0, applyDistortion=True):
         self.setParams(altitude, insrot)
         self.applyDistortion = applyDistortion
