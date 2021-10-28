@@ -22,6 +22,22 @@ def matchIds(u, v, x, y, fid, matchRadius=2):
     return fid_out
 
 
+def fromCameraName(cameraName, *args, **kwargs):
+    """ Transform factory, construct pfiTransform from the camera name.
+
+    Parameters
+    ----------
+    cameraName : `str`
+        camera used to measure fiducials position.
+    """
+    if cameraName == 'Canon_50M':
+        return PfiTransform(*args, **kwargs)
+    elif cameraName == 'RMOD_71M':
+        return ASRDM71Transform(*args, **kwargs)
+    else:
+        raise ValueError(f'unknown transform for camera : {cameraName}')
+
+
 class MeasureDistortion:
     def __init__(self, x, y, fid, x_mm, y_mm, fiducialId):
         """x, y: measured positions in pfi coordinates
