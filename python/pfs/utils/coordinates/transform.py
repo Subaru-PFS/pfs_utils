@@ -32,7 +32,7 @@ def fromCameraName(cameraName, *args, **kwargs):
     """
     if 'canon' in cameraName.lower():
         return PfiTransform(*args, **kwargs)
-    elif 'rmod' == cameraName.lower():
+    elif 'rmod' in cameraName.lower():
         return ASRD71MTransform(*args, **kwargs)
     else:
         raise ValueError(f'unknown transform for camera : {cameraName}')
