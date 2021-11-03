@@ -74,7 +74,8 @@ class HeaderFixDatabase:
         self.add("S", list(range(423, 442)) + [43, 54, 60], W_AITNEO=False, W_AITKRY=True)
 
         # Early SuNSS observations without the proper pfsDesignId
-        self.add("S", range(45752, 45853), W_PFDSGN=0xdeadbeef)
+        self.add("S", range(45750, 45853), W_PFDSGN=0xdeadbeef)
+        self.add("S", range(45750, 46081), W_LGTSRC='sunss')
 
         pfiEngineering = list(range(67569, 67574)) + [67587, 67588, 67594, 67605] + \
             list(set(range(67611, 67651)) ^ set([67614, 67615, 67620])) + [67685, 67692, 67693, 67694] + \
