@@ -150,7 +150,7 @@ def convert_out_position(x, y, inr, c, cent, time):
         az0 = altaz_cent.az.deg
         el0 = altaz_cent.alt.deg
 
-        # offser frame in WFC
+        # offset frame in WFC
         center = SkyCoord(0., 0., unit=u.deg)
         aframe = center.skyoffset_frame()
         coord = SkyCoord(x, y, frame=aframe, unit=u.deg,
@@ -326,24 +326,31 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
         Displacement in y-axis
     """
 
-    if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
+    if c.mode == 'pfi_mcs' or c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
         coeffzx, coeffzy = c.diff_coeff(za, 60.)
     else:
         # Reference: zenith angle 30 deg
         coeffzx, coeffzy = c.diff_coeff(za, 30.)
 
     # y : slope cy5(z) * y
-    za_a = [0., 30., 60.]
-    sl_a = c.slp
+    if c.mode == 'pfi_mcs':
+        cy5 = 0.
+    else:
+        za_a = [0., 30., 60.]
+        sl_a = c.slp
 
-    sl_itrp = ipol.splrep(za_a, sl_a, k=2, s=0)
-    cy5 = ipol.splev(za, sl_itrp)
+        sl_itrp = ipol.splrep(za_a, sl_a, k=2, s=0)
+        cy5 = ipol.splev(za, sl_itrp)
 
-    if c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
+    if c.mode == 'sky_pfi':
+        offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
+                         for x, y in zip(*xyin)])
+        offy = np.array([coeffzy * (c.dev_pattern_y(x, y)) + cy5 * y
+                         for x, y in zip(*xyin)])
+    else:  # c.mode == 'sky_pfi_hsc' 'pfi_mcs' 'mcs_pfi_wofe' 'mcs_pfi':
         coeffadc = (adc/20.)
         # print(cx2,cy2)
         logging.info("coeff:%s %s %s", coeffzx, coeffzy, coeffadc)
-
         offx1 = np.array([coeffzx*(c.dev_pattern_x(x, y, adc=False))
                           for x, y in zip(*xyin)])
         offy1 = np.array([coeffzy*(c.dev_pattern_y(x, y, adc=False)) + cy5*y
@@ -354,11 +361,6 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
                           for x, y in zip(*xyin)])
         offx = offx1+offx2
         offy = offy1+offy2
-    else:
-        offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
-                         for x, y in zip(*xyin)])
-        offy = np.array([coeffzy * (c.dev_pattern_y(x, y)) + cy5 * y
-                         for x, y in zip(*xyin)])
 
     return offx, offy
 
