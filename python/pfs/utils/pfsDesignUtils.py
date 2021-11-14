@@ -110,6 +110,9 @@ def makePfsDesign(pfiNominal, ra, dec,
 
         return array
 
+    if len(pfiNominal) == 0:
+        raise RuntimeError("You must specify at least one position (n.b. [(NaN, NaN)] is acceptable)")
+
     pfiNominal = setDefaultValues(sciVal=pfiNominal, engVal=np.NaN, shape=(nFiber, 2))
 
     tract = setDefaultValues(sciVal=tract, engVal=-1, dtype='int32')
