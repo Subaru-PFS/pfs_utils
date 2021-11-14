@@ -4,6 +4,7 @@ from pfs.datamodel.utils import calculate_pfsDesignId
 
 from pfs.utils.fiberids import FiberIds
 
+__all__ = ["makePfsDesign"]
 
 def makePfsDesign(pfiNominal, ra, dec,
                   raBoresight=100, decBoresight=100, posAng=0, arms='br',
@@ -11,7 +12,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   fiberStatus=FiberStatus.GOOD,
                   fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
                   fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
-                  filterNames=None, guideStars=None):
+                  filterNames=None, guideStars=None, designName=None):
     """ Make PfsDesign object from cobra x and y required positions.
 
     Parameters
@@ -67,6 +68,8 @@ def makePfsDesign(pfiNominal, ra, dec,
         List of filters used to measure the fiber fluxes for each filter.
     guideStars : `GuideStars`
         Guide star data. If `None`, an empty GuideStars instance will be created.
+    designName : `str`
+        Name for design file. If `None` use default
 
     Returns
     -------
@@ -157,5 +160,8 @@ def makePfsDesign(pfiNominal, ra, dec,
     # Drop empty fibers
     pfsDesign = pfsDesign[~isEmpty]
     pfsDesign.pfsDesignId = calculate_pfsDesignId(pfsDesign.fiberId, pfsDesign.ra, pfsDesign.dec)
+
+    if designName is not None:
+        pfsDesign.designName = designName
 
     return pfsDesign
