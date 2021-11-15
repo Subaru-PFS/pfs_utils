@@ -372,6 +372,8 @@ class ASRD71MTransform(PfiTransform):
         asrdDistort = MeasureDistortion(mcs_x_pix, mcs_y_pix, fid, x_fid_mm, y_fid_mm, fiducialId)
         res = scipy.optimize.minimize(asrdDistort, asrdDistort.getArgs(), method='Powell')
         asrdDistort.setArgs(res.x)
+
+        self.mcsDistort = asrdDistort
         
     def mcsToPfi(self, x, y):
         """transform ASRD 71M camera pixels to pfi mm
