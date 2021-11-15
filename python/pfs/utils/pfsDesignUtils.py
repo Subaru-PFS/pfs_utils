@@ -1,8 +1,23 @@
+import datetime
 import numpy as np
+import pytz
+
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+from astropy import units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+
 from pfs.datamodel import PfsDesign, FiberStatus, TargetType
 from pfs.datamodel.utils import calculate_pfsDesignId
 
 from pfs.utils.fiberids import FiberIds
+
+__all__ = ["makePfsDesign", "showPfsDesign"]
+
+subaru = None                           # we'll look it up if we need it
+utcoffset = -10  # UTC -> HST.  No daylight saving to worry about
 
 
 def makePfsDesign(pfiNominal, ra, dec,
@@ -11,7 +26,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   fiberStatus=FiberStatus.GOOD,
                   fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
                   fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
-                  filterNames=None, guideStars=None):
+                  filterNames=None, guideStars=None, designName=None):
     """ Make PfsDesign object from cobra x and y required positions.
 
     Parameters
@@ -67,6 +82,8 @@ def makePfsDesign(pfiNominal, ra, dec,
         List of filters used to measure the fiber fluxes for each filter.
     guideStars : `GuideStars`
         Guide star data. If `None`, an empty GuideStars instance will be created.
+    designName : `str`
+        Name for design file. If `None` use default
 
     Returns
     -------
@@ -106,6 +123,9 @@ def makePfsDesign(pfiNominal, ra, dec,
         array[isEmpty] = engVal
 
         return array
+
+    if len(pfiNominal) == 0:
+        raise RuntimeError("You must specify at least one position (n.b. [(NaN, NaN)] is acceptable)")
 
     pfiNominal = setDefaultValues(sciVal=pfiNominal, engVal=np.NaN, shape=(nFiber, 2))
 
@@ -158,4 +178,64 @@ def makePfsDesign(pfiNominal, ra, dec,
     pfsDesign = pfsDesign[~isEmpty]
     pfsDesign.pfsDesignId = calculate_pfsDesignId(pfsDesign.fiberId, pfsDesign.ra, pfsDesign.dec)
 
+    if designName is not None:
+        pfsDesign.designName = designName
+
     return pfsDesign
+
+
+def showPfsDesign(pfsDesigns, date=None, timerange=8, showTime=None, showDesignId=True):
+    """Show the altitude at Subaru of the available pfsDesigns as a function of time.
+
+    pfsDesigns: array of `pfs.datamodel.PfsDesign`
+       The available designs
+    date: `str` or ``None``
+       The desired date; if None use today (in HST)
+       If None, also show the current time unless showTime is False
+    timerange: `int`
+       Total number of hours to show, centred at midnight
+    showTime: `bool` or `None`
+       If False don't show the current time even if known
+    showDesignId: `bool`
+       Include the pfsDesignId in the labels
+    """
+    if date is None:
+        now = datetime.datetime.now(pytz.timezone('US/Hawaii'))
+        date = now.date()
+
+        now += datetime.timedelta(utcoffset/24)  # all times are actually kept in UTC
+    else:
+        now = None
+
+    midnight = Time(f'{date} 00:00:00')  # UTC, damn astropy
+    time = midnight + np.linspace(24 - timerange/2, 24 + timerange/2, 100)*u.hour
+
+    global subaru
+    if subaru is None:
+        subaru = EarthLocation.of_site('Subaru')
+
+    telstate = AltAz(obstime=time - utcoffset*u.hour, location=subaru)  # AltAz needs UTC
+
+    xformatter = mdates.DateFormatter('%H:%M')
+    plt.gca().xaxis.set_major_formatter(xformatter)
+
+    for pfsDesign in pfsDesigns:
+        boresight = SkyCoord(ra=pfsDesign.raBoresight*u.degree, dec=pfsDesign.decBoresight*u.degree,
+                             frame='icrs')
+
+        label = showDesignId
+        plt.plot(time.datetime, boresight.transform_to(telstate).alt,
+                 label=f"0x{pfsDesign.pfsDesignId:x} {pfsDesign.designName}" if showDesignId else
+                 pfsDesign.designName)
+
+    plt.gcf().autofmt_xdate()
+    plt.legend(prop={"family": "monospace"} if showDesignId else {})
+
+    if now is not None and showTime is not False:
+        plt.axvline(now, ls='-', color='black', alpha=0.5)
+
+    plt.ylim(max([-1, plt.ylim()[0]]), None)
+
+    plt.xlabel("Local Time")
+    plt.ylabel("Altitude (deg)")
+    plt.title(f"{date}")
