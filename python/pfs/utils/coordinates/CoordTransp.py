@@ -285,19 +285,21 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         lat = tel2.location.lat.deg
         dc = coord_cent.dec.deg
         if dc > lat:
-            inr = paa + pa - 180.
+            inr = paa + pa
         else:
             inr = paa - pa
 
-        # check inr range
+        # check inr range is within +/- 180 degree
         if inr <= -180.:
             logging.info("InR will exceed the lower limit (-180 deg)")
             inr = inr + 360.
-        elif inr >= +270:
+        elif inr >= +180:
             logging.info("InR will exceed the upper limit (+270 deg)")
             inr = inr - 360.
 
-        xx, yy = rotation(xyin[0, :], xyin[1, :], inr)
+        # rotate PFI -> telescope (90-deg offset exists)
+        xx, yy = rotation(xyin[0, :], xyin[1, :], inr,
+                          rot_off=-1.*DCoeff.inr_pfi)
         xyconv = np.vstack((xx, yy))
     else:
         xyconv = xyin
@@ -326,11 +328,8 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
         Displacement in y-axis
     """
 
-    if c.mode == 'pfi_mcs' or c.mode == 'mcs_pfi' or c.mode == 'mcs_pfi_wofe':
-        coeffzx, coeffzy = c.diff_coeff(za, 60.)
-    else:
-        # Reference: zenith angle 30 deg
-        coeffzx, coeffzy = c.diff_coeff(za, 30.)
+    # all available mode uses zenith angle 60 deg as reference
+    coeffzx, coeffzy = c.diff_coeff(za, 60.)
 
     # y : slope cy5(z) * y
     if c.mode == 'pfi_mcs':
@@ -342,29 +341,24 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
         sl_itrp = ipol.splrep(za_a, sl_a, k=2, s=0)
         cy5 = ipol.splev(za, sl_itrp)
 
-    if c.mode == 'sky_pfi':
-        offx = np.array([coeffzx*(c.dev_pattern_x(x, y))
-                         for x, y in zip(*xyin)])
-        offy = np.array([coeffzy * (c.dev_pattern_y(x, y)) + cy5 * y
-                         for x, y in zip(*xyin)])
-    else:  # c.mode == 'sky_pfi_hsc' 'pfi_mcs' 'mcs_pfi_wofe' 'mcs_pfi':
-        coeffadc = (adc/20.)
-        # print(cx2,cy2)
-        logging.info("coeff:%s %s %s", coeffzx, coeffzy, coeffadc)
-        offx1 = np.array([coeffzx*(c.dev_pattern_x(x, y, adc=False))
-                          for x, y in zip(*xyin)])
-        offy1 = np.array([coeffzy*(c.dev_pattern_y(x, y, adc=False)) + cy5*y
-                          for x, y in zip(*xyin)])
-        offx2 = np.array([coeffadc*(c.dev_pattern_x(x, y, adc=True))
-                          for x, y in zip(*xyin)])
-        offy2 = np.array([coeffadc*(c.dev_pattern_y(x, y, adc=True))
-                          for x, y in zip(*xyin)])
-        offx = offx1+offx2
-        offy = offy1+offy2
+    coeffadc = (adc/20.)
+    # print(cx2,cy2)
+    logging.info("coeff:%s %s %s", coeffzx, coeffzy, coeffadc)
+    offx1 = np.array([coeffzx*(c.dev_pattern_x(x, y, adc=False))
+                      for x, y in zip(*xyin)])
+    offy1 = np.array([coeffzy*(c.dev_pattern_y(x, y, adc=False)) + cy5*y
+                      for x, y in zip(*xyin)])
+    offx2 = np.array([coeffadc*(c.dev_pattern_x(x, y, adc=True))
+                      for x, y in zip(*xyin)])
+    offy2 = np.array([coeffadc*(c.dev_pattern_y(x, y, adc=True))
+                      for x, y in zip(*xyin)])
+    offx = offx1+offx2
+    offy = offy1+offy2
 
     return offx, offy
 
 
+# Not used any more
 def rotation_pattern(za, x, y):
     """Calculate rotate displacement at a given angle
 
