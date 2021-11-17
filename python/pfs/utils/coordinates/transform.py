@@ -10,16 +10,53 @@ from .CoordTransp import CoordinateTransform
 
 
 def matchIds(u, v, x, y, fid, matchRadius=2):
-    """Given a set of points (x, y, fid) which define the ids for the points (x, y)
-    and a set of points (u, v), return an array of the ids for (u, v)
+    """Match set of measured points (u, v) to a set of points (x, y) with ids fid
+
+    If there are multiple possible matches from (u, v) to (x, y), only return the best match
+
+    Parameters
+    ----------
+    u : `array` of `float`
+        x-positions of points to be matched
+    v : `array` of `float`
+        y-positions of points to be matched
+    x : `array` of `float`
+        known x-positions of points
+    y : `array` of `float`
+        known y-positions of points
+    fid : `array` of `int`
+        ids for points (x, y)
+    matchRadius: `float`
+        maximum allowed match radius
+
+    Returns
+    -------
+    fids: `array` of `int` of length len(u)
+        matched values of fid or -1
+    distance:  array of `float`  of length len(u)
+        distance from (u, v) to nearest element of (x, y)
     """
     fid_out = np.full_like(u, -1, dtype=fid.dtype)
+    distance = np.empty_like(u)
+
+    matched_distances = {}
+
     for i, (up, vp) in enumerate(zip(u, v)):
         d = np.hypot(x - up, y - vp)
-        if min(d) < matchRadius:
-            fid_out[i] = fid[np.argmin(d)]
+        distance[i] = min(d)
+        if distance[i] < matchRadius:
+            matched_fid = fid[np.argmin(d)]
 
-    return fid_out
+            if matched_fid in matched_distances:  # we've already found a match
+                if distance[i] > matched_distances[matched_fid]: # the old one is better
+                    continue
+
+                fid_out[fid_out == matched_fid] = -1 # invalidate old match
+
+            matched_distances[matched_fid] = distance[i]
+            fid_out[i] = matched_fid
+
+    return fid_out, distance
 
 
 def fromCameraName(cameraName, *args, **kwargs):
@@ -161,6 +198,12 @@ class PfiTransform:
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
         fig                    matplotlib figure for displays; or None
+
+        Returns:
+           fids:      array of `int`
+                array of length mcs_data giving indices into fiducials or -1
+           distance:  array of `float` 
+                array of length mcs_data giving distance in mm to nearest fiducial               
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
@@ -178,40 +221,11 @@ class PfiTransform:
         xd, yd = ptd.mcsToPfi(mcs_x_pix, mcs_y_pix)
         del ptd
 
-        fid = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+        fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
 
-        if fig is not None:
-            from matplotlib.legend_handler import HandlerPatch
-            class HandlerEllipse(HandlerPatch):
-                def create_artists(self, legend, orig_handle,
-                                   xdescent, ydescent, width, height, fontsize, trans):
-                    center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
-                    p = Circle(center, matchRadius
-                                 #height=height + ydescent
-                    )
-                    self.update_prop(p, orig_handle, legend)
-                    p.set_transform(trans)
-                    return [p]
+        self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
 
-
-            ax = fig.gca()
-
-            for x, y in zip(x_fid_mm, y_fid_mm):
-                c = Circle((x, y), matchRadius, color='red', alpha=0.5)
-                ax.add_patch(c)
-            #plt.plot(x_fid_mm, y_fid_mm, 'o', label="fiducials")
-            plt.plot(xd, yd, '.', label="detections")
-            plt.plot(xd[fid > 0], yd[fid > 0], '+', color='black', label="matches")
-
-            handles, labels = ax.get_legend_handles_labels()
-            if True:
-                handles += [c]
-                labels += ["search"]
-            plt.legend(handles, labels, handler_map={Circle: HandlerEllipse()})
-            plt.title(f"Matched {nMatch} points")
-            plt.gca().set_aspect('equal')
-        
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
@@ -227,6 +241,8 @@ class PfiTransform:
         res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
         self.mcsDistort.setArgs(res.x)
 
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
     #
     # Note that these two routines use instance values of mcs_boresight_[xy]_pix
     # and assume that the pfi origin is at (0, 0)
@@ -283,15 +299,6 @@ class PfiTransform:
         xyout = CoordinateTransform(xyin, 90.0 - self.altitude,
                                     "pfi_mcs", inr=self.insrot) # first guess at MCS coordinates
         #
-        # Apparently there's a missing rotation by pi/2 in the pfs_utils code
-        # Implemented under INSRTM-1398
-        #
-        """
-        tmp = xyout.copy()
-        xyout[0], xyout[1] = tmp[1], -tmp[0]
-        del tmp
-        """
-        #
         # Deal with coordinate transformations on the MCS
         #
         xyout = -xyout  # rotate 180 about centre
@@ -325,6 +332,39 @@ class PfiTransform:
 
         return xyout[0], xyout[1]
 
+    def _plotMatches(self, fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch):
+        if fig is None:
+            return
+
+        from matplotlib.legend_handler import HandlerPatch
+        class HandlerEllipse(HandlerPatch):
+            def create_artists(self, legend, orig_handle,
+                               xdescent, ydescent, width, height, fontsize, trans):
+                center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
+                p = Circle(center, matchRadius
+                             #height=height + ydescent
+                )
+                self.update_prop(p, orig_handle, legend)
+                p.set_transform(trans)
+                return [p]
+
+
+        ax = fig.gca()
+
+        for x, y in zip(x_fid_mm, y_fid_mm):
+            c = Circle((x, y), matchRadius, color='red', alpha=0.5)
+            ax.add_patch(c)
+        #plt.plot(x_fid_mm, y_fid_mm, 'o', label="fiducials")
+        plt.plot(xd, yd, '.', label="detections")
+        plt.plot(xd[fid > 0], yd[fid > 0], '+', color='black', label="matches")
+
+        handles, labels = ax.get_legend_handles_labels()
+        if True:
+            handles += [c]
+            labels += ["search"]
+        plt.legend(handles, labels, handler_map={Circle: HandlerEllipse()})
+        plt.title(f"Matched {nMatch} points")
+        plt.gca().set_aspect('equal')
 
 class ASRD71MTransform(PfiTransform):
     def __init__(self, altitude=90, insrot=0, applyDistortion=True):
@@ -341,7 +381,7 @@ class ASRD71MTransform(PfiTransform):
         self.mcsDistort.setArgs([-3.76006171e+02, -2.68710420e+02, -9.24753269e-01, -5.75212519e-01,  -2.25647580e-13])
 
 
-    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75):
+    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
         """Update our estimate of the transform, based on the positions of fiducial fibres
 
         mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
@@ -352,6 +392,13 @@ class ASRD71MTransform(PfiTransform):
         matchRadius:           Radius to match points and fiducials (mm)
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
+        fig                    matplotlib figure for displays; or None
+
+        Returns:
+           fids:      array of `int`
+                array of length mcs_data giving indices into fiducials or -1
+           distance:  array of `float` 
+                array of length mcs_data giving distance in mm to nearest fiducial               
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
@@ -364,8 +411,11 @@ class ASRD71MTransform(PfiTransform):
         fiducialId = fiducials.fiducialId.to_numpy()
 
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
-        fid = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+        fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
+
+        self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
+
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
@@ -374,7 +424,10 @@ class ASRD71MTransform(PfiTransform):
         asrdDistort.setArgs(res.x)
 
         self.mcsDistort = asrdDistort
-        
+
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+
     def mcsToPfi(self, x, y):
         """transform ASRD 71M camera pixels to pfi mm
         x, y:  position in mcs pixels
