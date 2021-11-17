@@ -174,12 +174,15 @@ def makePfsDesign(pfiNominal, ra, dec,
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
                           targetType, fiberStatus, fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
                           totalFluxErr, filterList, pfiNominal, guideStars)
-    # Drop empty fibers
-    pfsDesign = pfsDesign[~isEmpty]
-    pfsDesign.pfsDesignId = calculate_pfsDesignId(pfsDesign.fiberId, pfsDesign.ra, pfsDesign.dec)
 
     if designName is not None:
         pfsDesign.designName = designName
+
+    # Drop empty fibers
+    pfsDesign = pfsDesign[~isEmpty]
+    pfsDesign.isSubset = False
+
+    pfsDesign.pfsDesignId = calculate_pfsDesignId(pfsDesign.fiberId, pfsDesign.ra, pfsDesign.dec)
 
     return pfsDesign
 
