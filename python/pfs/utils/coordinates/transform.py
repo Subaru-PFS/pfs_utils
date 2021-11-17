@@ -52,7 +52,7 @@ def matchIds(u, v, x, y, fid, matchRadius=2):
                     continue
 
                 fid_out[fid_out == matched_fid] = -1 # invalidate old match
-                
+
             matched_distances[matched_fid] = distance[i]
             fid_out[i] = matched_fid
 
@@ -225,7 +225,7 @@ class PfiTransform:
         nMatch = sum(fid > 0)
 
         self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
-       
+
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
@@ -424,7 +424,7 @@ class ASRD71MTransform(PfiTransform):
         nMatch = sum(fid > 0)
 
         self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
-       
+
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
@@ -436,7 +436,7 @@ class ASRD71MTransform(PfiTransform):
 
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
         return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
-        
+
     def mcsToPfi(self, x, y):
         """transform ASRD 71M camera pixels to pfi mm
         x, y:  position in mcs pixels
