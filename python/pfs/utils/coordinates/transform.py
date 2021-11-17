@@ -37,12 +37,23 @@ def matchIds(u, v, x, y, fid, matchRadius=2):
         distance from (u, v) to nearest element of (x, y)
     """
     fid_out = np.full_like(u, -1, dtype=fid.dtype)
+    distance = np.empty_like(u)
+
+    matched_distances = {}
+
     for i, (up, vp) in enumerate(zip(u, v)):
         d = np.hypot(x - up, y - vp)
         distance[i] = min(d)
         if distance[i] < matchRadius:
             matched_fid = fid[np.argmin(d)]
 
+            if matched_fid in matched_distances:  # we've already found a match
+                if distance[i] > matched_distances[matched_fid]: # the old one is better
+                    continue
+
+                fid_out[fid_out == matched_fid] = -1 # invalidate old match
+                
+            matched_distances[matched_fid] = distance[i]
             fid_out[i] = matched_fid
 
     return fid_out, distance
