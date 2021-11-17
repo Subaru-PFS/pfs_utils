@@ -224,37 +224,8 @@ class PfiTransform:
         fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
 
-        if fig is not None:
-            from matplotlib.legend_handler import HandlerPatch
-            class HandlerEllipse(HandlerPatch):
-                def create_artists(self, legend, orig_handle,
-                                   xdescent, ydescent, width, height, fontsize, trans):
-                    center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
-                    p = Circle(center, matchRadius
-                                 #height=height + ydescent
-                    )
-                    self.update_prop(p, orig_handle, legend)
-                    p.set_transform(trans)
-                    return [p]
-
-
-            ax = fig.gca()
-
-            for x, y in zip(x_fid_mm, y_fid_mm):
-                c = Circle((x, y), matchRadius, color='red', alpha=0.5)
-                ax.add_patch(c)
-            #plt.plot(x_fid_mm, y_fid_mm, 'o', label="fiducials")
-            plt.plot(xd, yd, '.', label="detections")
-            plt.plot(xd[fid > 0], yd[fid > 0], '+', color='black', label="matches")
-
-            handles, labels = ax.get_legend_handles_labels()
-            if True:
-                handles += [c]
-                labels += ["search"]
-            plt.legend(handles, labels, handler_map={Circle: HandlerEllipse()})
-            plt.title(f"Matched {nMatch} points")
-            plt.gca().set_aspect('equal')
-        
+        self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
+       
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
@@ -370,6 +341,39 @@ class PfiTransform:
 
         return xyout[0], xyout[1]
 
+    def _plotMatches(self, fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch):
+        if fig is None:
+            return
+
+        from matplotlib.legend_handler import HandlerPatch
+        class HandlerEllipse(HandlerPatch):
+            def create_artists(self, legend, orig_handle,
+                               xdescent, ydescent, width, height, fontsize, trans):
+                center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
+                p = Circle(center, matchRadius
+                             #height=height + ydescent
+                )
+                self.update_prop(p, orig_handle, legend)
+                p.set_transform(trans)
+                return [p]
+
+
+        ax = fig.gca()
+
+        for x, y in zip(x_fid_mm, y_fid_mm):
+            c = Circle((x, y), matchRadius, color='red', alpha=0.5)
+            ax.add_patch(c)
+        #plt.plot(x_fid_mm, y_fid_mm, 'o', label="fiducials")
+        plt.plot(xd, yd, '.', label="detections")
+        plt.plot(xd[fid > 0], yd[fid > 0], '+', color='black', label="matches")
+
+        handles, labels = ax.get_legend_handles_labels()
+        if True:
+            handles += [c]
+            labels += ["search"]
+        plt.legend(handles, labels, handler_map={Circle: HandlerEllipse()})
+        plt.title(f"Matched {nMatch} points")
+        plt.gca().set_aspect('equal')
 
 class ASRD71MTransform(PfiTransform):
     def __init__(self, altitude=90, insrot=0, applyDistortion=True):
@@ -386,7 +390,7 @@ class ASRD71MTransform(PfiTransform):
         self.mcsDistort.setArgs([-3.76006171e+02, -2.68710420e+02, -9.24753269e-01, -5.75212519e-01,  -2.25647580e-13])
 
 
-    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75):
+    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
         """Update our estimate of the transform, based on the positions of fiducial fibres
 
         mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
@@ -397,6 +401,7 @@ class ASRD71MTransform(PfiTransform):
         matchRadius:           Radius to match points and fiducials (mm)
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
+        fig                    matplotlib figure for displays; or None
 
         Returns:
            fids:      array of `int`
@@ -417,6 +422,9 @@ class ASRD71MTransform(PfiTransform):
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
         fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
+
+        self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
+       
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
