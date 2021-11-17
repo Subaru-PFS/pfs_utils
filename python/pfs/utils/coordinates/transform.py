@@ -10,16 +10,42 @@ from .CoordTransp import CoordinateTransform
 
 
 def matchIds(u, v, x, y, fid, matchRadius=2):
-    """Given a set of points (x, y, fid) which define the ids for the points (x, y)
-    and a set of points (u, v), return an array of the ids for (u, v)
+    """Match set of measured points (u, v) to a set of points (x, y) with ids fid
+
+    If there are multiple possible matches from (u, v) to (x, y), only return the best match
+
+    Parameters
+    ----------
+    u : `array` of `float`
+        x-positions of points to be matched
+    v : `array` of `float`
+        y-positions of points to be matched
+    x : `array` of `float`
+        known x-positions of points
+    y : `array` of `float`
+        known y-positions of points
+    fid : `array` of `int`
+        ids for points (x, y)
+    matchRadius: `float`
+        maximum allowed match radius
+
+    Returns
+    -------
+    fids: `array` of `int` of length len(u)
+        matched values of fid or -1
+    distance:  array of `float`  of length len(u)
+        distance from (u, v) to nearest element of (x, y)
     """
     fid_out = np.full_like(u, -1, dtype=fid.dtype)
     for i, (up, vp) in enumerate(zip(u, v)):
         d = np.hypot(x - up, y - vp)
-        if min(d) < matchRadius:
-            fid_out[i] = fid[np.argmin(d)]
+        distance[i] = min(d)
+        if distance[i] < matchRadius:
+            matched_fid = fid[np.argmin(d)]
 
-    return fid_out
+            fid_out[i] = matched_fid
+
+    return fid_out, distance
 
 
 def fromCameraName(cameraName, *args, **kwargs):
@@ -161,6 +187,12 @@ class PfiTransform:
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
         fig                    matplotlib figure for displays; or None
+
+        Returns:
+           fids:      array of `int`
+                array of length mcs_data giving indices into fiducials or -1
+           distance:  array of `float` 
+                array of length mcs_data giving distance in mm to nearest fiducial               
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
@@ -178,7 +210,7 @@ class PfiTransform:
         xd, yd = ptd.mcsToPfi(mcs_x_pix, mcs_y_pix)
         del ptd
 
-        fid = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+        fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
 
         if fig is not None:
@@ -227,6 +259,8 @@ class PfiTransform:
         res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
         self.mcsDistort.setArgs(res.x)
 
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
     #
     # Note that these two routines use instance values of mcs_boresight_[xy]_pix
     # and assume that the pfi origin is at (0, 0)
@@ -352,6 +386,12 @@ class ASRD71MTransform(PfiTransform):
         matchRadius:           Radius to match points and fiducials (mm)
         nMatchMin:             Minimum number of permissible matches
                                (if <= 1, interpreted as the fraction of the number of fiducials)
+
+        Returns:
+           fids:      array of `int`
+                array of length mcs_data giving indices into fiducials or -1
+           distance:  array of `float` 
+                array of length mcs_data giving distance in mm to nearest fiducial               
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
@@ -364,7 +404,7 @@ class ASRD71MTransform(PfiTransform):
         fiducialId = fiducials.fiducialId.to_numpy()
 
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
-        fid = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+        fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
@@ -374,6 +414,9 @@ class ASRD71MTransform(PfiTransform):
         asrdDistort.setArgs(res.x)
 
         self.mcsDistort = asrdDistort
+
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         
     def mcsToPfi(self, x, y):
         """transform ASRD 71M camera pixels to pfi mm
