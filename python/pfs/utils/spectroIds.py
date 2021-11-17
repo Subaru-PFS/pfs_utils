@@ -26,11 +26,19 @@ def idFromHostname(hostname=None):
 
 
 def getSite():
-    """ Return the site name. Extracted from a DNS TXT record. """
+    """ Return the site name. Extracted from a DNS TXT record.
 
-    defaultSite = 'Z'
+    If no localization available, declare that we are at Subaru.
+    """
 
-    import dns.resolver
+    defaultSite = 'S'
+
+    try:
+        import dns.resolver
+    except ImportError:
+        logging.warn(f'no dns.resolver library available, using "{defaultSite}"')
+        return defaultSite
+
     try:
         ans = dns.resolver.query('pfs-site.', 'TXT')
         site = ans[0].strings[0].decode('latin-1')
