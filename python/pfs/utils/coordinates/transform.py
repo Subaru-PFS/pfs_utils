@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from pfs.utils.display import CircleHandler
 
-__all__ = ["matchIds", "MeasureDistortion", "PfiTransform"]
+__all__ = ["matchIds", "makePfiTransform", "MeasureDistortion"]
 
 from .CoordTransp import CoordinateTransform
 
@@ -60,7 +60,7 @@ def matchIds(u, v, x, y, fid, matchRadius=2):
     return fid_out, distance
 
 
-def fromCameraName(cameraName, *args, **kwargs):
+def makePfiTransform(cameraName, *args, **kwargs):
     """ Transform factory, construct pfiTransform from the camera name.
 
     Parameters
@@ -68,21 +68,27 @@ def fromCameraName(cameraName, *args, **kwargs):
     cameraName : `str`
         camera used to measure fiducials position.
     """
-    if 'canon' in cameraName.lower():
+    if cameraName is None or cameraName.lower() == "identity":
+        return IdentityTransform(*args, **kwargs)
+    elif 'canon' in cameraName.lower():
         return PfiTransform(*args, **kwargs)
     elif 'rmod' in cameraName.lower():
         return ASRD71MTransform(*args, **kwargs)
     else:
         raise ValueError(f'unknown transform for camera : {cameraName}')
 
+fromCameraName = makePfiTransform       # old name, meaningless if imported from this module
+
 
 class MeasureDistortion:
-    def __init__(self, x, y, fid, x_mm, y_mm, fiducialId):
+    def __init__(self, x, y, fid, x_mm, y_mm, fiducialId, nsigma=5):
         """x, y: measured positions in pfi coordinates
         fid: fiducial ids for (x, y) (-1: unidentified)
         x_mm, y_mm : true positions in pfi coordinates
         fiducialId: fiducial ids for (x_mm, y_mm)
         """
+        self.nsigma = nsigma
+
         _x = []
         _y = []
         _x_mm = []
@@ -90,9 +96,9 @@ class MeasureDistortion:
         #
         # The correct number of initial values; must match code in __call__()
         #
-        x0, y0, dscale, theta, scale2 = np.array([0, 0, 0, 0, 0], dtype=float)
-        self._args = np.array([x0, y0, dscale, theta, scale2])
-        self.freeze = np.zeros(len(self._args), dtype=bool)
+        x0, y0, theta, dscale, scale2 = np.array([0, 0, 0, 0, 0], dtype=float)
+        self._args = np.array([x0, y0, theta, dscale, scale2])
+        self.frozen = np.zeros(len(self._args), dtype=bool)
 
         for fi in fiducialId:
             ix = np.where(fi == fid)[0]
@@ -108,16 +114,29 @@ class MeasureDistortion:
         self.x_mm = np.array(_x_mm)
         self.y_mm = np.array(_y_mm)
 
+    @staticmethod
+    def clip(d, nsigma):
+        q25, q50, q75 = np.percentile(d, [25, 50, 75])
+        std = 0.741*(q75 - q25)
+
+        return np.abs(d - q50 < nsigma*std)
+
     def __call__(self, args):
         tx, ty = self.distort(self.x, self.y, *args)
 
-        return np.mean(np.hypot(tx - self.x_mm, ty - self.y_mm)**2)
+        d = np.hypot(tx - self.x_mm, ty - self.y_mm)
+
+        if self.nsigma > 0:
+            d = d[self.clip(d, self.nsigma)]
+
+        return np.mean(d)
 
     def getArgs(self):
         return self._args
 
     def setArgs(self, *args):
-        self._args[~self.freeze] = np.array(args[0])[~self.freeze]
+        not_frozen = np.logical_not(np.array(self.frozen))
+        self._args[not_frozen] = np.array(args[0])[not_frozen]
 
     def distort(self, x, y, *args, **kwargs):
         if args:
@@ -125,9 +144,9 @@ class MeasureDistortion:
         else:
             args = self._args
 
-        args[self.freeze] = self._args[self.freeze]
+        args[self.frozen] = self._args[np.array(self.frozen)]
 
-        x0, y0, dscale, theta, scale2 = args  # must match length of self._args in __init__
+        x0, y0, theta, dscale, scale2 = args  # must match length of self._args in __init__
         inverse = kwargs.get("inverse", False)
 
         theta = np.deg2rad(theta)
@@ -180,10 +199,10 @@ class PfiTransform:
 
         a, b, phi = [1.882, 1.000], 0.0703, np.full(2, 32.2) + [90, 0]
         x0, y0 = a + b*np.sin(np.deg2rad(insrot - phi))
-        dscale = 0.00266
         theta = 0.708
+        dscale = 0.00266
         scale2 = 2.38e-09
-        args = [x0, y0, dscale, theta, scale2]
+        args = [x0, y0, theta, dscale, scale2]
 
         self.mcsDistort.setArgs(args)
 
@@ -238,6 +257,7 @@ class PfiTransform:
             self.applyDistortion = applyDistortion
 
         distortion = MeasureDistortion(x, y, fid, x_fid_mm, y_fid_mm, fiducialId)
+        distortion.frozen = self.mcsDistort.frozen
 
         res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
         self.mcsDistort.setArgs(res.x)
@@ -366,7 +386,7 @@ class ASRD71MTransform(PfiTransform):
         # Initial camera distortion; updated using updateTransform
         #
         self.mcsDistort = MeasureDistortion([], [], [], [], [], [])
-        self.mcsDistort.setArgs([-3.76006171e+02, -2.68710420e+02, -9.24753269e-01, -5.75212519e-01,  -2.25647580e-13])
+        self.mcsDistort.setArgs([-376.0, -268.71, -0.575, -0.924753269, -2.25647580e-13])
 
 
     def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
@@ -407,11 +427,11 @@ class ASRD71MTransform(PfiTransform):
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
-        asrdDistort = MeasureDistortion(mcs_x_pix, mcs_y_pix, fid, x_fid_mm, y_fid_mm, fiducialId)
-        res = scipy.optimize.minimize(asrdDistort, asrdDistort.getArgs(), method='Powell')
-        asrdDistort.setArgs(res.x)
+        distortion = MeasureDistortion(mcs_x_pix, mcs_y_pix, fid, x_fid_mm, y_fid_mm, fiducialId)
+        distortion.frozen = self.mcsDistort.frozen
 
-        self.mcsDistort = asrdDistort
+        res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
+        self.mcsDistort.setArgs(res.x)
 
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
         return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
@@ -445,3 +465,14 @@ class ASRD71MTransform(PfiTransform):
             y = y.to_numpy()
 
         return self.mcsDistort.distort(x, y, inverse=True)
+
+
+class IdentityTransform(ASRD71MTransform):
+    def setParams(self, altitude=90, insrot=0):
+        self.altitude = altitude
+        self.insrot = insrot
+        #
+        # The correct number of initial values; must match code in __call__()
+        #
+        self.mcsDistort = MeasureDistortion([], [], [], [], [], [])
+        self.mcsDistort.setArgs(np.array([0, 0, -insrot, 0, 0], dtype=float))
