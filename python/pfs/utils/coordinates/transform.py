@@ -68,8 +68,8 @@ def makePfiTransform(cameraName, *args, **kwargs):
     cameraName : `str`
         camera used to measure fiducials position.
     """
-    if cameraName is None or cameraName.lower() == "identity":
-        return IdentityTransform(*args, **kwargs)
+    if cameraName is None or cameraName.lower() == "simple":
+        return SimpleTransform(*args, **kwargs)
     elif 'canon' in cameraName.lower():
         return PfiTransform(*args, **kwargs)
     elif 'rmod' in cameraName.lower():
@@ -237,9 +237,12 @@ class PfiTransform:
 
         # Get our best estimate of the transformed positions to give ourselves the
         # best chance of matching to the fiducial fibres
-        ptd = PfiTransform(insrot=self.insrot, altitude=self.altitude, applyDistortion=True)
-        xd, yd = ptd.mcsToPfi(mcs_x_pix, mcs_y_pix)
-        del ptd
+        if False:
+            ptd = PfiTransform(insrot=self.insrot, altitude=self.altitude, applyDistortion=True)
+            xd, yd = ptd.mcsToPfi(mcs_x_pix, mcs_y_pix)
+            del ptd
+        else:
+            xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
 
         fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
@@ -374,7 +377,7 @@ class PfiTransform:
         plt.title(f"Matched {nMatch} points")
         plt.gca().set_aspect('equal')
 
-class ASRD71MTransform(PfiTransform):
+class SimpleTransform(PfiTransform):
     def __init__(self, altitude=90, insrot=0, applyDistortion=True):
         self.setParams(altitude, insrot)
         self.applyDistortion = applyDistortion
@@ -383,11 +386,10 @@ class ASRD71MTransform(PfiTransform):
         self.altitude = altitude
         self.insrot = insrot
         #
-        # Initial camera distortion; updated using updateTransform
+        # The correct number of initial values; must match code in __call__()
         #
         self.mcsDistort = MeasureDistortion([], [], [], [], [], [])
-        self.mcsDistort.setArgs([-376.0, -268.71, -0.575, -0.924753269, -2.25647580e-13])
-
+        self.mcsDistort.setArgs(np.array([0, 0, -insrot, 0, 0], dtype=float))
 
     def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
         """Update our estimate of the transform, based on the positions of fiducial fibres
@@ -437,7 +439,7 @@ class ASRD71MTransform(PfiTransform):
         return matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
 
     def mcsToPfi(self, x, y):
-        """transform ASRD 71M camera pixels to pfi mm
+        """transform camera pixels to pfi mm
         x, y:  position in mcs pixels
 
         returns:
@@ -451,7 +453,7 @@ class ASRD71MTransform(PfiTransform):
         return self.mcsDistort.distort(x, y, inverse=False)
 
     def pfiToMcs(self, x, y, niter=5, lam=1.0):
-        """transform pfi mm to ASRD 71M camera mcs pixels
+        """transform pfi mm to camera mcs pixels
         x, y:  position in pfi mm
         niter: number of iterations (ignored)
         lam:   convergence factor for iteration (ignored)
@@ -467,12 +469,9 @@ class ASRD71MTransform(PfiTransform):
         return self.mcsDistort.distort(x, y, inverse=True)
 
 
-class IdentityTransform(ASRD71MTransform):
+class ASRD71MTransform(SimpleTransform):
+    """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
     def setParams(self, altitude=90, insrot=0):
-        self.altitude = altitude
-        self.insrot = insrot
-        #
-        # The correct number of initial values; must match code in __call__()
-        #
-        self.mcsDistort = MeasureDistortion([], [], [], [], [], [])
-        self.mcsDistort.setArgs(np.array([0, 0, -insrot, 0, 0], dtype=float))
+        super().setParams(altitude, insrot)
+
+        self.mcsDistort.setArgs([-376.0, -268.71, -0.575, -0.924753269, -2.25647580e-13])
