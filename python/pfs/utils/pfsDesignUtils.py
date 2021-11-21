@@ -31,7 +31,7 @@ def makePfsDesign(pfiNominal, ra, dec,
 
     Parameters
     ----------
-    pfiNominal : `numpy.ndarray` of `float`
+    pfiNominal : `numpy.ndarray` of `float` shape: (nFiber, 2)
         Intended target cobra position (2-vector) of each fiber on the PFI, millimeters.
     ra : `numpy.ndarray` of `float64`
         Right Ascension for each fiber, degrees.
