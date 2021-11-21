@@ -116,6 +116,9 @@ class MeasureDistortion:
 
     @staticmethod
     def clip(d, nsigma):
+        if len(d) == 0:
+            return np.ones_like(d, dtype=bool)
+
         q25, q50, q75 = np.percentile(d, [25, 50, 75])
         std = 0.741*(q75 - q25)
 
