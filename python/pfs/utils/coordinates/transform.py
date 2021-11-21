@@ -240,12 +240,10 @@ class PfiTransform:
 
         # Get our best estimate of the transformed positions to give ourselves the
         # best chance of matching to the fiducial fibres
-        if False:
-            ptd = PfiTransform(insrot=self.insrot, altitude=self.altitude, applyDistortion=True)
-            xd, yd = ptd.mcsToPfi(mcs_x_pix, mcs_y_pix)
-            del ptd
-        else:
-            xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        #
+        # N.b. this allows us to call updateTransform with different sets of
+        # fiducials and/or configs to refine our transformation      
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
 
         fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
         nMatch = sum(fid > 0)
