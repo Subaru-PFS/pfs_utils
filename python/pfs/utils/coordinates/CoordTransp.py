@@ -130,7 +130,8 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = mm_to_pixel(x, y, cent)
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
-        xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
+        xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
+        yy = -1.*yy
     elif c.mode == 'mcs_pfi':
         xx, yy = rotation(x, y, 0., rot_off=DCoeff.inr_pfi)
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
@@ -156,7 +157,7 @@ def convert_out_position(x, y, inr, c, cent, time):
         coord = SkyCoord(x, y, frame=aframe, unit=u.deg,
                          obstime=obs_time, location=tel)
 
-        logging.info("(%s %s)", az0, el0)
+        logging.info("Az-El of the FoV center (%s %s)", az0, el0)
 
         r = R.from_euler('ZYZ', [az0, -1*el0, 0.], degrees=True)
         xc, yc, zc = ascor.spherical_to_cartesian(1., np.deg2rad(y),
@@ -250,7 +251,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         eld0 = el0 + ipol.splev(za, atm_interp)/3600.
         try:
             za = za[0]
-        except IndexError:
+        except (IndexError, TypeError) as e:
             pass
 
         # define WFC frame
@@ -298,7 +299,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
             inr = inr - 360.
 
         # rotate PFI -> telescope (90-deg offset exists)
-        xx, yy = rotation(xyin[0, :], xyin[1, :], inr,
+        xx, yy = rotation(xyin[0, :], -1.*xyin[1, :], -1.*inr,
                           rot_off=-1.*DCoeff.inr_pfi)
         xyconv = np.vstack((xx, yy))
     else:
