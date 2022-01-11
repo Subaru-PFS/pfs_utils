@@ -50,7 +50,7 @@ def WCSParameters(mode, cent, rot, alt, az, pa=0., icam=0,
 
     elif mode == "pfi_sky":  # For PFSD file (WCS on sky coordinates)
 
-        rot = (icam*60. - pa)*np.pi/180.
+        rot = (icam*-60. - pa)*np.pi/180.
         w = wcs.WCS(naxis=2)
 
         # pixel -> intermediate pixel
