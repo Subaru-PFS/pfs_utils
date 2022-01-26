@@ -7,36 +7,35 @@ from lsst.geom import AffineTransform
 from pfs.drp.stella.math import evaluateAffineTransform
 
 
-class OptimizeBlackDots():
+class OptimizeBlackDots:
     """Optimization of position of black dots
 
     Class with functions for modifying the positions of black dots
     for PFS spectrograph
+
+    Parameters
+    ----------
+    dots : `pandas.dataframe`, (N_fib, 4)
+        Dataframe contaning initial guesses for dots
+        The columns are ['spotId', 'x', 'y', 'r']
+    list_of_mcs_data_all : `list` of `np.arrays`
+        List contaning arrays with x and y positions
+        of moving cobra from mcs observations
+        Each array with a shape (2, N_fib + 1, N_obs)
+    list_of_descriptions : `list` of `str`
+        What kind of moves have been made (theta or phi)
+
+    Examples
+    ----------
+    # example for November 2021 run to create
+    # list_of_mcs_data_all and list_of_descriptions
+    # which are inputs for the class
+
+    >>> list_of_mcs_data_all = [mcs_data_all_1, mcs_data_all_2]
+    >>> list_of_descriptions = ['theta', 'phi']
     """
 
-    def __init__(self, dots, list_of_mcs_data_all, list_of_descriptions):
-        """
-        Parameters
-        ----------
-        dots : `pandas.dataframe`, (N_fib, 4)
-            Dataframe contaning initial guesses for dots
-            The columns are ['spotId', 'x', 'y', 'r']
-        list_of_mcs_data_all : `list` of `np.arrays`
-            List contaning arrays with x and y positions
-            of moving cobra from mcs observations
-            Each array with a shape (2, N_fib + 1, N_obs)
-        list_of_descriptions : `list` of `str`
-            What kind of moves have been made (theta or phi)
-
-        Examples
-        ----------
-        # example for November 2021 run to create
-        # list_of_mcs_data_all and list_of_descriptions
-        # which are inputs for the class
-
-        >>> list_of_mcs_data_all = [mcs_data_all_1, mcs_data_all_2]
-        >>> list_of_descriptions = ['theta', 'phi']
-        """
+    def __init__(self, dots, list_of_mcs_data_all, list_of_descriptions, **kwargs):
         self.dots = dots
         self.n_runs = len(list_of_descriptions)
         self.number_of_fibers = 2394
@@ -49,7 +48,7 @@ class OptimizeBlackDots():
             mcs_data_all = list_of_mcs_data_all[obs]
             description = list_of_descriptions[obs]
             obs_and_predict_single =\
-                self.predict_positions(mcs_data_all, description)
+                self.predict_positions(mcs_data_all, description, **kwargs)
             obs_and_predict_multi.append(obs_and_predict_single)
         self.obs_and_predict_multi = obs_and_predict_multi
 
@@ -57,7 +56,7 @@ class OptimizeBlackDots():
                           outlier_distance=2, max_break_distance=1.7,
                           min_n_points=10, residual_max=0.5,
                           order_theta_inter=4, order_theta_extra=2,
-                          order_phi_inter=2, order_phi_extra=1):
+                          order_phi_inter=2, order_phi_extra=1, **kwargs):
         """Predict positions for spots which were not observed
 
         Parameters
@@ -86,6 +85,7 @@ class OptimizeBlackDots():
             Order of poly fit for interpolating predictions for phi run
         order_phi_extra: `int`, optional
             Order of poly fit for extrapolating predictions for phi run
+
         Returns
         ----------
         mcs_data_extended `np.array`, (3, N_fiber, N_obs)
@@ -132,7 +132,7 @@ class OptimizeBlackDots():
         n_obs = mcs_data_all.shape[2]
         mcs_data_extended = np.full((3, self.number_of_fibers, n_obs), np.nan)
 
-        for i in range(0, self.number_of_fibers):
+        for i in range(self.number_of_fibers):
             fib = i + 1
             x_measurments = mcs_data_all[0, fib]
             y_measurments = mcs_data_all[1, fib]
@@ -161,12 +161,12 @@ class OptimizeBlackDots():
 
             # Remove the large outliers from the selection of good points
             isGood = np.copy(isGood_init)
-            isGood[isGood_init == 1] = isGood_init[isGood_init == 1]*~large_outliers_selection
+            # isGood[isGood_init == 1] = isGood_init[isGood_init == 1]*~large_outliers_selection
+            isGood[isGood_init == 1] &= ~large_outliers_selection
 
             # Replace all unsuccessful measurments wih nan
             x_measurments[~isGood] = np.nan
             y_measurments[~isGood] = np.nan
-
             # Specify the number of breaks in the data
             if np.sum(np.diff(isGood)) == 1:
                 number_of_breaks = 1
@@ -183,15 +183,14 @@ class OptimizeBlackDots():
             # If you do not see points from both sides of the black dots, do simpler extrapolation
             # If you see points from both sides of the black dots, do more complex interpolation
             if number_of_breaks == 1:
-                deg2_fit_to_single_point_y, residuals_y =\
-                    self.poly_fit(n_obs, y_measurments, isGood, poly_order_extra)
-                deg2_fit_to_single_point_x, residuals_x =\
-                    self.poly_fit(n_obs, x_measurments, isGood, poly_order_extra)
+                poly_order = poly_order_extra
             else:
-                deg2_fit_to_single_point_y, residuals_y =\
-                    self.poly_fit(n_obs, y_measurments, isGood, poly_order_inter)
-                deg2_fit_to_single_point_x, residuals_x =\
-                    self.poly_fit(n_obs, x_measurments, isGood, poly_order_inter)
+                poly_order = poly_order_inter
+
+            deg2_fit_to_single_point_y, residuals_y =\
+                self.poly_fit(n_obs, y_measurments, isGood, poly_order)
+            deg2_fit_to_single_point_x, residuals_x =\
+                self.poly_fit(n_obs, x_measurments, isGood, poly_order)
 
             poly_deg_x = np.poly1d(deg2_fit_to_single_point_x)
             poly_deg_y = np.poly1d(deg2_fit_to_single_point_y)
@@ -211,8 +210,8 @@ class OptimizeBlackDots():
 
             # Residuals from the polyfit are larger than 0.5 mm only in cases of
             # catastrophic failure
-            if residuals_y[0] < residual_max and residuals_x[0] < residual_max\
-                    and ~((number_of_breaks == 1) and (r_distance_predicted > max_break_distance)):
+            if (residuals_y[0] < residual_max and residuals_x[0] < residual_max
+                    and ~((number_of_breaks == 1) and (r_distance_predicted > max_break_distance))):
                 predicted_position_x = poly_deg_x(np.arange(0, n_obs))
                 predicted_position_y = poly_deg_y(np.arange(0, n_obs))
             else:
@@ -287,8 +286,8 @@ class OptimizeBlackDots():
         ----------
         Gets called by `total_penalty_for_single_dot`
         """
-        x1 = (x_obs.T-xd).T
-        y1 = (y_obs.T-yd).T
+        x1 = (x_obs.T - xd).T
+        y1 = (y_obs.T - yd).T
 
         return np.hypot(x1, y1) < r
 
@@ -320,12 +319,12 @@ class OptimizeBlackDots():
         dots = self.dots
         xd_original = dots['x'].values
         yd_original = dots['y'].values
-        AffineTransform_instance = AffineTransform()
-        AffineTransform.setParameterVector(AffineTransform_instance,
+        transform = AffineTransform()
+        AffineTransform.setParameterVector(transform,
                                            np.array([aff_mat_11, aff_mat_21,
                                                      aff_mat_12, aff_mat_22,
                                                      aff_mat_13, aff_mat_23]))
-        xd_new, yd_new = evaluateAffineTransform(AffineTransform_instance, xd_original, yd_original)
+        xd_new, yd_new = evaluateAffineTransform(transform, xd_original, yd_original)
         dots_new = dots.copy(deep=True)
         dots_new['x'] = xd_new
         dots_new['y'] = yd_new
