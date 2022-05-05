@@ -6,8 +6,8 @@ import numpy as np
 from scipy import interpolate as ipol
 
 from astropy import units as u
-from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, SkyOffsetFrame
+from astropy.time import Time, TimeDelta
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, TETE, SkyOffsetFrame
 from astroplan import Observer
 import astropy.coordinates as ascor
 
@@ -26,9 +26,9 @@ from . import DistortionCoefficients as DCoeff
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-def CoordinateTransform(xyin, za, mode, inr=0., pa=0., adc=0.,
-                        cent=np.array([[0.], [0.]]),
-                        time='2020-01-01 10:00:00'):
+def CoordinateTransform(xyin, mode, za=0., inr=0., pa=-90., adc=0.,
+                        cent=np.array([[0.], [0.]]), pm=None, par=None,
+                        time='2020-01-01 10:00:00', epoch=2015.5):
     """Transform Coordinates with given observing conditions.
 
     Parameters
@@ -36,24 +36,34 @@ def CoordinateTransform(xyin, za, mode, inr=0., pa=0., adc=0.,
     xyin : `np.ndarray`, (2, N)
         Input coordinates. Namely. (Ra, Dec) in unit of degree for sky, 
         (X, Y) in unit of mm for PFI, and (X, Y) in unit of pixel for MCS.
-    za : `float`
-        Zenith angle in unit of degree.
     mode : `str`
-        Transformation mode. Available mode is "sky_pfi", "sky_pfi_hsc"
-        "pfi_mcs", "pfi_mcs_wofe", "mcs_pfi"
+        Transformation mode. Available mode is "sky_pfi", "sky_pfi_hsc",
+        "pfi_sky", "pfi_mcs", "pfi_mcs_wofe", "mcs_pfi"
+    za : `float`, optional
+        Zenith angle in unit of degree. Default is 0.
+        Note that this value is automatically calculated and overwritten by 
+        this routine for sky_pfi* transformation.
     inr : `float`, optional
         Instrument rotator angle in unit of degree. Default is 0. Note that
         this value is automatically calculated and overwritten by this routine
         for sky_pfi* transformation.
     pa : `float`, optional
         Position angle in unit of degree for sky_pfi* transformation. Default
-        is 0.
+        is -90., where the PFI rotator is 0.
     cent : `np.ndarray`, (2, 1), optional
         The center of input coordinates in the same unit as xyin.
         Default is x=0. , y=0.
+    pm: `np.ndarray`, (2, N), optional
+        The proper motion of the targets used for sky_pfi transformation.
+        The unit is mas/yr . Default is None.
+    par: `np.ndarray`, (1, N), optional
+        The parallax of the cordinatess used for sky_pfi transformation.
+        The unit is mas . Default is None.
     time : `str`, optional
         Observation time UTC in format of %Y-%m-%d %H:%M:%S
         Defalt is 2020-01-01 00:00:00
+    equinox: `float`
+        Reference epoch of the sky catalogue. Default is 2015.5 (referring Gaia DR2)
 
     Returns
     -------
@@ -65,7 +75,8 @@ def CoordinateTransform(xyin, za, mode, inr=0., pa=0., adc=0.,
     c = DCoeff.Coeff(mode)
 
     # Transform iput coordinates to those the same as WFC as-built model
-    xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c, cent, time)
+    xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c, 
+                                         cent, time, pm, par, epoch)
     if (mode == 'sky_pfi') and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
@@ -187,7 +198,7 @@ def convert_out_position(x, y, inr, c, cent, time):
     return xx, yy
 
 
-def convert_in_position(xyin, za, inr, pa, c, cent, time):
+def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
     """convert input position to those on the same coordinates as
         the WFC as-built model.
     Parameters
@@ -207,6 +218,12 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         The center of input coordinates in the same unit as xyin.
     time : `str`
         Observation time UTC in format of %Y-%m-%d %H:%M:%S
+    pm : `np.ndarray`, (2, 1)
+        The proper motion of the targets (only for sky_pfi*) mode
+    par : `np.ndarray`, (2, 1)
+        The parallax of the targets (only for sky_pfi*) mode
+    epoch: `float`
+        Reference epoch of the sky catalogue.
 
     Returns
     -------
@@ -225,16 +242,45 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
         # Set Observation Site (Subaru)
         tel = EarthLocation.of_site('Subaru')
         tel2 = Observer.at_site("Subaru", timezone="US/Hawaii")
+        # Observation time
         obs_time = Time(time)
+        # The equinox of the catalogue
+        obs_jtime = Time(epoch, format='decimalyear')
+        logging.info(obs_jtime)
+        d_yr = TimeDelta(obs_time.jd-obs_jtime.jd, format='jd').to(u.yr)
+        logging.info(d_yr)
 
+
+        # Atmospheric refraction
         aref_file = mypath+'data/Refraction_data_635nm.txt'
         atm_ref = np.loadtxt(aref_file)
         atm_interp = ipol.splrep(atm_ref[:, 0], atm_ref[:, 1], s=0)
 
-        # Ra-Dec to Az-El (Center)
-        coord_cent = SkyCoord(cent[0], cent[1], unit=u.deg)
-        altaz_cent = coord_cent.transform_to(AltAz(obstime=obs_time,
-                                                   location=tel))
+        # Ra-Dec to Az-El (Center): no proper motion nor parallax
+        pmra_cent = 0.*u.mas/u.yr
+        pmdec_cent = 0.*u.mas/u.yr
+        ra0 = cent[0][0]
+        dec0 = cent[1][0]
+        logging.debug(pmra_cent)
+        coord_cent = SkyCoord(ra0, dec0, 0.00000001*u.mas, unit=u.deg,
+                              pm_ra_cosdec=pmra_cent, pm_dec=pmdec_cent,
+                              frame='fk5', obstime=obs_jtime, equinox='J2000.000')
+        logging.info("Ra Dec = (%s %s) : original", 
+                     coord_cent.ra.deg, coord_cent.dec.deg)
+        logging.info("PM = (%s %s)", 
+                      coord_cent.pm_ra_cosdec, coord_cent.pm_dec)
+        coord_cent2 = coord_cent.apply_space_motion(dt=d_yr.to(u.yr))
+        logging.info("Ra Dec = (%s %s) : applied proper motion", 
+                     coord_cent2.ra.deg, coord_cent2.dec.deg)
+        coord_cent3 = coord_cent2.transform_to(FK5(equinox=obs_time.jyear_str))
+        logging.info("Ra Dec = (%s %s) : applied presession",
+                     coord_cent3.ra.deg, coord_cent3.dec.deg)
+        coord_cent4 = coord_cent3.transform_to(TETE(obstime=obs_time, location=tel))
+        logging.info("Ra Dec = (%s %s) : applied earth motion",
+                     coord_cent4.ra.deg, coord_cent4.dec.deg)
+
+        altaz_cent = coord_cent4.transform_to(AltAz(obstime=obs_time,
+                                                    location=tel))
 
         # Instrument rotator angle
         paa = tel2.parallactic_angle(obs_time, coord_cent).deg
@@ -244,6 +290,14 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
             inr = paa + pa
         else:
             inr = paa - pa
+
+        # check inr range is within +/- 180 degree
+        if inr <= -180.:
+            logging.info("InR will exceed the lower limit (-180 deg)")
+            inr = inr + 360.
+        elif inr >= +180:
+            logging.info("InR will exceed the upper limit (+180 deg)")
+            inr = inr - 360.
 
         az0 = altaz_cent.az.deg
         el0 = altaz_cent.alt.deg
@@ -261,8 +315,15 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
                      cent[0], cent[1], az0, eld0, inr)
 
         # Ra-Dec to Az-El (Targets)
-        coord = SkyCoord(xyin[0, :], xyin[1, :], unit=u.deg)
-        altaz = coord.transform_to(AltAz(obstime=obs_time, location=tel))
+        coord = SkyCoord(xyin[0, :], xyin[1, :], par*u.mas, unit=u.deg, 
+                         pm_ra_cosdec=pm[0, :]*u.mas/u.yr, 
+                         pm_dec=pm[1, :]*u.mas/u.yr,
+                         frame='fk5', obstime=obs_jtime, equinox='J2000.000')
+        coord2 = coord.apply_space_motion(dt=d_yr.to(u.yr))
+        coord3 = coord2.transform_to(FK5(equinox=obs_time.jyear_str))
+        coord4 = coord3.transform_to(TETE(obstime=obs_time, location=tel))
+
+        altaz = coord4.transform_to(AltAz(obstime=obs_time, location=tel))
         el = altaz.alt.deg
         az = altaz.az.deg
 
@@ -295,7 +356,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time):
             logging.info("InR will exceed the lower limit (-180 deg)")
             inr = inr + 360.
         elif inr >= +180:
-            logging.info("InR will exceed the upper limit (+270 deg)")
+            logging.info("InR will exceed the upper limit (+180 deg)")
             inr = inr - 360.
 
         # rotate PFI -> telescope (90-deg offset exists)
