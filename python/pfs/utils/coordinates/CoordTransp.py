@@ -314,6 +314,11 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
                      cent[0], cent[1], az0, eld0, inr)
 
+        # set 0 if pm = None, and 1e-7 if par = None
+        if pm == None:
+            pm = np.zeros(xyin.shape)
+        if par == None:
+            par = np.full(xyin.shape[1], 0.0000001)
         # Ra-Dec to Az-El (Targets)
         coord = SkyCoord(xyin[0, :], xyin[1, :], par*u.mas, unit=u.deg, 
                          pm_ra_cosdec=pm[0, :]*u.mas/u.yr, 
@@ -575,9 +580,16 @@ def ag_pfimm_to_pixel(icam, xpfi, ypfi):
         The Cartesian coordinates y's of points in AG detecor (pix)
     """
 
+    # remove center offset
+    xpfi = xpfi - DCoeff.agcent_off[icam][1]
+    ypfi = ypfi - DCoeff.agcent_off[icam][0]
+    # rotate to AG1 place (to align x/y axes)
     x, y = rotation(xpfi, ypfi, icam*60.)
-    xag = y/DCoeff.agpixel + 511.5
-    yag = - (x - DCoeff.agcent)/DCoeff.agpixel + 511.5
+    # center offset
+    # x0, y0 = rotation(DCoeff.agcent_off[icam][1], DCoeff.agcent_off[icam][0], icam*60.)
+
+    xag = (y)/DCoeff.agpixel + 535.5
+    yag = - (x - DCoeff.agcent)/DCoeff.agpixel + 520.5 
 
     return xag, yag
 
@@ -608,9 +620,11 @@ def ag_pixel_to_pfimm(icam, xag, yag):
         coordinate system (mm)
     """
 
-    y = (xag - 511.5)*DCoeff.agpixel
-    x = - (yag - 511.5)*DCoeff.agpixel + DCoeff.agcent
+    y = (xag - 535.5)*DCoeff.agpixel
+    x = - (yag - 520.5)*DCoeff.agpixel + DCoeff.agcent
     xpfi, ypfi = rotation(x, y, icam*(-60.))
+    xpfi = xpfi + DCoeff.agcent_off[icam][1]
+    ypfi = ypfi + DCoeff.agcent_off[icam][0]
 
     return xpfi, ypfi
 

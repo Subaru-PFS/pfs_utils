@@ -44,14 +44,20 @@ mcspixel_asrd = 3.1e-3
 distc_x_asrd = -15.5764
 distc_y_asrd = -2.62071
 
+# AG camera parameters
 # AG pixel scale : 13um/pixel
 agpixel = 1.3e-2
 agcent = 241.292  # mm
+# AG centre position and rotation (measured in Nov 2021)
+# dy[mm] dx[mm] dt[deg] for each camera in PFI coordinates
+agcent_off = [[-0.405, 0.668, -0.253368], [-0.055, -0.081, 0.234505],
+              [-0.357, -0.180, 0.329449], [0.270, -0.357, 0.416894],
+              [0.444, -0.138, 0.0589071], [0.067, 0.077, 0.234977]]
 
 # PFI InR offset from the telescope telescope
 inr_pfi = -90
 inr_min = -180
-inr_max = +270
+inr_max = +180
 
 
 class Coeff:
@@ -75,11 +81,18 @@ class Coeff:
 
         # Differential pattern
         # x : dx = c0*x*y or = c0*x*x + c1*y*y + c2*x*y +c3*x^3*y^3+c4
+        """
         dic_cx = {"sky_pfi": [-0.0017327476322776293,
                               -0.00035441489584601635,
                               0.09508424178479086,
                               0.25940659835632474,
                               0.00031404409450775506],
+        """
+        dic_cx = {"sky_pfi": [0.,
+                              0.,
+                              0.,
+                              0.,
+                              0.],
                   "sky_pfi_hsc": [-0.0019537856994430326,
                                   -0.0003633426407904909,
                                   0.09744667192075979,
@@ -133,12 +146,20 @@ class Coeff:
                                     2.4243867461498993e-05],
                    "mcs_pfi_asrd": []}
         # y : dy = c0*x^2 + c1*y^2 + c2*y^4 + c3*x^2*y^2 + c4
+        """
         dic_cy = {"sky_pfi": [0.041746387732980325,
                               0.01608173945524268,
                               0.12094239424626228,
                               0.07654433799914458,
                               0.09301814497785414,
                               -0.027067648260184846],
+        """
+        dic_cy = {"sky_pfi": [0.,
+                              0.,
+                              0.,
+                              0.,
+                              0.,
+                              0.],
                   "sky_pfi_hsc": [0.04173443438068433,
                                   0.01619031569246855,
                                   0.12274785098042126,
