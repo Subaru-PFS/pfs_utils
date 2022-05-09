@@ -443,9 +443,9 @@ class Coeff:
             IpolD = np.loadtxt(dfile).T
 
             x_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :],
-                                                IpolD[2, :], kx=5, ky=5, s=1)
+                                                IpolD[2, :], kx=5, ky=5, s=1.)
             y_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :],
-                                                IpolD[3, :], kx=5, ky=5, s=1)
+                                                IpolD[3, :], kx=5, ky=5, s=1.)
 
             logging.info("Interpolated the base offset")
 
@@ -541,6 +541,6 @@ class Coeff:
         dfile = mypath+"data/scale_interp_"+self.mode+".dat"
         IpolD = np.loadtxt(dfile)
 
-        r_itrp = ipol.splrep(IpolD[:, 0], IpolD[:, 1], s=0)
+        r_itrp = ipol.splrep(IpolD[:, 0], IpolD[:, 1], s=1)
 
         return r_itrp
