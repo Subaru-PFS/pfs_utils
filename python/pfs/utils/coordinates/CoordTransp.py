@@ -315,9 +315,9 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
                      cent[0], cent[1], az0, eld0, inr)
 
         # set 0 if pm = None, and 1e-7 if par = None
-        if pm == None:
+        if pm is None:
             pm = np.zeros(xyin.shape)
-        if par == None:
+        if par is None:
             par = np.full(xyin.shape[1], 0.0000001)
         # Ra-Dec to Az-El (Targets)
         coord = SkyCoord(xyin[0, :], xyin[1, :], par*u.mas, unit=u.deg, 
@@ -407,6 +407,7 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
 
         sl_itrp = ipol.splrep(za_a, sl_a, k=2, s=0)
         cy5 = ipol.splev(za, sl_itrp)
+        cy5 = 0.
 
     coeffadc = (adc/20.)
     # print(cx2,cy2)
@@ -585,6 +586,8 @@ def ag_pfimm_to_pixel(icam, xpfi, ypfi):
     ypfi = ypfi - DCoeff.agcent_off[icam][0]
     # rotate to AG1 place (to align x/y axes)
     x, y = rotation(xpfi, ypfi, icam*60.)
+    # Rotation of AG camera itself
+    x, y = rotation(x, y, -1.*DCoeff.agcent_off[icam][2], x0=DCoeff.agcent, y0=0.)
     # center offset
     # x0, y0 = rotation(DCoeff.agcent_off[icam][1], DCoeff.agcent_off[icam][0], icam*60.)
 
@@ -629,7 +632,7 @@ def ag_pixel_to_pfimm(icam, xag, yag):
     return xpfi, ypfi
 
 
-def rotation(x, y, rot, rot_off=0.):
+def rotation(x, y, rot, rot_off=0., x0=0., y0=0.):
     """Rotate position
 
     Parameters
@@ -651,7 +654,7 @@ def rotation(x, y, rot, rot_off=0.):
 
     ra = np.deg2rad(rot + rot_off)
 
-    rx = np.cos(ra)*x - np.sin(ra)*y
-    ry = np.sin(ra)*x + np.cos(ra)*y
+    rx = np.cos(ra)*(x-x0) - np.sin(ra)*(y-y0) + x0
+    ry = np.sin(ra)*(x-x0) + np.cos(ra)*(y-y0) + y0
 
     return rx, ry
