@@ -225,8 +225,8 @@ class PfiTransform:
         Returns:
            fids:      array of `int`
                 array of length mcs_data giving indices into fiducials or -1
-           distance:  array of `float` 
-                array of length mcs_data giving distance in mm to nearest fiducial               
+           distance:  array of `float`
+                array of length mcs_data giving distance in mm to nearest fiducial
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
@@ -242,7 +242,7 @@ class PfiTransform:
         # best chance of matching to the fiducial fibres
         #
         # N.b. this allows us to call updateTransform with different sets of
-        # fiducials and/or configs to refine our transformation      
+        # fiducials and/or configs to refine our transformation
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
 
         fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
@@ -408,8 +408,8 @@ class SimpleTransform(PfiTransform):
         Returns:
            fids:      array of `int`
                 array of length mcs_data giving indices into fiducials or -1
-           distance:  array of `float` 
-                array of length mcs_data giving distance in mm to nearest fiducial               
+           distance:  array of `float`
+                array of length mcs_data giving distance in mm to nearest fiducial
         """
         if nMatchMin <= 1:
             nMatchMin *= len(fiducials.fiducialId)
