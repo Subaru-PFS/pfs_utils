@@ -232,3 +232,6 @@ class FiberIdsTestCase(unittest.TestCase):
                                 msg=f"MTP value '{mtp}'"
                                     f" in column 'mtp_{field}'"
                                     " does not match expected pattern.")
+
+if __name__ == '__main__':
+    unittest.main()
