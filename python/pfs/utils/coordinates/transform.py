@@ -122,7 +122,7 @@ class MeasureDistortion:
         q25, q50, q75 = np.percentile(d, [25, 50, 75])
         std = 0.741*(q75 - q25)
 
-        return np.abs(d - q50 < nsigma*std)
+        return np.abs(d - q50) < nsigma*std
 
     def __call__(self, args):
         tx, ty = self.distort(self.x, self.y, *args)
