@@ -130,9 +130,12 @@ class MeasureDistortion:
         d = np.hypot(tx - self.x_mm, ty - self.y_mm)
 
         if self.nsigma > 0:
-            d = d[self.clip(d, self.nsigma)]
+            mx = self.clip(tx - self.x_mm, self.nsigma)
+            my = self.clip(ty - self.y_mm, self.nsigma)
+            mask = np.logical_and(mx, my)
+            d = d[mask]
 
-        return np.mean(d)
+        return np.sum(d**2)
 
     def getArgs(self):
         return self._args
