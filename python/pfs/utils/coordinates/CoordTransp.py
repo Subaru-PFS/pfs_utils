@@ -6,15 +6,16 @@ import numpy as np
 from scipy import interpolate as ipol
 
 from astropy import units as u
-from astropy.time import Time, TimeDelta
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, TETE, SkyOffsetFrame
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astroplan import Observer
 import astropy.coordinates as ascor
 
 from scipy.spatial.transform import Rotation as R
 
 # Dictionary keys ( argument name is mode)
-# sky_pfi : sky to F3C
+# sky_pfi_old : sky to F3C (using Kawanomoto's routine)
+# sky_pfi_old : sky to F3C (using Moritani's routine)
 # sky_pfi_hsc : sky to hsc focal plane
 # sky_mcs : sky to MCS
 # pfi_mcs : F3C to MCS
@@ -22,11 +23,12 @@ from scipy.spatial.transform import Rotation as R
 # mcs_pfi : MCS to F3C
 
 from . import DistortionCoefficients as DCoeff
+from . import Subaru_POPT2_PFS
 
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
 
-def CoordinateTransform(xyin, mode, za=0., inr=0., pa=-90., adc=0.,
+def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
                         cent=np.array([[0.], [0.]]), pm=None, par=None,
                         time='2020-01-01 10:00:00', epoch=2015.5):
     """Transform Coordinates with given observing conditions.
@@ -77,36 +79,47 @@ def CoordinateTransform(xyin, mode, za=0., inr=0., pa=-90., adc=0.,
     # Transform iput coordinates to those the same as WFC as-built model
     xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c, 
                                          cent, time, pm, par, epoch)
-    if (mode == 'sky_pfi') and (za1 != za):
+    if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old')) and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
 
-    # Calculate Argument
-    arg = calc_argument(xyin, inr, c)
+    if (mode == 'sky_pfi'):
+        dmya = np.zeros((6, xyin.shape[1]))
+        # print(dmy)
+        popt2 = Subaru_POPT2_PFS.POPT2()
+        subaru = Subaru_POPT2_PFS.Subaru()
+        m3pos = DCoeff.calc_m3pos(za)
+        adc = DCoeff.calc_adc_position(za)
+        telx, tely = popt2.celestial2focalplane_cobra(xyin[0,:], xyin[1,:], adc, m3pos, 0.575)
+        xx, yy = convert_out_position(telx, tely, inr, c, cent, time)
+        xyout = np.vstack((xx, yy, dmya))
+    else:  # Using YM code
+        # Calculate Argument
+        arg = calc_argument(xyin, inr, c)
 
-    # Scale conversion
-    logging.info("Scaling")
-    scale = c.scaling_factor(xyin)
+        # Scale conversion
+        logging.info("Scaling")
+        scale = c.scaling_factor(xyin)
 
-    # deviation
-    # base
-    logging.info("Offset 1, at zenith")
-    offx1, offy1 = c.offset_base(xyin)
+        # deviation
+        # base
+        logging.info("Offset 1, at zenith")
+        offx1, offy1 = c.offset_base(xyin)
 
-    if c.skip2_off:
-        offx2 = np.zeros(xyin.shape[1])
-        offy2 = np.zeros(xyin.shape[1])
-    else:
-        # z-dependent
-        logging.info("Offset 2, from zenith")
-        offx2, offy2 = deviation_zenith_angle(xyin, za, c)
+        if c.skip2_off:
+            offx2 = np.zeros(xyin.shape[1])
+            offy2 = np.zeros(xyin.shape[1])
+        else:
+            # z-dependent
+            logging.info("Offset 2, from zenith")
+            offx2, offy2 = deviation_zenith_angle(xyin, za, c, adc=adc)
 
-    xx = scale*np.cos(arg)+offx1 + offx2
-    yy = scale*np.sin(arg)+offy1 + offy2
+        xx = scale*np.cos(arg)+offx1 + offx2
+        yy = scale*np.sin(arg)+offy1 + offy2
 
-    xx, yy = convert_out_position(xx, yy, inr, c, cent, time)
+        xx, yy = convert_out_position(xx, yy, inr, c, cent, time)
 
-    xyout = np.array([xx, yy, scale, arg, offx1, offy1, offx2, offy2])
+        xyout = np.array([xx, yy, scale, arg, offx1, offy1, offx2, offy2])
 
     return xyout
 
@@ -140,7 +153,9 @@ def convert_out_position(x, y, inr, c, cent, time):
     if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
         xx, yy = mm_to_pixel(x, y, cent)
     # Rotation to PFI coordinates
-    elif c.mode == 'sky_pfi' or c.mode == 'sky_pfi_hsc':
+    elif c.mode == 'sky_pfi':
+        xx, yy = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
+    elif c.mode == 'sky_pfi_old' or c.mode == 'sky_pfi_hsc':
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
     elif c.mode == 'mcs_pfi':
@@ -174,8 +189,8 @@ def convert_out_position(x, y, inr, c, cent, time):
         xc, yc, zc = ascor.spherical_to_cartesian(1., np.deg2rad(y),
                                                   np.deg2rad(x))
         xyz = np.vstack((xc, yc, zc)).T
-        logging.info("(%s)", xyz.shape)
-        logging.info("(%s)", r.as_rotvec())
+        logging.debug("(%s)", xyz.shape)
+        logging.debug("(%s)", r.as_rotvec())
         azel = r.apply(xyz)
         rs, lats, lons = ascor.cartesian_to_spherical(azel[:, 0], azel[:, 1],
                                                       azel[:, 2])
@@ -238,106 +253,52 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
     elif c.mode == 'mcs_pfi_asrd':
         xyconv = pixel_to_mm(xyin, inr, cent,
                              pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
-    elif (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_hsc'):
-        # Set Observation Site (Subaru)
-        tel = EarthLocation.of_site('Subaru')
-        tel2 = Observer.at_site("Subaru", timezone="US/Hawaii")
-        # Observation time
-        obs_time = Time(time)
-        # The equinox of the catalogue
-        obs_jtime = Time(epoch, format='decimalyear')
-        logging.info(obs_jtime)
-        d_yr = TimeDelta(obs_time.jd-obs_jtime.jd, format='jd').to(u.yr)
-        logging.info(d_yr)
-
-
-        # Atmospheric refraction
-        aref_file = mypath+'data/Refraction_data_635nm.txt'
-        atm_ref = np.loadtxt(aref_file)
-        atm_interp = ipol.splrep(atm_ref[:, 0], atm_ref[:, 1], s=0)
+    elif (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_old') or (c.mode == 'sky_pfi_hsc'):
 
         # Ra-Dec to Az-El (Center): no proper motion nor parallax
-        pmra_cent = 0.*u.mas/u.yr
-        pmdec_cent = 0.*u.mas/u.yr
+        pmra_cent = 0. #*u.mas/u.yr
+        pmdec_cent = 0. #*u.mas/u.yr
+        par_cent = 0.00000001 #*u.mas
         ra0 = cent[0][0]
         dec0 = cent[1][0]
         logging.debug(pmra_cent)
-        coord_cent = SkyCoord(ra0, dec0, 0.00000001*u.mas, unit=u.deg,
-                              pm_ra_cosdec=pmra_cent, pm_dec=pmdec_cent,
-                              frame='fk5', obstime=obs_jtime, equinox='J2000.000')
-        logging.info("Ra Dec = (%s %s) : original", 
-                     coord_cent.ra.deg, coord_cent.dec.deg)
-        logging.info("PM = (%s %s)", 
-                      coord_cent.pm_ra_cosdec, coord_cent.pm_dec)
-        coord_cent2 = coord_cent.apply_space_motion(dt=d_yr.to(u.yr))
-        logging.info("Ra Dec = (%s %s) : applied proper motion", 
-                     coord_cent2.ra.deg, coord_cent2.dec.deg)
-        coord_cent3 = coord_cent2.transform_to(FK5(equinox=obs_time.jyear_str))
-        logging.info("Ra Dec = (%s %s) : applied presession",
-                     coord_cent3.ra.deg, coord_cent3.dec.deg)
-        coord_cent4 = coord_cent3.transform_to(TETE(obstime=obs_time, location=tel))
-        logging.info("Ra Dec = (%s %s) : applied earth motion",
-                     coord_cent4.ra.deg, coord_cent4.dec.deg)
 
-        altaz_cent = coord_cent4.transform_to(AltAz(obstime=obs_time,
-                                                    location=tel))
+        az0, el0, inr = DCoeff.radec_to_subaru(ra0, dec0, pa, time, 
+                                               epoch, pmra_cent, 
+                                               pmdec_cent, par_cent)
 
-        # Instrument rotator angle
-        paa = tel2.parallactic_angle(obs_time, coord_cent).deg
-        lat = tel2.location.lat.deg
-        dc = coord_cent.dec.deg
-        if dc > lat:
-            inr = paa + pa
-        else:
-            inr = paa - pa
-
-        # check inr range is within +/- 180 degree
-        if inr <= -180.:
-            logging.info("InR will exceed the lower limit (-180 deg)")
-            inr = inr + 360.
-        elif inr >= +180:
-            logging.info("InR will exceed the upper limit (+180 deg)")
-            inr = inr - 360.
-
-        az0 = altaz_cent.az.deg
-        el0 = altaz_cent.alt.deg
-        za = 90. - el0
-        eld0 = el0 + ipol.splev(za, atm_interp)/3600.
-        try:
-            za = za[0]
-        except (IndexError, TypeError) as e:
-            pass
-
-        # define WFC frame
-        center = SkyCoord(az0, eld0, unit=u.deg)
-        aframe = center.skyoffset_frame()
         logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
-                     cent[0], cent[1], az0, eld0, inr)
-
+                     cent[0], cent[1], az0, el0, inr)
+        za = 90. - el0
         # set 0 if pm = None, and 1e-7 if par = None
         if pm is None:
             pm = np.zeros(xyin.shape)
         if par is None:
             par = np.full(xyin.shape[1], 0.0000001)
+
         # Ra-Dec to Az-El (Targets)
-        coord = SkyCoord(xyin[0, :], xyin[1, :], par*u.mas, unit=u.deg, 
-                         pm_ra_cosdec=pm[0, :]*u.mas/u.yr, 
-                         pm_dec=pm[1, :]*u.mas/u.yr,
-                         frame='fk5', obstime=obs_jtime, equinox='J2000.000')
-        coord2 = coord.apply_space_motion(dt=d_yr.to(u.yr))
-        coord3 = coord2.transform_to(FK5(equinox=obs_time.jyear_str))
-        coord4 = coord3.transform_to(TETE(obstime=obs_time, location=tel))
-
-        altaz = coord4.transform_to(AltAz(obstime=obs_time, location=tel))
-        el = altaz.alt.deg
-        az = altaz.az.deg
-
-        eld = el + ipol.splev(90.-el, atm_interp)/3600.
+        az, el, dmy = DCoeff.radec_to_subaru(xyin[0, :], xyin[1, :], pa, time, 
+                                             epoch, pm[0, :], pm[1, :],
+                                              par, inr=inr, log=False)
 
         # Az-El to offset angle from the center (Targets)
-        target = SkyCoord(az, eld, unit=u.deg)
-        off = target.transform_to(aframe)
-        xyconv = np.vstack((off.lon.deg, off.lat.deg))
+        if c.mode == 'sky_pfi':
+            tel_altaz = SkyCoord(az0, el0, unit=u.deg)
+            str_altaz = SkyCoord(az, el, unit=u.deg)
+            str_sep =  tel_altaz.separation(str_altaz).degree
+            str_zpa = -tel_altaz.position_angle(str_altaz).degree
+            # print(str_zpa)
+            xyconv = np.vstack((str_sep, str_zpa))
+
+        else:
+            # define WFC frame
+            center = SkyCoord(az0, el0, unit=u.deg)
+            aframe = center.skyoffset_frame()
+
+            target = SkyCoord(az, el, unit=u.deg)
+            off = target.transform_to(aframe)
+            xyconv = np.vstack((off.lon.deg, off.lat.deg))
+
     elif c.mode == 'pfi_sky':  # Rotate PFI to WFC
         # Set Observation Site (Subaru)
         tel = EarthLocation.of_site('Subaru')
@@ -408,6 +369,10 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
         sl_itrp = ipol.splrep(za_a, sl_a, k=2, s=0)
         cy5 = ipol.splev(za, sl_itrp)
         cy5 = 0.
+    if c.mode == 'sky_pfi_old':
+        adc = DCoeff.calc_adc_position(za)
+
+    logging.info("ADC pos: %s", adc)
 
     coeffadc = (adc/20.)
     # print(cx2,cy2)

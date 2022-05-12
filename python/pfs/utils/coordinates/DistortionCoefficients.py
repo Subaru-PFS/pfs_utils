@@ -5,6 +5,12 @@ import logging
 import numpy as np
 from scipy import interpolate as ipol
 
+from astropy import units as u
+from astropy.time import Time, TimeDelta
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, TETE, SkyOffsetFrame
+from astroplan import Observer
+import astropy.coordinates as ascor
+
 """
 Distortion Coefficients
  ver 1.0 : based on spot data in May 2017
@@ -27,6 +33,9 @@ Distortion Coefficients
            update with the latest version og spot calculation (only PFI<->MCS)
  ver 7.1 :  (2021.11.15)
            update with the latest version og spot calculation (Sky<->PFI)
+ ver 8.0 : (2022.05)
+           update based on Nov-run's analysis, implemented Kawanomoto's 
+           library as default for sky-pfi
 """
 
 """
@@ -67,7 +76,8 @@ class Coeff:
     ----------
     mode : `str`
         Coordinate transportation mode. Availables are
-        sky_pfi : sky to F3C
+        sky_pfi : sky to F3C (Kawanomoto's ver)
+        sky_pfi_old : sky to F3C (Moritani's ver)
         sky_pfi_hsc : sky to hsc focal plane
         sky_mcs : sky to MCS
         pfi_sky : F3C to sky
@@ -82,17 +92,17 @@ class Coeff:
         # Differential pattern
         # x : dx = c0*x*y or = c0*x*x + c1*y*y + c2*x*y +c3*x^3*y^3+c4
         """
-        dic_cx = {"sky_pfi": [-0.0017327476322776293,
-                              -0.00035441489584601635,
-                              0.09508424178479086,
-                              0.25940659835632474,
-                              0.00031404409450775506],
+        dic_cx = {"sky_pfi_old": [-0.0017327476322776293,
+                              -   0.00035441489584601635,
+                                  0.09508424178479086,
+                                  0.25940659835632474,
+                                  0.00031404409450775506],
         """
-        dic_cx = {"sky_pfi": [0.,
-                              0.,
-                              0.,
-                              0.,
-                              0.],
+        dic_cx = {"sky_pfi_old": [0.,
+                                  0.,
+                                  0.,
+                                  0.,
+                                  0.],
                   "sky_pfi_hsc": [-0.0019537856994430326,
                                   -0.0003633426407904909,
                                   0.09744667192075979,
@@ -117,11 +127,11 @@ class Coeff:
                                    0.0003132127638028303],
                   "mcs_pfi_asrd": []}
         # ADC diff
-        dic_cx2 = {"sky_pfi": [-3.584787066577977e-05,
-                               -3.5799605301681134e-05,
-                               0.03659745888281277,
-                               0.16051286109719687,
-                               2.247351405551246e-05],
+        dic_cx2 = {"sky_pfi_old": [-3.584787066577977e-05,
+                                   -3.5799605301681134e-05,
+                                   0.03659745888281277,
+                                   0.16051286109719687,
+                                   2.247351405551246e-05],
                    "sky_pfi_hsc": [-3.6093014110703635e-05,
                                    -3.5711582686051736e-05,
                                    0.036725289727567695,
@@ -147,19 +157,19 @@ class Coeff:
                    "mcs_pfi_asrd": []}
         # y : dy = c0*x^2 + c1*y^2 + c2*y^4 + c3*x^2*y^2 + c4
         """
-        dic_cy = {"sky_pfi": [0.041746387732980325,
+        dic_cy = {"sky_pfi_old [0.041746387732980325,
                               0.01608173945524268,
                               0.12094239424626228,
                               0.07654433799914458,
                               0.09301814497785414,
                               -0.027067648260184846],
         """
-        dic_cy = {"sky_pfi": [0.,
-                              0.,
-                              0.,
-                              0.,
-                              0.,
-                              0.],
+        dic_cy = {"sky_pfi_old": [0.,
+                                  0.,
+                                  0.,
+                                  0.,
+                                  0.,
+                                  0.],
                   "sky_pfi_hsc": [0.04173443438068433,
                                   0.01619031569246855,
                                   0.12274785098042126,
@@ -188,12 +198,12 @@ class Coeff:
                                    -0.02704375829046644],
                   "mcs_pfi_asrd": []}
         # ADC differential pattern
-        dic_cy2 = {"sky_pfi": [0.03623304902406039,
-                               0.0175673111666987,
-                               0.06285186439429795,
-                               0.05423970484228492,
-                               0.07287287217681873,
-                               -0.017282746333435548],
+        dic_cy2 = {"sky_pfi_old": [0.03623304902406039,
+                                   0.0175673111666987,
+                                   0.06285186439429795,
+                                   0.05423970484228492,
+                                   0.07287287217681873,
+                                   -0.017282746333435548],
                    "sky_pfi_hsc": [0.036348008722863305,
                                    0.017639216366374662,
                                    0.06305057726030829,
@@ -222,7 +232,7 @@ class Coeff:
                                     -0.017404771609892535],
                    "mcs_pfi_asrd": []}
         # Whether to skip use offset base
-        skip1_off = {"sky_pfi": False,
+        skip1_off = {"sky_pfi_old": False,
                      "sky_pfi_hsc": False,
                      "pfi_sky": False,
                      "pfi_mcs": False,
@@ -231,7 +241,7 @@ class Coeff:
                      "mcs_pfi_wofe": False,
                      "mcs_pfi_asrd": False}
         # Whether to skip use differential pattern
-        skip2_off = {"sky_pfi": False,
+        skip2_off = {"sky_pfi_old": False,
                      "sky_pfi_hsc": False,
                      "pfi_sky": True,
                      "pfi_mcs": False,
@@ -241,7 +251,7 @@ class Coeff:
                      "mcs_pfi_asrd": True}
 
         # y : slope cy5(z) * y
-        dic_slp = {"sky_pfi": [0.,
+        dic_slp = {"sky_pfi_old": [0.,
                                -0.00011423970952475685,
                                0.00013767881534632514],
                    "sky_pfi_hsc": [0.,
@@ -259,7 +269,7 @@ class Coeff:
                    "mcs_pfi_asrd": []}
 
         # Scaling factor of difference
-        dic_dsc = {"sky_pfi": [-0.07532961367738047,
+        dic_dsc = {"sky_pfi_old": [-0.07532961367738047,
                                -15.905990388393876,
                                -0.06990604717680293,
                                -17.095242283006968],
@@ -286,7 +296,7 @@ class Coeff:
         # Scaling factor w.r.t radius
         # mcs_pfi_asrd :
         # scale factor + distortion (3rd order from distotion center)
-        dic_rsc = {"sky_pfi": [319.88636084359314,
+        dic_rsc = {"sky_pfi_old": [319.88636084359314,
                                15.416834272793494,
                                2.688157915137708,
                                4.028757396154106],
@@ -321,15 +331,16 @@ class Coeff:
                                     -4.11313E-08]}
 
         self.mode = mode
-        self.cx = dic_cx[mode]
-        self.cy = dic_cy[mode]
-        self.cx2 = dic_cx2[mode]
-        self.cy2 = dic_cy2[mode]
-        self.skip1_off = skip1_off[mode]
-        self.skip2_off = skip2_off[mode]
-        self.slp = dic_slp[mode]
-        self.dsc = dic_dsc[mode]
-        self.rsc = dic_rsc[mode]
+        if mode != 'sky_pfi':
+            self.cx = dic_cx[mode]
+            self.cy = dic_cy[mode]
+            self.cx2 = dic_cx2[mode]
+            self.cy2 = dic_cy2[mode]
+            self.skip1_off = skip1_off[mode]
+            self.skip2_off = skip2_off[mode]
+            self.slp = dic_slp[mode]
+            self.dsc = dic_dsc[mode]
+            self.rsc = dic_rsc[mode]
 
     def dev_pattern_x(self, x, y, adc=False):
         """Calc patterned deviation in x-axis
@@ -544,3 +555,124 @@ class Coeff:
         r_itrp = ipol.splrep(IpolD[:, 0], IpolD[:, 1], s=1)
 
         return r_itrp
+
+# General functions
+def calc_m3pos(za):
+
+    # for now, just use fixed position
+
+    return 3.0
+
+def calc_adc_position(za, id=106):
+
+    if id==106:  # Filter ID=106 (wave 9)
+        e0 = 0.0027
+        e1 = 12.6755
+        e2 = -0.0992
+        e3 = 0.2141
+        e4 = -0.0901
+    else:
+        logging.info("Invalid mode. Set ADC=0.")
+        e0 = e1 = e2 = e3 = e4 = 0.
+
+    t = np.tan(np.deg2rad(za))
+    adc =  e0 + e1*t + e2*t*t + e3*t*t*t + e4*t*t*t*t
+
+    return adc
+
+def calc_atmospheric_refraction(za, wl=0.575):
+
+    # parameters
+    b = 0.00130
+    # Maunakea
+    p = 450    # mmHg
+    g = 978.627  # gal
+    t = 0. # degC
+    f = 1. # mmHg (RH=20%)
+    # function of wavelength [um]
+    rho = 6432.8 + 2949810./(146. - 1./wl/wl) + 25540./(41. - 1./wl/wl)
+    p1 = p*980.665/g
+    rho2 = rho*p1*(1. + (1.049 - 0.0157*t)*0.000001*p1)/(720.883*(1. + 0.003661*t))
+    rho3 = 0.00000001*(rho2 - f*(6.24 - 0.0680*wl*wl)/(1. + 0.003661*t))
+    a0 = rho3 - rho3*b + 2.*rho3*b*b - 0.5*rho3*rho3*b 
+    a1 = 0.5*rho3*rho3 + rho3*rho3*rho3/6. - rho3*b - 2.75*rho3*rho3*b + 5.*rho3*b*b
+    a2 = 0.5*rho3*rho3*rho3 -2.25*rho3*rho3*b + 3.*rho3*b*b
+    tanz = np.tan(np.deg2rad(za))
+    pr = a0*tanz + a1*tanz*tanz*tanz+ a2*tanz*tanz*tanz*tanz*tanz
+
+    return np.rad2deg(pr)
+
+def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=True):
+
+    # Set Observation Site (Subaru)
+    tel = EarthLocation.of_site('Subaru')
+    tel2 = Observer.at_site("Subaru", timezone="US/Hawaii")
+    # Observation time
+    obs_time = Time(time)
+    # The equinox of the catalogue
+    obs_jtime = Time(epoch, format='decimalyear')
+    logging.info(obs_jtime)
+    d_yr = TimeDelta(obs_time.jd-obs_jtime.jd, format='jd').to(u.yr)
+    logging.debug(d_yr)
+
+    # Atmospheric refraction
+    # aref_file = mypath+'data/Refraction_data_635nm.txt'
+    # atm_ref = np.loadtxt(aref_file)
+    # atm_interp = ipol.splrep(atm_ref[:, 0], atm_ref[:, 1], s=0)
+
+    pmra = pmra*u.mas/u.yr
+    pmdec = pmdec*u.mas/u.yr
+    par = par*u.mas
+
+    logging.debug(par)
+    coord1 = SkyCoord(ra*u.deg, dec*u.deg, par,
+                      pm_ra_cosdec=pmra, pm_dec=pmdec,
+                      frame='fk5', obstime=obs_jtime, equinox='J2000.000')
+    coord2 = coord1.apply_space_motion(dt=d_yr.to(u.yr))
+    coord3 = coord2.transform_to(FK5(equinox=obs_time.jyear_str))
+    coord4 = coord3.transform_to(TETE(obstime=obs_time, location=tel))
+    if log:
+        logging.info("Ra Dec = (%s %s) : original", 
+                     coord1.ra.deg, coord1.dec.deg)
+        logging.info("PM = (%s %s)", 
+                      coord1.pm_ra_cosdec, coord1.pm_dec)
+        logging.info("Ra Dec = (%s %s) : applied proper motion", 
+                     coord2.ra.deg, coord2.dec.deg)
+        logging.info("Ra Dec = (%s %s) : applied presession",
+                      coord3.ra.deg, coord3.dec.deg)
+        logging.info("Ra Dec = (%s %s) : applied earth motion",
+                     coord4.ra.deg, coord4.dec.deg)
+
+    altaz = coord4.transform_to(AltAz(obstime=obs_time, location=tel))
+
+    az = altaz.az.deg
+    el = altaz.alt.deg
+    za = 90. - el
+    el = el + calc_atmospheric_refraction(za)
+    # eld0 = el0 + ipol.splev(za, atm_interp)/3600.
+    try:
+        za = za[0]
+    except (IndexError, TypeError) as e:
+        pass
+
+    # Instrument rotator angle
+    if inr is None:
+        paa = tel2.parallactic_angle(obs_time, coord4).deg
+        lat = tel2.location.lat.deg
+        dc = coord4.dec.deg
+        logging.debug(dc)
+        if dc > lat:
+            inr = paa + pa
+        else:
+            inr = paa - pa
+
+    # check inr range is within +/- 180 degree
+    if inr <= -180.:
+        logging.info("InR will exceed the lower limit (-180 deg)")
+        inr = inr + 360.
+    elif inr >= +180:
+        logging.info("InR will exceed the upper limit (+180 deg)")
+        inr = inr - 360.
+
+    return az, el, inr
+ 
