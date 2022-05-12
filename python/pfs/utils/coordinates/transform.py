@@ -126,13 +126,8 @@ class MeasureDistortion:
 
     def __call__(self, args):
         tx, ty = self.distort(self.x, self.y, *args)
+        return np.mean(np.hypot(tx - self.x_mm, ty - self.y_mm)**2)
 
-        d = np.hypot(tx - self.x_mm, ty - self.y_mm)
-
-        if self.nsigma > 0:
-            d = d[self.clip(d, self.nsigma)]
-
-        return np.mean(d*d)
 
     def getArgs(self):
         return self._args
