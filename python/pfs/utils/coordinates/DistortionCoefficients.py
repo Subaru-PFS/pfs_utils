@@ -7,7 +7,7 @@ from scipy import interpolate as ipol
 
 from astropy import units as u
 from astropy.time import Time, TimeDelta
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, TETE, SkyOffsetFrame
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, TETE, Distance, SkyOffsetFrame
 from astroplan import Observer
 import astropy.coordinates as ascor
 
@@ -625,7 +625,7 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
     par = par*u.mas
 
     logging.debug(par)
-    coord1 = SkyCoord(ra*u.deg, dec*u.deg, par,
+    coord1 = SkyCoord(ra*u.deg, dec*u.deg, distance=Distance(parallax=par),
                       pm_ra_cosdec=pmra, pm_dec=pmdec,
                       frame='fk5', obstime=obs_jtime, equinox='J2000.000')
     coord2 = coord1.apply_space_motion(dt=d_yr.to(u.yr))

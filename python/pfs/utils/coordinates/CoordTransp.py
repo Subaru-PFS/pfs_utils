@@ -14,13 +14,13 @@ import astropy.coordinates as ascor
 from scipy.spatial.transform import Rotation as R
 
 # Dictionary keys ( argument name is mode)
-# sky_pfi_old : sky to F3C (using Kawanomoto's routine)
-# sky_pfi_old : sky to F3C (using Moritani's routine)
+# sky_pfi : sky to PFI (using Kawanomoto's routine)
+# sky_pfi_old : sky to PFI (using Moritani's routine)
 # sky_pfi_hsc : sky to hsc focal plane
 # sky_mcs : sky to MCS
-# pfi_mcs : F3C to MCS
-# pfi_mcs_wofe : F3C to MCS (w/o Field Element)
-# mcs_pfi : MCS to F3C
+# pfi_mcs : PFI to MCS
+# pfi_mcs_wofe : PFI to MCS (w/o Field Element)
+# mcs_pfi : MCS to PFI
 
 from . import DistortionCoefficients as DCoeff
 from . import Subaru_POPT2_PFS
@@ -590,6 +590,7 @@ def ag_pixel_to_pfimm(icam, xag, yag):
 
     y = (xag - 535.5)*DCoeff.agpixel
     x = - (yag - 520.5)*DCoeff.agpixel + DCoeff.agcent
+    x, y = rotation(x, y, DCoeff.agcent_off[icam][2], x0=DCoeff.agcent, y0=0.)
     xpfi, ypfi = rotation(x, y, icam*(-60.))
     xpfi = xpfi + DCoeff.agcent_off[icam][1]
     ypfi = ypfi + DCoeff.agcent_off[icam][0]
