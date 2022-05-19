@@ -253,7 +253,7 @@ class FiberIds(object):
         Returns
         -------
         an array of ("MTPID", (holes), cobraId) where "holes" are for the A, BA, BC, and C connectors,
-        and cobraId is the 0-indexed global cobra ID
+        and cobraId is the 1-indexed global cobra ID
 
         For SuNSS, the "cobra ID" is negative, and its absolute value is the ID in the
         ferrule (for the imaging leg) or 127 + ID (for the diffuse leg)
@@ -264,31 +264,34 @@ class FiberIds(object):
             except ImportError:
                 raise RuntimeError("You may not specify a pfsConfig file if pfs.datamodel is not setup")
 
+        assert np.all(np.arange(len(self.fiberId)) == self.fiberId - 1)
+
         mtp = []
-        for i, fid in zip(range(len(self.fiberId)), self.fiberId):
-            if fid in fiberIds:
-                holes = []
-                for mtp_X in [self.mtp_A, self.mtp_BA, self.mtp_BC, self.mtp_C]:
-                    segment, field, spectrograph, hole, cobra = self.splitConnector(mtp_X[i])
-                    holes.append(hole)
+        for fid in fiberIds:
+            i = fid - 1
 
-                cobraId = self.cobraId[i]
-                if pfsConfig is not None:
-                    ll = pfsConfig.fiberId == fid
-                    if sum(ll) == 0:
-                        raise RuntimeError(f"fiberId {fid} is not found in the pfsConfig file")
-                    tt = TargetType(pfsConfig.targetType[ll][0])
-                    if tt in (TargetType.SUNSS_DIFFUSE, TargetType.SUNSS_IMAGING):
-                        sid = self.sunssFiberId[i]
-                        sunssId = int(sid[1:])
-                        if sid[0] == 'd':
-                            assert tt == TargetType.SUNSS_DIFFUSE
-                            cobraId = -(127 + sunssId)
-                        else:
-                            assert tt == TargetType.SUNSS_IMAGING
-                            cobraId = -sunssId
+            holes = []
+            for mtp_X in [self.mtp_A, self.mtp_BA, self.mtp_BC, self.mtp_C]:
+                segment, field, spectrograph, hole, cobra = self.splitConnector(mtp_X[i])
+                holes.append(hole)
 
-                mtp.append((f"{segment}-{field}-{spectrograph}", holes, cobraId))
+            cobraId = self.cobraId[i]
+            if pfsConfig is not None:
+                ll = pfsConfig.fiberId == fid
+                if sum(ll) == 0:
+                    raise RuntimeError(f"fiberId {fid} is not found in the pfsConfig file")
+                tt = TargetType(pfsConfig.targetType[ll][0])
+                if tt in (TargetType.SUNSS_DIFFUSE, TargetType.SUNSS_IMAGING):
+                    sid = self.sunssFiberId[i]
+                    sunssId = int(sid[1:])
+                    if sid[0] == 'd':
+                        assert tt == TargetType.SUNSS_DIFFUSE
+                        cobraId = -(127 + sunssId)
+                    else:
+                        assert tt == TargetType.SUNSS_IMAGING
+                        cobraId = -sunssId
+
+            mtp.append((f"{segment}-{field}-{spectrograph}", holes, cobraId))
 
         return mtp
 
@@ -300,7 +303,8 @@ class FiberIds(object):
             return None, None, None, None, None
 
         fields = connectorName.split('-')
-        fields[1:] = [int(i) for i in fields[1:]]
+        fields[1:-1] = [int(i) for i in fields[1:-1]]
+        fields[-1] = fields[-1] if fields[-1] == "x" else int(fields[-1])
         segment, field, spectrograph, hole, cobra = fields
 
         return segment, field, spectrograph, hole, cobra
