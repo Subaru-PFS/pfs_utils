@@ -308,3 +308,19 @@ class FiberIds(object):
         segment, field, spectrograph, hole, cobra = fields
 
         return segment, field, spectrograph, hole, cobra
+
+    def fiberIdToCobraId(self, fiberIds):
+        """Return cobraIds for the specified fiberIds
+
+        Args
+        ----
+        fiberIds : array of 1-indexed fiberIds
+
+        Returns
+        -------
+        an array of cobraId) where cobraId is the 1-indexed global cobra ID
+        """
+
+        assert np.all(self.fiberId[fiberIds - 1] == fiberIds)
+
+        return self.cobraId[fiberIds - 1]
