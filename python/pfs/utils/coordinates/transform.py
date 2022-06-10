@@ -303,7 +303,7 @@ class PfiTransform:
         xyin[0] = -(xyin[0] - self.mcs_boresight_x_pix)   # rotate 180 about centre
         xyin[1] = -(xyin[1] - self.mcs_boresight_y_pix)
 
-        xy = CoordinateTransform(xyin, 90.0 - self.altitude, "mcs_pfi", inr=self.insrot)
+        xy = CoordinateTransform(xyin, "mcs_pfi", za=90.0 - self.altitude, inr=self.insrot)
         xp, yp = xy[0], xy[1]
 
         if self.applyDistortion:
@@ -335,8 +335,8 @@ class PfiTransform:
             xm, ym = x.copy(), y.copy()
 
         xyin = np.stack((xm, ym))
-        xyout = CoordinateTransform(xyin, 90.0 - self.altitude,
-                                    "pfi_mcs", inr=self.insrot) # first guess at MCS coordinates
+        xyout = CoordinateTransform(xyin, "pfi_mcs", za=90.0 - self.altitude,
+                                    inr=self.insrot) # first guess at MCS coordinates
         #
         # Deal with coordinate transformations on the MCS
         #
