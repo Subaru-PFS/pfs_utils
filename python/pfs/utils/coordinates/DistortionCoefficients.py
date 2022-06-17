@@ -7,7 +7,16 @@ from scipy import interpolate as ipol
 
 from astropy import units as u
 from astropy.time import Time, TimeDelta
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, TETE, Distance, SkyOffsetFrame
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, Distance, SkyOffsetFrame
+try:
+    from astropy.coordinates import TETE
+except ImportError:
+    import astropy
+    logging.warning("Unable to load TETE (old version of astropy? (%s)); using FK5", astropy.__version__)
+
+    def TETE(obstime, location):
+        return FK5(equinox=obstime.jyear_str)
+
 from astroplan import Observer
 import astropy.coordinates as ascor
 
