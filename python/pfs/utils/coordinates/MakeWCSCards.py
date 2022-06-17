@@ -118,7 +118,8 @@ def get_wcs_ag(cent, rot, alt, az, pa=0., icam=0, time='2020-01-01 10:00:00'):
     scale_pix = c.rsc[0] * disco.agpixel
 
     # intermediate worlds to worlds
-    xyout = coord.CoordinateTransform(xyin, "pfi_sky", za=0., , time=time,
+    raise RuntimeError("get_wcs_ag is disabled waiting for bugfix")
+    xyout = coord.CoordinateTransform(xyin, "pfi_sky", za=0., time=time,
                                       cent=cent, pa=pa)
     # print(xyout)
     w.wcs.cdelt = np.array([-1.*scale_pix, -1.*scale_pix])
