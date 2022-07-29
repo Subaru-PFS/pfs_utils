@@ -3,8 +3,6 @@
 
 import numpy as np
 from scipy.optimize import minimize
-from lsst.geom import AffineTransform
-from pfs.drp.stella.math import evaluateAffineTransform
 
 
 class OptimizeBlackDots:
@@ -121,7 +119,7 @@ class OptimizeBlackDots:
         It is also easier to interpolate than extrapolate, so we allow for
         more freedom.
 
-        Improvents to the cleaning algorithm are definetly possible. Few spots
+        Improvents to the cleaning algorithm are definitely possible. Few spots
         have observations which are obviously coming from different fibers.
         Some fibers have breaks from either side of observation for unknown
         reasons, and this could be accounted as well.
@@ -292,24 +290,33 @@ class OptimizeBlackDots:
 
         return np.hypot(x1, y1) < r
 
-    def new_position_of_dots(self, aff_mat_11, aff_mat_21, aff_mat_12,
-                             aff_mat_22, aff_mat_13, aff_mat_23):
-        """Move the dots to the new positions via affine tranformation
+    def new_position_of_dots(self, a1x, a2x, a3x, a1y, a2y, a3y,
+                             b1y, b2y, b3y, b1x, b2x, b3x,
+                             x0, y0, a1x_a1y, a1y_a1x):
+        """Move the dots to the new positions via polyfit transformation
 
         Parameters
         ----------
-        aff_mat_11: `float`
-            Value for affine matrix at position [1,1]
-        aff_mat_12: `float`
-            Value for affine matrix at position [2,1]
-        aff_mat_21: `float`
-            Value for affine matrix at position [1,2]
-        aff_mat_12: `float`
-            Value for affine matrix at position [2,2]
-        aff_mat_13: `float`
-            Value for affine matrix at position [1,3]
-        aff_mat_23
-            Value for affine matrix at position [2,3]
+        a1x, a2x, a3x: `float`
+            First, second and third order change of x-coordinate, as a fun of
+            of x-coordinate
+        a1y, a2y, a3y: `float`
+            First, second and third order change of x-coordinate, as a fun of
+            of y-coordinate
+        b1x, b2x, b3x: `float`
+            First, second and third order change of y-coordinate, as a fun of
+            of x-coordinate
+        b1y, b2y, b3y: `float`
+            First, second and third order change of y-coordinate, as a fun of
+            of y-coordinate
+        x0, y0: `float`
+            x and y coordinate around which to create transformation
+        a1x_a1y: `float`
+            Change of x coordinate, as a fun of combination of
+            x and y coordinate
+        a1y_a1x: `float`
+            Change of y coordinate, as a fun of combination of
+            x and y coordinate
 
         Returns
         ----------
@@ -320,12 +327,26 @@ class OptimizeBlackDots:
         dots = self.dots
         xd_original = dots['x'].values
         yd_original = dots['y'].values
+
+        # This is a scaling constant to make higher order variables more human readable
+        # It is not adjustable constant, and as such it is not an input
+        sc_con = 100
+
+        xd_new = a1x*(xd_original-x0) + a2x*((xd_original-x0)/sc_con)**2 + a3x*((xd_original-x0)/sc_con)**3\
+            + a1y*(yd_original-y0) + a2y*((yd_original-y0)/sc_con)**2 + a3y*((yd_original-y0)/sc_con)**3\
+            + a1x_a1y*(xd_original-x0)*(yd_original-y0)
+        yd_new = b1x*(xd_original-x0) + b2x*((xd_original-x0)/sc_con)**2 + b3x*((xd_original-x0)/sc_con)**3\
+            + b1y*(yd_original-y0) + b2y*((yd_original-y0)/sc_con)**2 + b3y*((yd_original-y0)/sc_con)**3\
+            + a1y_a1x*((xd_original-x0))*((yd_original-y0))
+
+        """
         transform = AffineTransform()
         AffineTransform.setParameterVector(transform,
                                            np.array([aff_mat_11, aff_mat_21,
                                                      aff_mat_12, aff_mat_22,
                                                      aff_mat_13, aff_mat_23]))
         xd_new, yd_new = evaluateAffineTransform(transform, xd_original, yd_original)
+        """
         dots_new = dots.copy(deep=True)
         dots_new['x'] = xd_new
         dots_new['y'] = yd_new
@@ -425,10 +446,15 @@ class OptimizeBlackDots:
         self.optimization_result = optimization_result
         return np.sum(optimization_result)
 
-    def find_optimized_dots(self, scal_var=np.array([1, 0, 0, 1, 0, 0]),
-                            scal_var_bounds=np.array([(0.99, 1.01), (-0.01, 0.01),
-                                                      (-0.01, 0.01), (0.99, 1.01),
-                                                      (-0.25, 0.25), (-0.25, 0.25)]),
+    def find_optimized_dots(self, scal_var=np.array([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]),
+                            scal_var_bounds=np.array([(0.9, 1.1), (-0.1, 0.1),
+                                                      (-0.5, 0.5), (-1, 1),
+                                                      (-0.1, 0.1), (-0.5, 0.5),
+                                                      (0.9, 1.1), (-0.1, 0.1),
+                                                      (-0.5, 0.5), (-1, 1),
+                                                      (-0.1, 0.1), (-0.5, 0.5),
+                                                      (-2, 2), (-2, 2),
+                                                      (-0.02, 0.02), (-0.02, 0.02)]),
                             max_iter=1000,
                             rand_val=1234):
         """Find the actual positions of dots
@@ -459,11 +485,12 @@ class OptimizeBlackDots:
         Calls `new_position_of_dots`
          """
         # spawn the initial simplex to search for the solutions
-        init_simplex = np.zeros((7, 6))
+        l_var = len(scal_var)
+        init_simplex = np.zeros((l_var+1, l_var))
         np.random.seed(rand_val)
-        for point in range(1, 7):
+        for point in range(1, l_var+1):
             init_simplex[point] = scal_var_bounds[:, 0] +\
-                (scal_var_bounds[:, 1]-scal_var_bounds[:, 0])*np.random.random_sample(size=6)
+                (scal_var_bounds[:, 1]-scal_var_bounds[:, 0])*np.random.random_sample(size=l_var)
         init_simplex[0] = scal_var
 
         # simple Nelder-Mead will do sufficently good job
