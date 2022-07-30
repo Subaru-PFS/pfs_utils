@@ -395,7 +395,7 @@ class OptimizeBlackDots:
 
         Parameters
         ----------
-        design_variables: `np.array` of `floats`
+        scaling_variables: `np.array` of `floats`
             Variables that describe the transformation
 
         Returns
@@ -417,16 +417,9 @@ class OptimizeBlackDots:
         Calls `total_penalty_for_single_dot`
         Gets called by `find_optimized_dots`
         """
-        xd_mod = scaling_variables[0]
-        yd_mod = scaling_variables[1]
-        scale = scaling_variables[2]
-        rot = scaling_variables[3]
-        x_scale_rot = scaling_variables[4]
-        y_scale_rot = scaling_variables[5]
 
         optimization_result = np.zeros((self.n_runs, self.number_of_fibers))
-        dots_new = self.new_position_of_dots(xd_mod, yd_mod, scale,
-                                             rot, x_scale_rot, y_scale_rot)
+        dots_new = self.new_position_of_dots(*scaling_variables)
 
         for run in range(self.n_runs):
             x_positions = self.obs_and_predict_multi[run][0]
@@ -444,6 +437,7 @@ class OptimizeBlackDots:
             optimization_result[run] -= np.sum(np.isnan(x_positions), 1)
 
         self.optimization_result = optimization_result
+        self.dots_new = dots_new
         return np.sum(optimization_result)
 
     def find_optimized_dots(self, scal_var=np.array([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]),
@@ -459,7 +453,7 @@ class OptimizeBlackDots:
                             rand_val=1234):
         """Find the actual positions of dots
 
-        Use Nelder-Mead algorithm to find positions of dots which minimize
+        Use Powell algorithm to find positions of dots which minimize
         the `penalty`.
 
         Parameters
@@ -484,22 +478,14 @@ class OptimizeBlackDots:
         Calls `optimize_function`
         Calls `new_position_of_dots`
          """
-        # spawn the initial simplex to search for the solutions
-        l_var = len(scal_var)
-        init_simplex = np.zeros((l_var+1, l_var))
-        np.random.seed(rand_val)
-        for point in range(1, l_var+1):
-            init_simplex[point] = scal_var_bounds[:, 0] +\
-                (scal_var_bounds[:, 1]-scal_var_bounds[:, 0])*np.random.random_sample(size=l_var)
-        init_simplex[0] = scal_var
 
-        # simple Nelder-Mead will do sufficently good job
         res = minimize(self.optimize_function,
-                       x0=init_simplex[0], method='Nelder-Mead',
-                       options={'maxiter': max_iter, 'initial_simplex': init_simplex})
+                       x0=scal_var, method='Powell',
+                       options={'maxiter': max_iter})
 
         dots_new = self.new_position_of_dots(*res.x)
         self.res = res
+        self.dots_new = dots_new
         return dots_new
 
 

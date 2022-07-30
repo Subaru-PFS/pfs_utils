@@ -1,4 +1,5 @@
-from pfs.utils.optimizeBlackDots import OptimizeBlackDots
+# from pfs.utils.optimizeBlackDots import OptimizeBlackDots
+from optimizeBlackDots import OptimizeBlackDots
 from pfs.datamodel import PfsDesign
 from pfs.utils.fiberids import FiberIds
 
@@ -7,6 +8,7 @@ import pandas as pd
 from scipy import optimize
 
 import argparse
+import ast
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -22,8 +24,9 @@ fbi = FiberIds()
 
 """
 Example use:
-python blackDotsScript.py -work_directory /work/ncaplar/BlackDotsData/ -first_name mcs_data_all_1\
--second_name mcs_data_all_2 -first_type theta -second_type phi -cobra_id 505
+python blackDotsScript.py -work_directory /work/ncaplar/BlackDotsData/ -first_name mcsData.v077873.phi \
+-second_name mcsData.v077875.theta -first_type phi -second_type theta -theta_design 4090361041684486814 \
+-phi_design 5426181922868053827 -broken_design False -cobra_id 505
 
 Arguments:
 -work_directory: Location where the crossing data, dots and CobraGeometry is stored
@@ -32,6 +35,9 @@ Arguments:
 -second_name: Name of the second crossing numpy file (specify without .npy at the end)
 -first_type: Which move is the first crossing (theta, phi)
 -second_type: Which move is the second crossing (theta, phi)
+-theta_design: Name of the design file for theta crossing
+-phi_design: Name of the design file for phi crossing
+-broken_design: Is the design ``broken''. True for below 077873, False for later visits
 -cobra_id: Which cobra to visualize
 """
 
@@ -72,7 +78,9 @@ class OptimizeBlackDotsVisualize:
         self.res = res
 
         # compare the optimized results with the non-optimized result
-        optimize_black_dots_instance.optimize_function([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        optimize_black_dots_instance.optimize_function([1, 0, 0, 0, 0, 0,
+                                                        1, 0, 0, 0, 0, 0,
+                                                        0, 0, 0, 0])
         list_of_total_penalty_for_single_dot_original = optimize_black_dots_instance.optimization_result
         optimize_black_dots_instance.optimize_function(res.x)
         list_of_total_penalty_for_single_dot_optimized = optimize_black_dots_instance.optimization_result
@@ -119,6 +127,8 @@ class OptimizeBlackDotsVisualize:
         thetaDesign = PfsDesign.read(self.theta_design, dirName='/data/pfsDesign/')
         phiDesign = PfsDesign.read(self.phi_design, dirName='/data/pfsDesign/')
 
+        print(self.broken_design)
+        print(type(self.broken_design))
         if self.broken_design:
             phiDesign = phiDesign.pfiNominal[~np.isnan(phiDesign.pfiNominal[:, 0])]
             thetaDesign = thetaDesign.pfiNominal[~np.isnan(thetaDesign.pfiNominal[:, 0])]
@@ -126,6 +136,7 @@ class OptimizeBlackDotsVisualize:
             thetaX, thetaY = thetaDesign[cobra_id]
         else:
             fiberId, = gfm.query(f'cobraId=={cobra_id+1}').fiberId
+            print(fiberId)
             [[phiX, phiY]] = phiDesign.pfiNominal[phiDesign.fiberId == fiberId]
             [[thetaX, thetaY]] = thetaDesign.pfiNominal[thetaDesign.fiberId == fiberId]
 
@@ -155,12 +166,12 @@ class OptimizeBlackDotsVisualize:
 
         cc_blue = Circle((xc_1, yc_1), R_1, color='blue',
                          alpha=0.5, label='original dot position', fill=False, lw=2)
-        # center_cc_blue = ax1.scatter(xc_1, yc_1,
-        #                              color='blue', label='center of circle 1', marker='p', s=200)
+        center_cc_blue = ax1.scatter(xc_1, yc_1,
+                                     color='blue', label='center of circle 1', marker='p', s=200)
         cc_orange = Circle((xc_2, yc_2), R_2, color='orange',
                            alpha=0.5, label='original dot position', fill=False, lw=2)
-        # center_cc_orange = ax1.scatter(xc_2, yc_2,
-        #                                color='orange', label='center of circle 2', marker='p', s=200)
+        center_cc_orange = ax1.scatter(xc_2, yc_2,
+                                       color='orange', label='center of circle 2', marker='p', s=200)
 
         ax1.set_aspect(1)
         ax1.add_artist(cc_cobra)
@@ -195,12 +206,12 @@ class OptimizeBlackDotsVisualize:
 
         cc_blue = Circle((xc_1, yc_1), R_1, color='blue',
                          alpha=0.5, label='original dot position', fill=False, lw=2)
-        # center_cc_blue = ax2.scatter(xc_1, yc_1,
-        #                              color='blue', label='center of circle 1', marker='p', s=200)
+        center_cc_blue = ax2.scatter(xc_1, yc_1,
+                                     color='blue', label='center of circle 1', marker='p', s=200)
         cc_orange = Circle((xc_2, yc_2), R_2, color='orange',
                            alpha=0.5, label='original dot position', fill=False, lw=2)
-        # center_cc_orange = ax2.scatter(xc_2, yc_2,
-        #                                color='orange', label='center of circle 2', marker='p', s=200)
+        center_cc_orange = ax2.scatter(xc_2, yc_2,
+                                       color='orange', label='center of circle 2', marker='p', s=200)
 
         ax2.scatter(self.getCobraGeometry_cobra_id.loc[cobra_id+1]['center_x_mm'],
                     self.getCobraGeometry_cobra_id.loc[cobra_id+1]['center_y_mm'], color='black')
@@ -216,12 +227,12 @@ class OptimizeBlackDotsVisualize:
         if show_optimization:
             ax2.add_artist(cc_modified)
 
-        data1 = ax2.scatter(self.mcs_data_all_1[0, cobra_id+1][:40], self.mcs_data_all_1[1, cobra_id+1][:40],
+        data1 = ax2.scatter(self.mcs_data_all_1[0, cobra_id+1], self.mcs_data_all_1[1, cobra_id+1],
                             color='blue', label='observed in run 1')
-        data2 = ax2.scatter(self.mcs_data_all_2[0, cobra_id+1][:40], self.mcs_data_all_2[1, cobra_id+1][:40],
+        data2 = ax2.scatter(self.mcs_data_all_2[0, cobra_id+1], self.mcs_data_all_2[1, cobra_id+1],
                             color='orange', label='observed in run 2')
-        # theta_start = ax2.scatter(thetaX, thetaY, label='starting for theta', color='orange', s=250)
-        # phi_start = ax2.scatter(phiX, phiY, label='starting for theta', color='blue', s=250)
+        theta_start = ax2.scatter(thetaX, thetaY, label='starting for theta', color='orange', s=250)
+        phi_start = ax2.scatter(phiX, phiY, label='starting for phi', color='blue', s=250)
 
         if show_predictions:
             predicted1 = ax2.scatter(predicted_position_x_1_not_observed, predicted_position_y_1_not_observed,
@@ -240,10 +251,9 @@ class OptimizeBlackDotsVisualize:
         ax2.set_xlabel('x position [mm]')
         ax2.set_ylabel('y position [mm]')
 
-        ax2.legend(handles=[cc_cobra, cc_original, cc_modified, data1, data2, predicted1, predicted2])
+        ax2.legend(handles=[cc_cobra, cc_original, cc_modified, data1, data2, predicted1, predicted2,
+                            phi_start, theta_start, center_cc_blue, center_cc_orange])
         fiberId = fbi.fiberId[fbi.cobraId == (cobra_id+1)][0]
-
-        ax2.legend(handles=[cc_cobra, cc_original, cc_modified, data1, data2, predicted1, predicted2])
         fig.savefig(work_directory + 'show_single_cobra_' + str(cobra_id)+'.png', bbox_inches='tight')
 
     def show_improvment_1d(self):
@@ -447,6 +457,21 @@ parser.add_argument(
     type=str)
 
 parser.add_argument(
+    "-theta_design",
+    help="theta design integer",
+    type=int)
+
+parser.add_argument(
+    "-phi_design",
+    help="theta design integer",
+    type=int)
+
+parser.add_argument(
+    "-broken_design",
+    help="True before 077873",
+    type=str)
+
+parser.add_argument(
     "-cobra_id",
     help="which cobra to visualize",
     type=int)
@@ -464,6 +489,9 @@ first_name = args.first_name.strip()
 second_name = args.second_name.strip()
 first_type = args.first_type.strip()
 second_type = args.second_type.strip()
+theta_design = args.theta_design
+phi_design = args.phi_design
+broken_design = ast.literal_eval(args.broken_design)
 cobra_id = args.cobra_id
 
 # positions of the dots
@@ -474,11 +502,11 @@ dots = pd.read_pickle(work_directory + "dots.pkl")
 getCobraGeometry_cobra_id = pd.read_pickle(work_directory + "getCobraGeometry_cobra_id.pkl")
 
 mcs_data_all_1 = np.load(work_directory + first_name + '.npy')
-
 if first_name == 'mcs_data_all_1':
     # take only 40 measurments - 41st was wrongly attached to this file
     # this is the emergency fix to analyze the dataset from November 2021
     mcs_data_all_1 = mcs_data_all_1[:, :, :40]
+
 mcs_data_all_2 = np.load(work_directory + second_name + '.npy')
 
 
@@ -496,7 +524,7 @@ optimize_black_dots_instance = OptimizeBlackDots(dots, list_of_mcs_data_all,
 dots_new = optimize_black_dots_instance.find_optimized_dots(scal_var=np.array([1, 0, 0, 0, 0, 0,
                                                                                1, 0, 0, 0, 0, 0,
                                                                                0, 0, 0, 0]),
-                                                            rand_val=1234, max_iter=10000)
+                                                            max_iter=10000, rand_val=1234)
 
 optimization_result = optimize_black_dots_instance.optimization_result
 res = optimize_black_dots_instance.res
@@ -515,11 +543,11 @@ print("penalty after the optimization: "+str(penalty_after))
 OptimizeBlackDotsVisualize_instance = OptimizeBlackDotsVisualize(mcs_data_all_1, mcs_data_all_2,
                                                                  optimize_black_dots_instance,
                                                                  getCobraGeometry_cobra_id,
-                                                                 theta_design=4090361041684486814,
-                                                                 phi_design=5426181922868053827,
-                                                                 broken_design=False)
+                                                                 theta_design=theta_design,
+                                                                 phi_design=phi_design,
+                                                                 broken_design=broken_design)
 
-single_cobra_plot = OptimizeBlackDotsVisualize_instance.show_single_cobra(cobra_id=cobra_id)
+single_cobra_plot = OptimizeBlackDotsVisualize_instance.show_single_cobra(cobra_id=int(cobra_id))
 show_improvment_1d = OptimizeBlackDotsVisualize_instance.show_improvment_1d()
 show_improvment_2d = OptimizeBlackDotsVisualize_instance.show_improvment_2d()
 show_movement = OptimizeBlackDotsVisualize_instance.show_movement()
