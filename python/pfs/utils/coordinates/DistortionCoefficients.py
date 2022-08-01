@@ -73,9 +73,13 @@ agcent_off = [[-0.405, 0.668, -0.253368], [-0.055, -0.081, 0.234505],
               [0.444, -0.138, 0.0589071], [0.067, 0.077, 0.234977]]
 
 # PFI InR offset from the telescope telescope
-inr_pfi = -90
-inr_min = -180
-inr_max = +180
+inr_pfi = -90  # deg
+inr_min = -180  # deg
+inr_max = +180  # deg
+pfi_offx = -1.855  # mm
+pfi_offy = -0.998  # mm
+pfi_offrot = 0.765507  # deg
+pfi_diffscale = 0.999232042
 
 
 class Coeff:
