@@ -1,5 +1,4 @@
-# from pfs.utils.optimizeBlackDots import OptimizeBlackDots
-from optimizeBlackDots import OptimizeBlackDots
+from pfs.utils.optimizeBlackDots import OptimizeBlackDots
 from pfs.datamodel import PfsDesign
 from pfs.utils.fiberids import FiberIds
 
@@ -39,6 +38,21 @@ Arguments:
 -phi_design: Name of the design file for phi crossing
 -broken_design: Is the design ``broken''. True for below 077873, False for later visits
 -cobra_id: Which cobra to visualize
+
+To get design numbers:
+conn = psycopg2.connect("dbname='opdb' host='pfsa-db01' port=5432 user='pfs' password=####")
+with conn:
+     df = pd.read_sql("select pfs_visit.pfs_visit_id, pfs_design_id,
+                      iic_sequence.visit_set_id, sequence_type from iic_sequence inner join "
+                      "visit_set on visit_set.visit_set_id=iic_sequence.visit_set_id inner
+                      join pfs_visit on pfs_visit.pfs_visit_id=visit_set.pfs_visit_id "
+                      "where sequence_type='thetaCrossing' or sequence_type='phiCrossing' ", conn)
+
+Note that cobraGeometry file is read from pd.read_pickle(work_directory + "getCobraGeometry_cobra_id.pkl")
+
+Example on how to create mcs_data is at /work/ncaplar/PFI Geometry-INSTRM-1370_neven.ipynb
+Full notebok of using this code for June 2022 run is at /work/ncaplar/BlackDots_Jun20_2022_9pm.ipynb
+Notebok with cleaned up commands is at /work/ncaplar/BlackDots_postJuneRun_PIPE2D_1054.ipynb
 """
 
 
@@ -50,10 +64,20 @@ class OptimizeBlackDotsVisualize:
 
     Parameters
     ----------
+    mcs_data_all_1: `np.array`,  (N_fib + 1, N_obs)
+        Positions of observed spots, first run
+     mcs_data_all_2: `np.array`,  (N_fib + 1, N_obs)
+        Positions of observed spots, second run
     optimize_black_dots_instance: `pfs.utils.optimizeBlackDots.OptimizeBlackDots`
         Optimization class instance
     getCobraGeometry_cobra_id: `pd.DataFrame`
-        Contains informatin about positions of cobras
+        Contains informtion about positions of cobras
+    theta_design: `int`
+        Number of design for theta movement
+    phi_design: `int`
+        Number of design for phi movement
+    broken_design: `bool`
+        Is the design ``broken''. True for below 077873, False for later visits
     """
 
     def __init__(self, mcs_data_all_1, mcs_data_all_2,
