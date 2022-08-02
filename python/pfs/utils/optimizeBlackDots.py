@@ -43,6 +43,7 @@ class OptimizeBlackDots:
         # small variations exist, but those have neglible impact
         self.radius_of_black_dots = 0.75
 
+        self.list_of_mcs_data_all = list_of_mcs_data_all
         obs_and_predict_multi = []
         for obs in range(len(list_of_mcs_data_all)):
             mcs_data_all = list_of_mcs_data_all[obs]
@@ -424,11 +425,12 @@ class OptimizeBlackDots:
         self.optimization_result = optimization_result
         return np.sum(optimization_result)
 
-    def find_optimized_dots(self, scal_var=np.array([1, 0, 0, 1, 0,  0]),
+    def find_optimized_dots(self, scal_var=np.array([1, 0, 0, 1, 0, 0]),
                             scal_var_bounds=np.array([(0.99, 1.01), (-0.01, 0.01),
                                                       (-0.01, 0.01), (0.99, 1.01),
                                                       (-0.25, 0.25), (-0.25, 0.25)]),
-                            max_iter=1000):
+                            max_iter=1000,
+                            rand_val=1234):
         """Find the actual positions of dots
 
         Use Nelder-Mead algorithm to find positions of dots which minimize
@@ -442,6 +444,8 @@ class OptimizeBlackDots:
             Bounds supplied to the minimizer for the parametes
         max_iter: `int`, optional
             Maximal number of iterations for the minimizer
+        rand_val: `int`, optional
+            Random seed value
 
         Returns
         ----------
@@ -456,6 +460,7 @@ class OptimizeBlackDots:
          """
         # spawn the initial simplex to search for the solutions
         init_simplex = np.zeros((7, 6))
+        np.random.seed(rand_val)
         for point in range(1, 7):
             init_simplex[point] = scal_var_bounds[:, 0] +\
                 (scal_var_bounds[:, 1]-scal_var_bounds[:, 0])*np.random.random_sample(size=6)
