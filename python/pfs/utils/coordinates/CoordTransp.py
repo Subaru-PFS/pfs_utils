@@ -154,7 +154,15 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = mm_to_pixel(x, y, cent)
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi':
+        # telescope to designed PFI
         xx, yy = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
+
+        # designed PFI to measured PFI
+        xx = xx + DCoeff.pfi_offx
+        yy = yy + DCoeff.pfi_offy
+        xx, yy = rotation(xx, yy, DCoeff.pfi_offrot,
+                          x0=DCoeff.pfi_offx, y0=DCoeff.pfi_offy,
+                          sc=DCoeff.pfi_diffscale)
     elif c.mode == 'sky_pfi_old' or c.mode == 'sky_pfi_hsc':
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
@@ -557,7 +565,7 @@ def ag_pfimm_to_pixel(icam, xpfi, ypfi):
     # x0, y0 = rotation(DCoeff.agcent_off[icam][1], DCoeff.agcent_off[icam][0], icam*60.)
 
     xag = (y)/DCoeff.agpixel + 535.5
-    yag = - (x - DCoeff.agcent)/DCoeff.agpixel + 520.5 
+    yag = - (x - DCoeff.agcent)/DCoeff.agpixel + 520.5
 
     return xag, yag
 
@@ -598,7 +606,7 @@ def ag_pixel_to_pfimm(icam, xag, yag):
     return xpfi, ypfi
 
 
-def rotation(x, y, rot, rot_off=0., x0=0., y0=0.):
+def rotation(x, y, rot, rot_off=0., x0=0., y0=0., sc=1.):
     """Rotate position
 
     Parameters
@@ -609,6 +617,14 @@ def rotation(x, y, rot, rot_off=0., x0=0., y0=0.):
         Input coordinates in y-axis.
     rot : `float`
         Rotation angle in unit of degree.
+    rot_off : `float` (optional)
+        offset angle for rotation. Default is 0.
+    x0 : `float` (optional)
+        osset X position. Default is 0.
+    y0 : `float` (optional)
+        osset Y position. Default is 0.
+    sc : `float` (optional)
+        scale change. Default is 1.
 
     Returns
     -------
@@ -623,4 +639,4 @@ def rotation(x, y, rot, rot_off=0., x0=0., y0=0.):
     rx = np.cos(ra)*(x-x0) - np.sin(ra)*(y-y0) + x0
     ry = np.sin(ra)*(x-x0) + np.cos(ra)*(y-y0) + y0
 
-    return rx, ry
+    return sc*rx, sc*ry
