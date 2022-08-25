@@ -320,10 +320,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         paa = tel2.parallactic_angle(obs_time, coord_cent).deg
         lat = tel2.location.lat.deg
         dc = coord_cent.dec.deg
-        if dc > lat:
-            inr = paa + pa
-        else:
-            inr = paa - pa
+        inr = paa + pa
 
         # check inr range is within +/- 180 degree
         if inr <= -180.:
@@ -555,8 +552,8 @@ def ag_pfimm_to_pixel(icam, xpfi, ypfi):
     """
 
     # remove center offset
-    xpfi = xpfi - DCoeff.agcent_off[icam][1]
-    ypfi = ypfi - DCoeff.agcent_off[icam][0]
+    xpfi = xpfi + DCoeff.agcent_off[icam][1]
+    ypfi = ypfi + DCoeff.agcent_off[icam][0]
     # rotate to AG1 place (to align x/y axes)
     x, y = rotation(xpfi, ypfi, icam*60.)
     # Rotation of AG camera itself
@@ -600,8 +597,8 @@ def ag_pixel_to_pfimm(icam, xag, yag):
     x = - (yag - 520.5)*DCoeff.agpixel + DCoeff.agcent
     x, y = rotation(x, y, DCoeff.agcent_off[icam][2], x0=DCoeff.agcent, y0=0.)
     xpfi, ypfi = rotation(x, y, icam*(-60.))
-    xpfi = xpfi + DCoeff.agcent_off[icam][1]
-    ypfi = ypfi + DCoeff.agcent_off[icam][0]
+    xpfi = xpfi - DCoeff.agcent_off[icam][1]
+    ypfi = ypfi - DCoeff.agcent_off[icam][0]
 
     return xpfi, ypfi
 

@@ -431,6 +431,7 @@ class Coeff:
         """
 
         za = np.deg2rad(za)
+        za0 = np.deg2rad(za0)
         coeffx = self.dsc[0]*(self.dsc[1]*np.sin(za) + (1-np.cos(za)))
         coeffy = self.dsc[2]*(self.dsc[3]*np.sin(za) + (1-np.cos(za)))
         coeffx0 = self.dsc[0]*(self.dsc[1]*np.sin(za0) + (1-np.cos(za0)))
@@ -674,10 +675,7 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
         lat = tel2.location.lat.deg
         dc = coord4.dec.deg
         logging.debug(dc)
-        if dc > lat:
-            inr = paa + pa
-        else:
-            inr = paa - pa
+        inr = paa + pa
 
     # check inr range is within +/- 180 degree
     if inr <= -180.:
