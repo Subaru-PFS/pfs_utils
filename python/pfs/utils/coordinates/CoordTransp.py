@@ -77,7 +77,7 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
     c = DCoeff.Coeff(mode)
 
     # Transform iput coordinates to those the same as WFC as-built model
-    xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c, 
+    xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c,
                                          cent, time, pm, par, epoch)
     if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old')) and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
@@ -87,10 +87,10 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
         dmya = np.zeros((6, xyin.shape[1]))
         # print(dmy)
         popt2 = Subaru_POPT2_PFS.POPT2()
-        subaru = Subaru_POPT2_PFS.Subaru()
         m3pos = DCoeff.calc_m3pos(za)
         adc = DCoeff.calc_adc_position(za)
-        telx, tely = popt2.celestial2focalplane_cobra(xyin[0,:], xyin[1,:], adc, m3pos, 0.575)
+        telx, tely = popt2.celestial2focalplane_cobra(xyin[0, :], xyin[1, :],
+                                                      adc, m3pos, DCoeff.wl_ag)
         xx, yy = convert_out_position(telx, tely, inr, c, cent, time)
         xyout = np.vstack((xx, yy, dmya))
     else:  # Using YM code
@@ -264,15 +264,15 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
     elif (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_old') or (c.mode == 'sky_pfi_hsc'):
 
         # Ra-Dec to Az-El (Center): no proper motion nor parallax
-        pmra_cent = 0. #*u.mas/u.yr
-        pmdec_cent = 0. #*u.mas/u.yr
-        par_cent = 0.00000001 #*u.mas
+        pmra_cent = 0.  # u.mas/u.yr
+        pmdec_cent = 0.  # u.mas/u.yr
+        par_cent = 0.00000001  # u.mas
         ra0 = cent[0][0]
         dec0 = cent[1][0]
         logging.debug(pmra_cent)
 
-        az0, el0, inr = DCoeff.radec_to_subaru(ra0, dec0, pa, time, 
-                                               epoch, pmra_cent, 
+        az0, el0, inr = DCoeff.radec_to_subaru(ra0, dec0, pa, time,
+                                               epoch, pmra_cent,
                                                pmdec_cent, par_cent)
 
         logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
@@ -285,20 +285,22 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
             par = np.full(xyin.shape[1], 0.0000001)
 
         # Ra-Dec to Az-El (Targets)
-        az, el, dmy = DCoeff.radec_to_subaru(xyin[0, :], xyin[1, :], pa, time, 
-                                             epoch, pm[0, :], pm[1, :],
-                                              par, inr=inr, log=False)
 
         # Az-El to offset angle from the center (Targets)
         if c.mode == 'sky_pfi':
-            tel_altaz = SkyCoord(az0, el0, unit=u.deg)
-            str_altaz = SkyCoord(az, el, unit=u.deg)
-            str_sep =  tel_altaz.separation(str_altaz).degree
-            str_zpa = -tel_altaz.position_angle(str_altaz).degree
-            # print(str_zpa)
+            subaru = Subaru_POPT2_PFS.Subaru()
+            str_sep, str_zpa = subaru.starSepZPA(ra0, dec0,
+                                                 xyin[0, :], xyin[1, :],
+                                                 DCoeff.wl_ag, time)
             xyconv = np.vstack((str_sep, str_zpa))
 
         else:
+            # Ra-Dec to Az-El (Targets)
+            az, el, dmy = DCoeff.radec_to_subaru(xyin[0, :], xyin[1, :], pa, time,
+                                                 epoch, pm[0, :], pm[1, :],
+                                                 par, inr=inr, log=False)
+
+            # Az-El to offset angle from the center (Targets)
             # define WFC frame
             center = SkyCoord(az0, el0, unit=u.deg)
             aframe = center.skyoffset_frame()

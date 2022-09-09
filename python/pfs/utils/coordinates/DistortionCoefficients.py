@@ -20,6 +20,8 @@ except ImportError:
 from astroplan import Observer
 import astropy.coordinates as ascor
 
+from . import Subaru_POPT2_PFS
+
 """
 Distortion Coefficients
  ver 1.0 : based on spot data in May 2017
@@ -80,6 +82,10 @@ pfi_offx = -1.855  # mm
 pfi_offy = -0.998  # mm
 pfi_offrot = 0.765507  # deg
 pfi_diffscale = 0.999232042
+
+
+# Wavelength used in AG
+wl_ag = 0.62
 
 
 class Coeff:
@@ -570,6 +576,7 @@ class Coeff:
 
         return r_itrp
 
+
 # General functions
 def calc_m3pos(za):
 
@@ -577,9 +584,10 @@ def calc_m3pos(za):
 
     return 3.0
 
+
 def calc_adc_position(za, id=106):
 
-    if id==106:  # Filter ID=106 (wave 9)
+    if id == 106:  # Filter ID=106 (wave 9)
         e0 = 0.0027
         e1 = 12.6755
         e2 = -0.0992
@@ -590,9 +598,10 @@ def calc_adc_position(za, id=106):
         e0 = e1 = e2 = e3 = e4 = 0.
 
     t = np.tan(np.deg2rad(za))
-    adc =  e0 + e1*t + e2*t*t + e3*t*t*t + e4*t*t*t*t
+    adc = e0 + e1*t + e2*t*t + e3*t*t*t + e4*t*t*t*t
 
     return adc
+
 
 def calc_atmospheric_refraction(za, wl=0.575):
 
@@ -601,8 +610,8 @@ def calc_atmospheric_refraction(za, wl=0.575):
     # Maunakea
     p = 450    # mmHg
     g = 978.627  # gal
-    t = 0. # degC
-    f = 1. # mmHg (RH=20%)
+    t = 0.  # degC
+    f = 1.  # mmHg (RH=20%)
     # function of wavelength [um]
     rho = 6432.8 + 2949810./(146. - 1./wl/wl) + 25540./(41. - 1./wl/wl)
     p1 = p*980.665/g
@@ -612,9 +621,10 @@ def calc_atmospheric_refraction(za, wl=0.575):
     a1 = 0.5*rho3*rho3 + rho3*rho3*rho3/6. - rho3*b - 2.75*rho3*rho3*b + 5.*rho3*b*b
     a2 = 0.5*rho3*rho3*rho3 -2.25*rho3*rho3*b + 3.*rho3*b*b
     tanz = np.tan(np.deg2rad(za))
-    pr = a0*tanz + a1*tanz*tanz*tanz+ a2*tanz*tanz*tanz*tanz*tanz
+    pr = a0*tanz + a1*tanz*tanz*tanz + a2*tanz*tanz*tanz*tanz*tanz
 
     return np.rad2deg(pr)
+
 
 def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=True):
 
@@ -644,25 +654,26 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
                       frame='fk5', obstime=obs_jtime, equinox='J2000.000')
     coord2 = coord1.apply_space_motion(dt=d_yr.to(u.yr))
     coord3 = coord2.transform_to(FK5(equinox=obs_time.jyear_str))
-    coord4 = coord3.transform_to(TETE(obstime=obs_time, location=tel))
+    # coord4 = coord3.transform_to(TETE(obstime=obs_time, location=tel))
     if log:
-        logging.info("Ra Dec = (%s %s) : original", 
+        logging.info("Ra Dec = (%s %s) : original",
                      coord1.ra.deg, coord1.dec.deg)
-        logging.info("PM = (%s %s)", 
-                      coord1.pm_ra_cosdec, coord1.pm_dec)
-        logging.info("Ra Dec = (%s %s) : applied proper motion", 
+        logging.info("PM = (%s %s)",
+                     coord1.pm_ra_cosdec, coord1.pm_dec)
+        logging.info("Ra Dec = (%s %s) : applied proper motion",
                      coord2.ra.deg, coord2.dec.deg)
         logging.info("Ra Dec = (%s %s) : applied presession",
-                      coord3.ra.deg, coord3.dec.deg)
-        logging.info("Ra Dec = (%s %s) : applied earth motion",
-                     coord4.ra.deg, coord4.dec.deg)
+                     coord3.ra.deg, coord3.dec.deg)
+        # logging.info("Ra Dec = (%s %s) : applied earth motion",
+        #              coord4.ra.deg, coord4.dec.deg)
 
-    altaz = coord4.transform_to(AltAz(obstime=obs_time, location=tel))
+    altaz = coord3.transform_to(AltAz(obstime=obs_time,
+                                location=Subaru_POPT2_PFS.Lsbr))
 
     az = altaz.az.deg
     el = altaz.alt.deg
     za = 90. - el
-    el = el + calc_atmospheric_refraction(za)
+    # el = el + calc_atmospheric_refraction(za, wl=wl_ag)
     # eld0 = el0 + ipol.splev(za, atm_interp)/3600.
     try:
         za = za[0]
@@ -670,10 +681,13 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
         pass
 
     # Instrument rotator angle
+    '''
+    Use Subaru_POPT2_PFS to have commonality
+
     if inr is None:
-        paa = tel2.parallactic_angle(obs_time, coord4).deg
-        lat = tel2.location.lat.deg
-        dc = coord4.dec.deg
+        paa = tel2.parallactic_angle(obs_time, coord3).deg
+        # lat = tel2.location.lat.deg
+        dc = coord3.dec.deg
         logging.debug(dc)
         inr = paa + pa
 
@@ -684,6 +698,8 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
     elif inr >= +180:
         logging.info("InR will exceed the upper limit (+180 deg)")
         inr = inr - 360.
+    '''
+    subaru = Subaru_POPT2_PFS.Subaru()
+    inr = subaru.radec2inr(coord3.ra, coord3.dec, obs_time)
 
     return az, el, inr
- 
