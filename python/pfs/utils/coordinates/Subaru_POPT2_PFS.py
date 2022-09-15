@@ -22,9 +22,20 @@ Lsbr = ac.EarthLocation(lat=sbr_lat,lon=sbr_lon,height=sbr_hei)
 sbr_press  = 620.0
 
 ### constants proper to PFS camera
-pfs_inr_zero_offset        =  0.00 # in degree
-pfs_detector_zero_offset_x =  0.00 # in mm
-pfs_detector_zero_offset_y =  0.00 # in mm
+inr_axis_on_fp_x  = +0.00 # in mm, should be zero
+inr_axis_on_fp_y  = +0.00 # in mm, should be zero
+inr_zero_offset   = +0.00 # in degree
+
+# inr_axis_on_dp_x  = +0.15 # in mm, from insrot observation on 2022/06
+# inr_axis_on_dp_y  = +0.03 # in mm, from insrot observation on 2022/06
+inr_axis_on_dp_x  = +0.00 # in mm
+inr_axis_on_dp_y  = +0.00 # in mm
+inr_axis_on_pfi_x = inr_axis_on_dp_y
+inr_axis_on_pfi_y = inr_axis_on_dp_x
+
+# pfs_inr_zero_offset        =  0.00 # in degree
+# pfs_detector_zero_offset_x =  0.00 # in mm
+# pfs_detector_zero_offset_y =  0.00 # in mm
 
 ### definition
 # fp  : telescope coordinate, +xfp  = Opt,   -xfp  = Ir,    +yfp  = Rear,  -yfp  = Front  at any InR
@@ -32,6 +43,9 @@ pfs_detector_zero_offset_y =  0.00 # in mm
 #                             +xdp  = Rear,  -xdp  = Front, +ydp  = Opt,   -ydp  = Ir     at InR=90
 # pfi : rotating coordinate,  +xpfi = Front, -xpfi = Rear,  +ypfi = Opt,   -ypfi = Ir     at InR=0
 #                             +xpfi = Opt,   -xpfi = Ir,    +ypfi = Rear   -ypfi = Front  at InR=90
+
+### pfi parity (flip y)
+pfi_parity = -1.0 # -1 or +1, 
 
 class Subaru():
     def radec2inr(self, tel_ra, tel_de, t):
@@ -491,48 +505,53 @@ class POPT2():
 
         return s, t
 
-### definition
-# fp  : telescope coordinate, +xfp  = Opt,   -xfp  = Ir,    +yfp  = Rear,  -yfp  = Front  at any InR
-# dp  : rotating coordinate,  +xdp  = Opt,   -xdp  = Ir,    +ydp  = Front, -ydp  = Rear   at InR=0
-#                             +xdp  = Rear,  -xdp  = Front, +ydp  = Opt,   -ydp  = Ir     at InR=90
-# pfi : rotating coordinate,  +xpfi = Front, -xpfi = Rear,  +ypfi = Opt,   -ypfi = Ir     at InR=0
-#                             +xpfi = Opt,   -xpfi = Ir,    +ypfi = Rear   -ypfi = Front  at InR=90
-
 class PFS():
-    def fp2dp(self, xt, yt, inr_deg):
-        inr = np.deg2rad(inr_deg)
-        x = (xt*np.cos(inr)+yt*np.sin(inr))+pfs_detector_zero_offset_x
-        y = (xt*np.sin(inr)-yt*np.cos(inr))+pfs_detector_zero_offset_y
-        return x,y
-
-    def dp2fp(self, xc, yc, inr_deg):
-        inr = np.deg2rad(inr_deg)
-        x = (xc-pfs_detector_zero_offset_x)*np.cos(inr)+(yc-pfs_detector_zero_offset_y)*np.sin(inr)
-        y = (xc-pfs_detector_zero_offset_x)*np.sin(inr)-(yc-pfs_detector_zero_offset_y)*np.cos(inr)
-        return x,y
-
-    def dp2pfi(self, xdp, ydp):
-        xpfi = ydp
-        ypfi = xdp
-        return xpfi, ypfi
-    
-    def pfi2dp(self, xpfi, ypfi):
-        xdp = ypfi
-        ydp = xpfi
+    def fp2dp(self, xfp, yfp, inr_deg):
+        inr  = np.deg2rad(inr_deg+inr_zero_offset)
+        x    = xfp - inr_axis_on_fp_x
+        y    = yfp - inr_axis_on_fp_y
+        xdp  = +x*np.cos(inr)+y*np.sin(inr) + inr_axis_on_dp_x
+        ydp  = +x*np.sin(inr)-y*np.cos(inr) + inr_axis_on_dp_y
         return xdp, ydp
 
+    def dp2fp(self, xdp, ydp, inr_deg):
+        inr  = np.deg2rad(inr_deg+inr_zero_offset)
+        x    = xdp - inr_axis_on_dp_x
+        y    = ydp - inr_axis_on_dp_y
+        xfp  = +x*np.cos(inr)+y*np.sin(inr) + inr_axis_on_fp_x
+        yfp  = +x*np.sin(inr)-y*np.cos(inr) + inr_axis_on_fp_y
+        return xfp, yfp
+
     def fp2pfi(self, xfp, yfp, inr_deg):
-        inr  = np.deg2rad(inr_deg)
-        xpfi = +xfp*np.sin(inr) - yfp*np.cos(inr)
-        ypfi = +xfp*np.cos(inr) + yfp*np.sin(inr)
+        inr  = np.deg2rad(inr_deg+inr_zero_offset)
+        x    = xfp - inr_axis_on_fp_x
+        y    = yfp - inr_axis_on_fp_y
+        xpfi = +x*np.sin(inr)-y*np.cos(inr) + inr_axis_on_pfi_x
+        ypfi = +x*np.cos(inr)+y*np.sin(inr) + inr_axis_on_pfi_y
+        ypfi = ypfi * pfi_parity
         return xpfi, ypfi
 
     def pfi2fp(self, xpfi, ypfi, inr_deg):
-        inr  = np.deg2rad(inr_deg)
-        xfp  = +xpfi*np.sin(inr) + ypfi*np.cos(inr)
-        yfp  = -xpfi*np.cos(inr) + ypfi*np.sin(inr)
+        inr  = np.deg2rad(inr_deg+inr_zero_offset)
+        ypfi = ypfi * pfi_parity
+        x    = xpfi - inr_axis_on_pfi_x
+        y    = ypfi - inr_axis_on_pfi_y
+        xfp  = +x*np.sin(inr)+y*np.cos(inr) + inr_axis_on_fp_x
+        yfp  = -x*np.cos(inr)+y*np.sin(inr) + inr_axis_on_fp_y
+        return xfp, yfp
+    
+    def dp2pfi(self, xdp, ydp):
+        xpfi = ydp
+        ypfi = xdp
+        ypfi = ypfi * pfi_parity
         return xpfi, ypfi
     
+    def pfi2dp(self, xpfi, ypfi):
+        ypfi = ypfi * pfi_parity
+        xdp  = ypfi
+        ydp  = xpfi
+        return xdp, ydp
+
 ###
 if __name__ == "__main__":
-    print('basic functions for Subaru telescope, POPT2 and PFS')
+    print('# basic functions for Subaru telescope, POPT2 and PFS')

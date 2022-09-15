@@ -158,11 +158,14 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
 
         # designed PFI to measured PFI
+        """
+        # revert (2022.09.15)
         xx = xx + DCoeff.pfi_offx
         yy = yy + DCoeff.pfi_offy
         xx, yy = rotation(xx, yy, DCoeff.pfi_offrot,
                           x0=DCoeff.pfi_offx, y0=DCoeff.pfi_offy,
                           sc=DCoeff.pfi_diffscale)
+        """
     elif c.mode == 'sky_pfi_old' or c.mode == 'sky_pfi_hsc':
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
