@@ -147,7 +147,7 @@ def ingestPfsConfig(pfsConfig, allocated_at=None):
                        'visit0': [pfsConfig.visit0 for _ in pfsConfig.fiberId],
                        'fiber_id': pfsConfig.fiberId,
                        'pfi_center_final_x_mm': pfsConfig.pfiCenter[:, 0],
-                       'pfi_center_final_x_mm': pfsConfig.pfiCenter[:, 1],
+                       'pfi_center_final_y_mm': pfsConfig.pfiCenter[:, 1],
                        'motor_map_summary': [None for _ in pfsConfig.fiberId],
                        'config_elapsed_time': [None for _ in pfsConfig.fiberId],
                        'is_on_source': [True for _ in pfsConfig.fiberId]
