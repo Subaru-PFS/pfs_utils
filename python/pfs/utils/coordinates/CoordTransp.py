@@ -626,7 +626,7 @@ def rotation(x, y, rot, rot_off=0., x0=0., y0=0., sc=1.):
     y0 : `float` (optional)
         osset Y position. Default is 0.
     sc : `float` (optional)
-        scale change. Default is 1.
+        scale change (ratio). Default is 1.
 
     Returns
     -------
@@ -638,7 +638,7 @@ def rotation(x, y, rot, rot_off=0., x0=0., y0=0., sc=1.):
 
     ra = np.deg2rad(rot + rot_off)
 
-    rx = np.cos(ra)*(x-x0) - np.sin(ra)*(y-y0) + x0
-    ry = np.sin(ra)*(x-x0) + np.cos(ra)*(y-y0) + y0
+    rx = sc*np.cos(ra)*(x-x0) - sc*np.sin(ra)*(y-y0) + x0
+    ry = sc*np.sin(ra)*(x-x0) + sc*np.cos(ra)*(y-y0) + y0
 
-    return sc*rx, sc*ry
+    return rx, ry
