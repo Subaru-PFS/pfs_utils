@@ -82,7 +82,7 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
     if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old')) and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
-        inr = inr - DCoeff.inr_tel_offset
+        inr = inr + DCoeff.inr_tel_offset
 
     if (mode == 'sky_pfi'):
         dmya = np.zeros((6, xyin.shape[1]))
