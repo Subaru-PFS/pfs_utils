@@ -83,7 +83,7 @@ pfi_offy = -0.998  # mm
 pfi_offrot = 0.765507  # deg
 pfi_diffscale = 0.999232042
 
-inr_tel_offset = 0.08  # deg
+inr_tel_offset = 0.11  # deg
 
 # Wavelength used in AG
 wl_ag = 0.62
