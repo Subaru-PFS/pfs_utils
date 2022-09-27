@@ -158,8 +158,8 @@ def convert_out_position(x, y, inr, c, cent, time):
     elif c.mode == 'sky_pfi':
         # telescope to designed PFI
         xx, yy = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
-        xx = xx + DCoeff.pfi_x_offset
-        yy = yy + DCoeff.pfi_y_offset
+        xx = xx - DCoeff.pfi_x_offset
+        yy = yy - DCoeff.pfi_y_offset
 
         # designed PFI to measured PFI
         """
