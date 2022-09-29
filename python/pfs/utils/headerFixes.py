@@ -99,3 +99,15 @@ class HeaderFixDatabase:
         self.add("S", pfiOdd, W_PFDSGN=0x31b5b0ab7d661e15)
         self.add("S", pfiBlack, W_PFDSGN=0x2ed537b1a10ff1b2)
         self.add("S", pfiAll, W_PFDSGN=0x40dbf5546df0d55e)
+
+        # Wrong hgcd status for all these visits.
+        self.add("S", list(range(79990, 80852 + 1)), W_AITHGC=False)
+
+        # Only one lamp was turned on each time.
+        allLamps = ['W_AITNEO', 'W_AITKRY', 'W_AITXEN', 'W_AITARG']
+        wrongs = list(range(79990, 79997 + 1))
+        onlyLamps = allLamps * 2
+        for visit, onlyLamp in zip(wrongs, onlyLamps):
+            lampDict = dict([(lamp, False) for lamp in allLamps])
+            lampDict[onlyLamp] = True
+            self.add("S", [visit], **lampDict)
