@@ -1,8 +1,8 @@
 import glob
-import numpy as np
 import os
 
 import eups
+import numpy as np
 
 
 class FiberIds(object):
@@ -205,7 +205,7 @@ class FiberIds(object):
             if not np.all(np.equal(sCobras['fiberHoleId'], holeIds)):
                 raise ValueError("All holeIds not uniquely found.")
 
-        return sCobras['cobraId']-1
+        return sCobras['cobraId'] - 1
 
     def moduleNumsForCobra(self, cobraId):
         row = np.where(self.cobraId == cobraId)[0][0]
@@ -318,9 +318,33 @@ class FiberIds(object):
 
         Returns
         -------
-        an array of cobraId) where cobraId is the 1-indexed global cobra ID
+        an array of cobraId where cobraId is the 1-indexed global cobra ID
         """
-
+        # Be nice and accept list as well.
+        fiberIds = np.array(fiberIds)
         assert np.all(self.fiberId[fiberIds - 1] == fiberIds)
 
         return self.cobraId[fiberIds - 1]
+
+    def cobraIdToFiberId(self, cobraIds):
+        """Return fiberIds for the specified cobraIds
+
+        Args
+        ----
+        cobraId : array of 1-indexed cobraIds
+
+        Returns
+        -------
+        an array of fiberId where fiberId is the 1-indexed global fiber ID
+        """
+        # Be nice and accept list as well.
+        cobraIds = np.array(cobraIds)
+        # Keep only scienceFiber.
+        scienceFiberMask = self.cobraId != self.MISSING_VALUE
+        scienceFiber = np.vstack((self.cobraId[scienceFiberMask], self.fiberId[scienceFiberMask])).transpose()
+        # Sorting by cobraId.
+        sortedByCobraId = scienceFiber[np.argsort(scienceFiber[:, 0])]
+        subset = sortedByCobraId[cobraIds - 1]
+
+        assert np.all(subset[:, 0] == cobraIds)
+        return subset[:, 1]
