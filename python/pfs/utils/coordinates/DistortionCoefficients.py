@@ -45,7 +45,10 @@ Distortion Coefficients
  ver 7.1 :  (2021.11.15)
            update with the latest version og spot calculation (Sky<->PFI)
  ver 8.0 : (2022.05)
-           update based on Nov-run's analysis, implemented Kawanomoto's 
+           update based on 2021 Nov-run's analysis, implemented Kawanomoto's 
+           library as default for sky-pfi
+ ver 9.0 : (2022.19)
+           update based on 2022 June & Sep run's analysis, implemented Kawanomoto's 
            library as default for sky-pfi
 """
 
@@ -83,6 +86,10 @@ pfi_offy = -0.998  # mm
 pfi_offrot = 0.765507  # deg
 pfi_diffscale = 0.999232042
 
+# correction during the Sep 2022 run
+inr_tel_offset = 0.12  # deg (0.08 + 0.03 + 0.01)
+pfi_x_offset = -0.09  # mm
+pfi_y_offset = 0.01  # mm
 
 # Wavelength used in AG
 wl_ag = 0.62
@@ -681,8 +688,7 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
         pass
 
     # Instrument rotator angle
-    '''
-    Use Subaru_POPT2_PFS to have commonality
+    # Use Subaru_POPT2_PFS to have commonality (disabled: 2022.09.20)
 
     if inr is None:
         paa = tel2.parallactic_angle(obs_time, coord3).deg
@@ -698,8 +704,8 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
     elif inr >= +180:
         logging.info("InR will exceed the upper limit (+180 deg)")
         inr = inr - 360.
-    '''
-    subaru = Subaru_POPT2_PFS.Subaru()
-    inr = subaru.radec2inr(coord3.ra, coord3.dec, obs_time)
+    # Disable for the time being.
+    # subaru = Subaru_POPT2_PFS.Subaru()
+    # inr = subaru.radec2inr(coord3.ra, coord3.dec, obs_time)
 
     return az, el, inr

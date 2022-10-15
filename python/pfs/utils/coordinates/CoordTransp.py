@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from locale import dcgettext
 import os
 import logging
 import numpy as np
@@ -82,6 +83,7 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
     if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old')) and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
+        inr = inr + DCoeff.inr_tel_offset
 
     if (mode == 'sky_pfi'):
         dmya = np.zeros((6, xyin.shape[1]))
@@ -156,6 +158,8 @@ def convert_out_position(x, y, inr, c, cent, time):
     elif c.mode == 'sky_pfi':
         # telescope to designed PFI
         xx, yy = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
+        xx = xx - DCoeff.pfi_x_offset
+        yy = yy - DCoeff.pfi_y_offset
 
         # designed PFI to measured PFI
         """
