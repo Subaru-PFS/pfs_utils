@@ -226,20 +226,28 @@ class FiberIds(object):
         w = (self.boardId == boardName) & (self.cobraInModuleId == cobraInModule)
         return self.cobraId[w][0]
 
-    def xyForCobras(self, cobras):
-        """ Return the (x,y) positions of the given cobras.
+    def xyForCobras(self, fiberId):
+        """ Returns the (x,y) positions of the cobras corresponding to the given fiberIds.
 
-        Args
-        ----
-        cobras : 0-indexed ints
+        Parameters
+        ----------
+        fiberId : `int` or `numpy.ndarray`
+            scalar or array of 1-indexed fiber identifiers.
 
         Returns
         -------
-        x,y : ndarray of positions on the PFI.
-          In mm.
+        x,y : `numpy.ndarray` of `float`
+            x, y positions on the PFI in mm
         """
+        if np.isscalar(fiberId):
+            if fiberId < 1:
+                raise ValueError('Input fiberIds cannot be less than 1')
+        else:
+            arr = np.array(fiberId)
+            if np.any(arr < 1):
+                raise ValueError('Input fiberIds cannot be less than 1')
 
-        return self.data[['x', 'y']][cobras]
+        return self.data[['x', 'y']][fiberId - 1]
 
     def fiberIdToMTP(self, fiberIds, pfsConfig=None):
         """Return MTP information for the specified fiberIds
