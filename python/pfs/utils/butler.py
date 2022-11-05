@@ -9,15 +9,12 @@ import logging
 import pathlib
 import time
 
-from . import spectroIds
-reload(spectroIds)
-
 logger = logging.getLogger('butler')
 
 defaultDataRoot = pathlib.Path("/data")
 
 class Butler(object):
-    def __init__(self, dataRoot=None, configRoot=None, specIds=None):
+    def __init__(self, dataRoot=None, configRoot=None, specIds=None, dataId=None):
         """A data and configuration manager, inspired by the LSST/DRP butler.
 
         This provides only the most minimal functionality required by the PFS ICS software.
@@ -29,9 +26,17 @@ class Butler(object):
         configRoot : path-like
             The root of the configuration directory tree.
             Defaults to $PFS_INSTDATA_DIR/data
-        specIds : `pfs.utils.spectroIds.SpectroIds`
+        specIds : `ics.utils.spectroIds.SpectroIds`
             Contains our identity: site, arm, module, etc.
             Usually created dynamically, from the hostname.
+            Deprecated: use `dataId=specIds.idDict` instead.
+        dataId : `dict`
+            keys to always use when resolving names. Major ones
+            are `arm`, `spectrographModule`, `cam`, `site`.
+
+        If neither specIds nore dataId provide a `site` key, that is set to "S", assuming
+        that we are at or running on behalf of Subaru itself.
+
         """
 
         self.logger = logging.getLogger('butler')
@@ -50,13 +55,22 @@ class Butler(object):
                 raise ValueError("either configRoot must be passed in "
                                  "or the pfs_instdata product must be setup.")
             self.configRoot = pathlib.Path(eupsProd.dir) / "data"
-        self._loadMaps(specIds)
 
-    def _loadMaps(self, specIds=None):
+        if specIds is not None:
+            addDataIds = specIds.idDict
+        else:
+            addDataIds = dict()
+        if dataId is not None:
+            addDataIds.update(dataId)
+        if 'site' not in addDataIds:
+            addDataIds['site'] = 'S'
+        self._loadMaps(dataId=addDataIds)
+
+    def _loadMaps(self, dataId=None):
         """Load the definitions of the maps which we can resolve. """
 
-        if specIds is None:
-            specIds = spectroIds.SpectroIds()
+        if dataId is None:
+            dataId = dict()
 
         from . import butlerMaps
         reload(butlerMaps)
@@ -67,7 +81,7 @@ class Butler(object):
         self.dataMap['dataRoot'] = dict(template=str(self.dataRoot))
         self.configMap['configRoot'] = dict(template=str(self.configRoot))
 
-        self.addDict = specIds.idDict
+        self.addDict = dataId.copy()
 
         self.logger.debug(f'loaded butler from {self.configMap}, for {self.dataMap}')
 
