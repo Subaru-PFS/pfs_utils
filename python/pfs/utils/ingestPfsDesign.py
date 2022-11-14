@@ -60,6 +60,13 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
                        'to_be_observed_at': [to_be_observed_at],
                        'is_obsolete': [False]
                        })
+    try:
+        df['variant'] = pfsDesign.variant
+        df['design_id0'] = pfsDesign.designId0
+    except AttributeError:
+        df['variant'] = 0
+        df['design_id0'] = 0
+
     #db.bulkInsert('pfs_design', df)
     db.insert('pfs_design', df)
 
