@@ -111,3 +111,9 @@ class HeaderFixDatabase:
             lampDict = dict([(lamp, False) for lamp in allLamps])
             lampDict[onlyLamp] = True
             self.add("S", [visit], **lampDict)
+
+        # Correcting dcb header keys.
+        self.add("S", list(range(81862, 81865 + 1)) + [81872, 81873] + list(range(81879, 81882 + 1)), W_AITQTH=True)
+        self.add("S", [81869, 81874], W_AITKRY=True)
+        self.add("S", [81870], W_AITNEO=True)
+        self.add("S", [81871], W_AITARG=True)
