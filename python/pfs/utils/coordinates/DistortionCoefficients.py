@@ -275,6 +275,14 @@ class Coeff:
                      "mcs_pfi": False,
                      "mcs_pfi_wofe": False,
                      "mcs_pfi_asrd": True}
+        # Whether to execute offset base 2
+        do_off2 = {"sky_pfi": False,
+                   "sky_pfi_hsc": False,
+                   "pfi_mcs": False,
+                   "pfi_mcs_wofe": False,
+                   "mcs_pfi": True,
+                   "mcs_pfi_wofe": True,
+                   "mcs_pfi_asrd": False}
 
         # y : slope cy5(z) * y
         dic_slp = {"sky_pfi_old": [0.,
@@ -364,6 +372,7 @@ class Coeff:
             self.cy2 = dic_cy2[mode]
             self.skip1_off = skip1_off[mode]
             self.skip2_off = skip2_off[mode]
+            self.do_off2 = do_off2[mode]
             self.slp = dic_slp[mode]
             self.dsc = dic_dsc[mode]
             self.rsc = dic_rsc[mode]
@@ -479,6 +488,7 @@ class Coeff:
             # sky-x sky-y off-x off-y
             dfile = mypath+"data/offset_base_"+self.mode+".dat"
             IpolD = np.loadtxt(dfile).T
+            IpolD = IpolD[:, ~np.any(IpolD == -99999., axis=0)]
 
             x_itrp = ipol.SmoothBivariateSpline(IpolD[0, :], IpolD[1, :],
                                                 IpolD[2, :], kx=5, ky=5, s=1.)
@@ -489,6 +499,33 @@ class Coeff:
 
             offsetx = np.array([x_itrp.ev(i, j) for i, j in zip(*xyin)])
             offsety = np.array([y_itrp.ev(i, j) for i, j in zip(*xyin)])
+
+            if self.do_off2:
+                # ADC=0
+                dfile2 = mypath+"data/offset2_base_"+self.mode+"_map.dat"
+                IpolD2 = np.loadtxt(dfile2).T
+                IpolD2 = IpolD2[:, ~np.any(IpolD2 == -99999., axis=0)]
+
+                x_itrp2 = ipol.SmoothBivariateSpline(IpolD2[0, :], IpolD2[1, :],
+                                                     IpolD2[2, :], kx=5, ky=5, s=1)
+                y_itrp2 = ipol.SmoothBivariateSpline(IpolD2[0, :], IpolD2[1, :],
+                                                     IpolD2[3, :], kx=5, ky=5, s=1)
+
+            logging.info("Interpolated the base offset")
+
+            if self.do_off2:
+                offsetx = np.array([x_itrp.ev(i, j)-x_itrp2.ev(i, j)
+                                    for i, j in zip(*xyin)])
+                offsety = np.array([y_itrp.ev(i, j)-y_itrp2.ev(i, j)
+                                    for i, j in zip(*xyin)])
+                rin = np.array([np.sqrt(i*i+j*j) for i, j in zip(*xyin)])
+                # print(rin)
+                # Out of Grid
+                offsetx[rin > 9.46] = 0.
+                offsety[rin > 9.46] = 0.
+            else:
+                offsetx = np.array([x_itrp.ev(i, j) for i, j in zip(*xyin)])
+                offsety = np.array([y_itrp.ev(i, j) for i, j in zip(*xyin)])
 
         return offsetx, offsety
 
