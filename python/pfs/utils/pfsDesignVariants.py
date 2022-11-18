@@ -56,7 +56,8 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
     kwargs = {}
     if variant != 0:
         kwargs.update(variant=variant,
-                      designId0=pfsDesign0.pfsDesignId)
+                      designId0=pfsDesign0.pfsDesignId,
+                      designName=f'{pfsDesign0.designName} V{variant:03}')
 
     pfsDesign = PfsDesign(pfsDesignId, pfsDesign0.raBoresight, pfsDesign0.decBoresight,
                           pfsDesign0.posAng,
@@ -72,7 +73,6 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
                           pfsDesign0.totalFluxErr,
                           pfsDesign0.filterNames, pfiNominal,
                           pfsDesign0.guideStars,
-                          pfsDesign0.designName,
                           **kwargs)
 
     return pfsDesign
