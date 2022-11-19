@@ -174,7 +174,8 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
     elif c.mode == 'mcs_pfi':
-        xx, yy = rotation(x, y, 0., rot_off=DCoeff.inr_pfi)
+        xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
+        yy = -1.*yy
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
         tel = EarthLocation.of_site('Subaru')
@@ -263,7 +264,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
 
     # convert pixel to mm: mcs_pfi and mcs_pfi_asrd
     if (c.mode == 'mcs_pfi') or (c.mode == 'mcs_pfi_wofe'):
-        xyconv = pixel_to_mm(xyin, inr, cent,
+        xyconv = pixel_to_mm(xyin, 0., cent,
                              pix=DCoeff.mcspixel, invx=1., invy=-1.)
     elif c.mode == 'mcs_pfi_asrd':
         xyconv = pixel_to_mm(xyin, inr, cent,
@@ -463,7 +464,7 @@ def calc_argument(xyin, inr, c):
         arg = arg+np.pi
 
     # PFI to MCS: input argument depends on rotator angle
-    # InR has 90-deg offser
+    # InR has 90-deg offset
     if c.mode == 'pfi_mcs' or c.mode == 'pfi_mcs_wofe':
         arg = arg+np.deg2rad(inr - DCoeff.inr_pfi)+np.pi
 
