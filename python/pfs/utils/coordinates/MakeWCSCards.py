@@ -39,7 +39,7 @@ def get_wcs_mcs(cent, rot):
     w.wcs.pc = [[np.cos(rot), -1.*np.sin(rot)], [np.sin(rot), np.cos(rot)]]
 
     # intermediate pixel to intermediate worlds
-    w.wcs.cdelt = np.array([disco.mcspix*c.rsc[0], disco.mcspix*c.rsc[0]])
+    w.wcs.cdelt = np.array([disco.mcspixel*c.rsc[0], disco.mcspixel*c.rsc[0]])
 
     # Simple Imaging Polynomial (no inverse func is defined)
     # Here, r~x~y is assumed
@@ -67,7 +67,7 @@ def get_wcs_mcs(cent, rot):
 
 def WCSParameters(mode, cent, rot, alt, az):
 
-    w, s = get_wcs_mcs(cent, rot, alt, az)
+    w, s = get_wcs_mcs(cent, rot)
 
     return w, s
 
