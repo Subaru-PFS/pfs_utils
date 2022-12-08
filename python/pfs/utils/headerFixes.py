@@ -113,7 +113,8 @@ class HeaderFixDatabase:
             self.add("S", [visit], **lampDict)
 
         # Correcting dcb header keys.
-        self.add("S", list(range(81862, 81865 + 1)) + [81872, 81873] + list(range(81879, 81882 + 1)), W_AITQTH=True)
-        self.add("S", [81869, 81874], W_AITKRY=True)
+        self.add("S", list(range(81862, 81865 + 1)) + [81872, 81873] + list(range(81879, 81882 + 1)) + list(range(83098, 83100 + 1)) + list(range(83304, 83365 + 1)) + list(range(83422, 83523 + 1)) + [83652] + list(range(83673, 83952 + 1)) + [84004,84005], W_AITQTH=True)
+        self.add("S", [81869, 81874] + list(range(83058, 83060 + 1)) + list(range(83524, 83548 + 1)) + [83651] + list(range(83653, 83662 + 1)) + list(range(83977, 834000 + 1)) + [83367], W_AITKRY=True)
         self.add("S", [81870], W_AITNEO=True)
-        self.add("S", [81871], W_AITARG=True)
+        self.add("S", [81871] + list(range(83368, 83373 + 1)) + list(range(83549, 83578 + 1)) + list(range(83648, 83650 + 1)) + list(range(83663, 83672 + 1)) + list(range(83953, 83976 + 1)), W_AITARG=True)
+        self.add("S", [83367] + list(range(83374, 83379 + 1)) + list(range(83579, 83608 + 1)) + list(range(83637, 83647 + 1)) , W_AITHGA=True)
