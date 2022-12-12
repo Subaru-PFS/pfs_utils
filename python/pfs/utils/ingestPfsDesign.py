@@ -137,7 +137,7 @@ def ingestPfsConfig(pfsConfig, allocated_at=None):
 
     ''' insert into `pfs_config` table '''
     df = pd.DataFrame({'pfs_design_id': [pfsConfig.pfsDesignId],
-                       'visit0': [pfsConfig.visit0],
+                       'visit0': [pfsConfig.visit],
                        'ra_center_config': [pfsConfig.raBoresight],
                        'dec_center_config': [pfsConfig.decBoresight],
                        'pa_config': [pfsConfig.posAng],
@@ -151,7 +151,7 @@ def ingestPfsConfig(pfsConfig, allocated_at=None):
 
     ''' insert into `pfs_config_fiber` table '''
     df = pd.DataFrame({'pfs_design_id': [pfsConfig.pfsDesignId for _ in pfsConfig.fiberId],
-                       'visit0': [pfsConfig.visit0 for _ in pfsConfig.fiberId],
+                       'visit0': [pfsConfig.visit for _ in pfsConfig.fiberId],
                        'fiber_id': pfsConfig.fiberId,
                        'pfi_center_final_x_mm': pfsConfig.pfiCenter[:, 0],
                        'pfi_center_final_y_mm': pfsConfig.pfiCenter[:, 1],
@@ -164,7 +164,7 @@ def ingestPfsConfig(pfsConfig, allocated_at=None):
     ''' insert into `pfs_config_agc` table '''
     guideStars = pfsConfig.guideStars
     df = pd.DataFrame({'pfs_design_id': [pfsConfig.pfsDesignId for _ in guideStars.objId],
-                       'visit0': [pfsConfig.visit0 for _ in guideStars.objId],
+                       'visit0': [pfsConfig.visit for _ in guideStars.objId],
                        'guide_star_id': guideStars.objId,
                        'agc_camera_id': guideStars.agId,
                        'agc_final_x_pix': guideStars.agX,
