@@ -9,16 +9,17 @@ __all__ = ["writePfsConfig", "writePfsConfigFromDesign"]
 def writePfsConfig(pfsConfig):
     """Write pfsConfig file to /data/raw/$DATE/pfsConfig using pfsButler."""
     # Get path from pfsButler.
-    path = pfsButler.Butler().getPath('pfsConfig', pfsConfigId=pfsConfig.pfsDesignId, visit=pfsConfig.visit)
+    filepath = pfsButler.Butler().getPath('pfsConfig', pfsConfigId=pfsConfig.pfsDesignId, visit=pfsConfig.visit)
     # Create date/pfsConfig directory if it does not exist.
-    rootDir, fileName = os.path.split(path)
+    rootDir, fileName = os.path.split(filepath)
     if not os.path.exists(rootDir):
         dateDir, _ = os.path.split(rootDir)
         # we currently have weird permissions on /data so fix it manually for now.
         os.makedirs(rootDir, mode=0o775)
         os.chmod(dateDir, 0o775)
-    # Write pfsConfig file to disk.
-    pfsConfig.write(fileName=path)
+    # Write pfsConfig file to disk and set correct permissions.
+    pfsConfig.write(fileName=filepath)
+    os.chmod(filepath, 0o664)
 
 
 def writePfsConfigFromDesign(visit, pfsDesignId, dirName):
