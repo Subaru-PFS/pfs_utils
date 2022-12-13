@@ -13,7 +13,10 @@ def writePfsConfig(pfsConfig):
     # Create date/pfsConfig directory if it does not exist.
     rootDir, fileName = os.path.split(path)
     if not os.path.exists(rootDir):
-        os.makedirs(rootDir)
+        dateDir, _ = os.path.split(rootDir)
+        # we currently have weird permissions on /data so fix it manually for now.
+        os.makedirs(rootDir, mode=0o775)
+        os.chmod(dateDir, 0o775)
     # Write pfsConfig file to disk.
     pfsConfig.write(fileName=path)
 
