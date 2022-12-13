@@ -1,8 +1,9 @@
 import os
 
 import pfs.utils.butler as pfsButler
+from pfs.datamodel import PfsDesign, PfsConfig
 
-__all__ = ["writePfsConfig"]
+__all__ = ["writePfsConfig", "writePfsConfigFromDesign"]
 
 
 def writePfsConfig(pfsConfig):
@@ -15,3 +16,13 @@ def writePfsConfig(pfsConfig):
         os.makedirs(rootDir)
     # Write pfsConfig file to disk.
     pfsConfig.write(fileName=path)
+
+
+def writePfsConfigFromDesign(visit, pfsDesignId, dirName):
+    """Write fake pfsConfig given a visit and pfsDesignId."""
+    # Reading pfsDesign file.
+    pfsDesign = PfsDesign.read(pfsDesignId, dirName=dirName)
+    # Creating a fake pfsConfig file from pfsDesign nominal
+    pfsConfig = PfsConfig.fromPfsDesign(pfsDesign, visit, pfsDesign.pfiNominal)
+    # Write pfsConfig file to disk.
+    writePfsConfig(pfsConfig)
