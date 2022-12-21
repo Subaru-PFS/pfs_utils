@@ -1,9 +1,21 @@
+import glob
 import os
 
 import pfs.utils.butler as pfsButler
 from pfs.datamodel import PfsDesign, PfsConfig
 
-__all__ = ["writePfsConfig", "writePfsConfigFromDesign"]
+__all__ = ["getDateDir", "writePfsConfig", "writePfsConfigFromDesign"]
+
+
+def getDateDir(pfsConfig):
+    """Definitely not the quickest but I have not better idea at this moment."""
+    [pfsConfigPath] = glob.glob('/data/raw/*-*-*/pfsConfig/%s' % pfsConfig.filename)
+
+    dirName, _ = os.path.split(pfsConfigPath)
+    rootDir, _ = os.path.split(dirName)
+    _, dateDir = os.path.split(rootDir)
+
+    return dateDir
 
 
 def writePfsConfig(pfsConfig):
@@ -26,7 +38,9 @@ def writePfsConfigFromDesign(visit, pfsDesignId, dirName):
     """Write fake pfsConfig given a visit and pfsDesignId."""
     # Reading pfsDesign file.
     pfsDesign = PfsDesign.read(pfsDesignId, dirName=dirName)
-    # Creating a fake pfsConfig file from pfsDesign nominal
+    # Creating a fake pfsConfig file from pfsDesign using pfsDesign.pfiNominal for pfiCenter.
     pfsConfig = PfsConfig.fromPfsDesign(pfsDesign, visit, pfsDesign.pfiNominal)
     # Write pfsConfig file to disk.
     writePfsConfig(pfsConfig)
+    # return pfsConfig file.
+    return pfsConfig
