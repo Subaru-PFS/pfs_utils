@@ -3,7 +3,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 
 import yaml
-
+from typing import List
 
 class HeaderFixDatabase:
     """Database of header fixes to apply
@@ -59,6 +59,24 @@ class HeaderFixDatabase:
                 with open(filename, "w") as ff:
                     yaml.dump(fixes, ff)
 
+    def inclRange(self, start: int, stop: int) -> List[int]:
+        """Create a list of integers corresponding to the input range.
+        Start and stop values are inclusive.
+
+        Parameters
+        ----------
+        start : `int`
+            startvalue in range
+        stop : `int`
+            end value in range
+
+        Returns
+        -------
+        visits : `list`[`int`]
+            list of visits in inclusive range.
+        """
+        return list(range(start, stop + 1))
+
     def addStandardFixes(self):
         """Add the standard set of fixes
 
@@ -67,30 +85,30 @@ class HeaderFixDatabase:
         # Fix duplicate no-value (DM-23928)
         # Undefined values occurred in LAM data
         # between 2019-05-03 and 2019-06-14
-        self.add("L", range(16804, 20961), W_XHP2FR=0)
+        self.add("L", self.inclRange(16804, 20960), W_XHP2FR=0)
 
         # For Subaru exposures taken during Dec 2019, exposures
         # labelled as Neon were actually Krypton
-        self.add("S", list(range(423, 442)) + [43, 54, 60], W_AITNEO=False, W_AITKRY=True)
+        self.add("S", self.inclRange(423, 441) + [43, 54, 60], W_AITNEO=False, W_AITKRY=True)
 
         # Early SuNSS observations without the proper pfsDesignId
-        self.add("S", range(45750, 45853), W_PFDSGN=0xdeadbeef)
-        self.add("S", range(45750, 46081), W_LGTSRC='sunss')
+        self.add("S", self.inclRange(45750, 45852), W_PFDSGN=0xdeadbeef)
+        self.add("S", self.inclRange(45750, 46080), W_LGTSRC='sunss')
 
-        pfiEngineering = list(range(67569, 67574)) + [67587, 67588, 67594, 67605] + \
-            list(set(range(67611, 67651)) ^ set([67614, 67615, 67620])) + [67685, 67692, 67693, 67694] + \
-            list(range(67707, 67723)) + list(range(67739, 67744)) + list(range(67752, 67760)) + \
-            list(range(67781, 67797)) + list(range(67809, 67839)) + list(range(67953, 67962)) + \
-            list(set(list(range(68072, 68109))) ^ set([68095, 68097, 68098, 68102, 68103, 68105])) + \
-            [68303, 68306, 68307, 68308] + list(range(68323, 68328)) + [68344, 68345, 68349, 68351] + \
-            list(range(68417, 68421)) + list(range(68424, 68428))
+        pfiEngineering = self.inclRange(67569, 67573) + [67587, 67588, 67594, 67605] + \
+            list(set(self.inclRange(67611, 67650)) ^ set([67614, 67615, 67620])) + [67685, 67692, 67693, 67694] + \
+            self.inclRange(67707, 67722) + self.inclRange(67739, 67743) + self.inclRange(67752, 67759) + \
+            self.inclRange(67781, 67796) + self.inclRange(67809, 67838) + self.inclRange(67953, 67961) + \
+            list(set(self.inclRange(68072, 68108)) ^ set([68095, 68097, 68098, 68102, 68103, 68105])) + \
+            [68303, 68306, 68307, 68308] + self.inclRange(68323, 68327) + [68344, 68345, 68349, 68351] + \
+            self.inclRange(68417, 68420) + self.inclRange(68424, 68427)
 
-        pfiEven = [68360, 68361, 68373, 68388, 68391, 68398, 68399] + list(range(68480, 68489)) + \
-            list(range(68491, 68494)) + list(range(68499, 68502))
-        pfiOdd = list(range(68402, 68406)) + list(range(68504, 68507)) + list(range(68509, 68512)) + \
-            list(range(68514, 68517))
-        pfiBlack = list(range(68410, 68413)) + list(range(68417, 68421)) + list(range(68424, 68428)) + \
-            list(set(list(range(68519, 68528))) ^ set([68522]))
+        pfiEven = [68360, 68361, 68373, 68388, 68391, 68398, 68399] + self.inclRange(68480, 68488) + \
+            self.inclRange(68491, 68493) + self.inclRange(68499, 68501)
+        pfiOdd = self.inclRange(68402, 68405) + self.inclRange(68504, 68506) + self.inclRange(68509, 68511) + \
+            self.inclRange(68514, 68516)
+        pfiBlack = self.inclRange(68410, 68412) + self.inclRange(68417, 68420) + self.inclRange(68424, 68427) + \
+            list(set(self.inclRange(68519, 68527)) ^ set([68522]))
         pfiAll = [68432, 68433, 68434, 68475, 68476, 68477]
 
         # First night with PFI installed without the proper pfsDesignId
@@ -101,11 +119,11 @@ class HeaderFixDatabase:
         self.add("S", pfiAll, W_PFDSGN=0x40dbf5546df0d55e)
 
         # Wrong hgcd status for all these visits.
-        self.add("S", list(range(79990, 80852 + 1)), W_AITHGC=False)
+        self.add("S", self.inclRange(79990, 80852), W_AITHGC=False)
 
         # Only one lamp was turned on each time.
         allLamps = ['W_AITNEO', 'W_AITKRY', 'W_AITXEN', 'W_AITARG']
-        wrongs = list(range(79990, 79997 + 1))
+        wrongs = self.inclRange(79990, 79997)
         onlyLamps = allLamps * 2
         for visit, onlyLamp in zip(wrongs, onlyLamps):
             lampDict = dict([(lamp, False) for lamp in allLamps])
@@ -113,39 +131,39 @@ class HeaderFixDatabase:
             self.add("S", [visit], **lampDict)
 
         # Correcting dcb header keys.
-        self.add("S", list(range(81862, 81865 + 1)) + [81872, 81873] + list(range(81879, 81882 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(81862, 81865) + [81872, 81873] + self.inclRange(81879, 81882), W_AITQTH=True)
         self.add("S", [81869, 81874], W_AITKRY=True)
         self.add("S", [81870], W_AITNEO=True)
         self.add("S", [81871], W_AITARG=True)
 
         # Correcting dcb header keys.
-        self.add("S", list(range(83098, 83100 + 1)) + list(range(83304, 83365 + 1)), W_AITQTH=True)
-        self.add("S", list(range(83422, 83523 + 1)) + [83652] + list(range(83673, 83952 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(83098, 83100) + self.inclRange(83304, 83365), W_AITQTH=True)
+        self.add("S", self.inclRange(83422, 83523) + [83652] + self.inclRange(83673, 83952), W_AITQTH=True)
         self.add("S", [84004,84005], W_AITQTH=True)
-        self.add("S", list(range(83058, 83060 + 1)) + list(range(83524, 83548 + 1)), W_AITKRY=True)
-        self.add("S", [83651] + list(range(83653, 83662 + 1)) + [83367], W_AITKRY=True)
-        self.add("S", list(range(83977, 83400 + 1)), W_AITKRY=True)
-        self.add("S", list(range(83368, 83373 + 1)) + list(range(83549, 83578 + 1)), W_AITARG=True)
-        self.add("S", list(range(83648, 83650 + 1)) + list(range(83663, 83672 + 1)), W_AITARG=True)
-        self.add("S", list(range(83953, 83976 + 1)), W_AITARG=True)
-        self.add("S", [83367] + list(range(83374, 83379 + 1)), W_AITHGA=True)
-        self.add("S", list(range(83579, 83608 + 1)) + list(range(83637, 83647 + 1)), W_AITHGA=True)
+        self.add("S", self.inclRange(83058, 83060) + self.inclRange(83524, 83548), W_AITKRY=True)
+        self.add("S", [83651] + self.inclRange(83653, 83662) + [83367], W_AITKRY=True)
+        self.add("S", self.inclRange(83977, 83400), W_AITKRY=True)
+        self.add("S", self.inclRange(83368, 83373) + self.inclRange(83549, 83578), W_AITARG=True)
+        self.add("S", self.inclRange(83648, 83650) + self.inclRange(83663, 83672), W_AITARG=True)
+        self.add("S", self.inclRange(83953, 83976), W_AITARG=True)
+        self.add("S", [83367] + self.inclRange(83374, 83379), W_AITHGA=True)
+        self.add("S", self.inclRange(83579, 83608) + self.inclRange(83637, 83647), W_AITHGA=True)
 
         # Correcting domeFlat header keys
         self.add("S", [46084, 46085], W_AITQTH=True)
-        self.add("S", list(range(46228, 46262 + 1)), W_AITQTH=True)
-        self.add("S", list(range(63046, 63106 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(46228, 46262), W_AITQTH=True)
+        self.add("S", self.inclRange(63046, 63106), W_AITQTH=True)
         self.add("S", [67709, 67710], W_AITQTH=True)
-        self.add("S", list(range(68523, 68527 + 1)), W_AITQTH=True)
-        self.add("S", list(range(75954, 75958 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(68523, 68527), W_AITQTH=True)
+        self.add("S", self.inclRange(75954, 75958), W_AITQTH=True)
         self.add("S", [75966, 76143, 76144], W_AITQTH=True)
-        self.add("S", list(range(76466, 76468 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(76466, 76468), W_AITQTH=True)
         self.add("S", [76559, 76560, 76763], W_AITQTH=True)
-        self.add("S", list(range(77173, 77175 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(77173, 77175), W_AITQTH=True)
         self.add("S", [77404, 77405, 77457, 77464, 77466, 78196, 78248, 78705, 78759], W_AITQTH=True)
-        self.add("S", list(range(80621, 80640 + 1)), W_AITQTH=True)
-        self.add("S", list(range(81979, 81988 + 1)), W_AITQTH=True)
-        self.add("S", list(range(82113, 82127 + 1)), W_AITQTH=True)
-        self.add("S", list(range(82230, 82238 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(80621, 80640), W_AITQTH=True)
+        self.add("S", self.inclRange(81979, 81988), W_AITQTH=True)
+        self.add("S", self.inclRange(82113, 82127), W_AITQTH=True)
+        self.add("S", self.inclRange(82230, 82238), W_AITQTH=True)
         self.add("S", [82428, 82429], W_AITQTH=True)
-        self.add("S", list(range(82527, 82533 + 1)), W_AITQTH=True)
+        self.add("S", self.inclRange(82527, 82533), W_AITQTH=True)
