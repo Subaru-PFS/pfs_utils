@@ -27,11 +27,15 @@ def writePfsConfig(pfsConfig):
     if not os.path.exists(rootDir):
         dateDir, _ = os.path.split(rootDir)
         # we currently have weird permissions on /data so fix it manually for now.
-        os.makedirs(rootDir, mode=0o775)
-        os.chmod(dateDir, 0o775)
+        os.makedirs(rootDir, mode=0o2775)
+        # ccdActor create the date directory as pfs-data, so I don't have the permission in that case.
+        try:
+            os.chmod(dateDir, 0o2775)
+        except PermissionError:
+            pass
     # Write pfsConfig file to disk and set correct permissions.
     pfsConfig.write(fileName=filepath)
-    os.chmod(filepath, 0o664)
+    os.chmod(filepath, 0o444)
 
 
 def writePfsConfigFromDesign(visit, pfsDesignId, dirName):
