@@ -167,3 +167,15 @@ class HeaderFixDatabase:
         self.add("S", self.inclRange(82230, 82238), W_AITQTH=True)
         self.add("S", [82428, 82429], W_AITQTH=True)
         self.add("S", self.inclRange(82527, 82533), W_AITQTH=True)
+
+        # Correcting pfsDesignId header keys for joint DCB/SuNSS exposures
+        designIdDCBSuNSS = 0x5cab8319135e443f
+        self.add("S", self.inclRange(84574, 84578), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84580, 84632), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84666, 84695), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84720, 84737), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84742, 84753), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84763, 84792), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84795, 84824), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84827, 84886), W_PFDSGN=designIdDCBSuNSS)
+        self.add("S", self.inclRange(84905, 84934), W_PFDSGN=designIdDCBSuNSS)
