@@ -74,6 +74,8 @@ def makePfiTransform(cameraName, *args, **kwargs):
         return PfiTransform(*args, **kwargs)
     elif 'rmod' in cameraName.lower():
         return ASRD71MTransform(*args, **kwargs)
+    elif 'usmcs' in cameraName.lower():
+        return USMCSTransform(*args, **kwargs)
     else:
         raise ValueError(f'unknown transform for camera : {cameraName}')
 
@@ -500,3 +502,10 @@ class ASRD71MTransform(SimpleTransform):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
         self.mcsDistort.setArgs([-376.0, -268.71, -0.575, -0.924753269, -2.25647580e-13])
+
+class USMCSTransform(SimpleTransform):
+    """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
+    def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
+        super().setParams(altitude, insrot, nsigma, alphaRot)
+
+        self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
