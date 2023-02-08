@@ -275,6 +275,7 @@ class PfiTransform:
         distortion.frozen = self.mcsDistort.frozen
 
         res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
+       
         self.mcsDistort.setArgs(res.x)
 
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
@@ -457,7 +458,7 @@ class SimpleTransform(PfiTransform):
 
         res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
         self.mcsDistort.setArgs(res.x)
-
+        #print(res.x)
         xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
         fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
 
@@ -508,4 +509,8 @@ class USMCSTransform(SimpleTransform):
     def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
-        self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
+        if insrot > 0:
+            self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
+        else:
+        #self.mcsDistort.setArgs([-240, 350, insrot, -0.929, 0])
+            self.mcsDistort.setArgs([-2.39005199e+02, 3.52438317e+02, insrot, -1.07073873, 5.57219392e-13])
