@@ -110,7 +110,7 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
     db.close()
 
 
-def ingestPfsConfig(pfsConfig, allocated_at=None):
+def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None, converg_elapsed_time=None):
     '''
         Description
         -----------
@@ -141,8 +141,8 @@ def ingestPfsConfig(pfsConfig, allocated_at=None):
                        'ra_center_config': [pfsConfig.raBoresight],
                        'dec_center_config': [pfsConfig.decBoresight],
                        'pa_config': [pfsConfig.posAng],
-                       'converg_num_iter': [None],
-                       'converg_elapsed_time': [None],
+                       'converg_num_iter': [converg_num_iter],
+                       'converg_elapsed_time': [converg_elapsed_time],
                        'alloc_rms_scatter': [None],
                        'allocated_at': [allocated_at],
                        'was_observed': [False]
@@ -153,6 +153,8 @@ def ingestPfsConfig(pfsConfig, allocated_at=None):
     df = pd.DataFrame({'pfs_design_id': [pfsConfig.pfsDesignId for _ in pfsConfig.fiberId],
                        'visit0': [pfsConfig.visit for _ in pfsConfig.fiberId],
                        'fiber_id': pfsConfig.fiberId,
+                       'pfi_nominal_final_x_mm': pfsConfig.pfiNominal[:, 0],
+                       'pfi_nominal_final_y_mm': pfsConfig.pfiNominal[:, 1],
                        'pfi_center_final_x_mm': pfsConfig.pfiCenter[:, 0],
                        'pfi_center_final_y_mm': pfsConfig.pfiCenter[:, 1],
                        'motor_map_summary': [None for _ in pfsConfig.fiberId],
