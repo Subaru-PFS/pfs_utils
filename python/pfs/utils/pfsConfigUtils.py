@@ -1,3 +1,4 @@
+import datetime
 import glob
 import os
 
@@ -9,7 +10,17 @@ __all__ = ["getDateDir", "writePfsConfig", "writePfsConfigFromDesign"]
 
 def getDateDir(pfsConfig):
     """Definitely not the quickest but I have not better idea at this moment."""
-    [pfsConfigPath] = glob.glob('/data/raw/*-*-*/pfsConfig/%s' % pfsConfig.filename)
+    pfsConfigPath = ''
+    year = datetime.date.today().year
+
+    for year in reversed(range(year - 1, year + 2)):
+        search = glob.glob(f'/data/raw/{year}-*-*/pfsConfig/{pfsConfig.filename}')
+        if search:
+            [pfsConfigPath] = search
+            break
+
+    if not pfsConfigPath:
+        raise ValueError(f'could not find {pfsConfig.filename} in /data/raw/$DATE/pfsConfig')
 
     dirName, _ = os.path.split(pfsConfigPath)
     rootDir, _ = os.path.split(dirName)
