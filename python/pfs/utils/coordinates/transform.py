@@ -409,8 +409,7 @@ class SimpleTransform(PfiTransform):
         self.nsigma = nsigma
         self.alphaRot = alphaRot
 
-        self.mcs_boresight_x_pix = 5048
-        self.mcs_boresight_y_pix = 3518.70
+        
         #
         # The correct number of initial values; must match code in __call__()
         #
@@ -532,6 +531,9 @@ class USMCSTransform(SimpleTransform):
     def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
+        self.mcs_boresight_x_pix = 5048
+        self.mcs_boresight_y_pix = 3518.70
+        
         #if insrot > 0:
         #    self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
         #else:
