@@ -408,6 +408,9 @@ class SimpleTransform(PfiTransform):
         self.insrot = insrot
         self.nsigma = nsigma
         self.alphaRot = alphaRot
+
+        self.mcs_boresight_x_pix = 5048
+        self.mcs_boresight_y_pix = 3518.70
         #
         # The correct number of initial values; must match code in __call__()
         #
@@ -452,7 +455,14 @@ class SimpleTransform(PfiTransform):
         if nMatch < nMatchMin:
             raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
 
-        distortion = MeasureDistortion(mcs_x_pix, mcs_y_pix, fid, x_fid_mm, y_fid_mm, fiducialId,
+        applyDistortion = self.applyDistortion
+        try:
+            self.applyDistortion = False
+            x, y = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        finally:
+            self.applyDistortion = applyDistortion
+
+        distortion = MeasureDistortion(x, y, fid, x_fid_mm, y_fid_mm, fiducialId,
                                        self.nsigma, self.alphaRot)
         distortion.frozen = self.mcsDistort.frozen
 
@@ -477,6 +487,19 @@ class SimpleTransform(PfiTransform):
             x = x.to_numpy()
         if isinstance(y, pd.Series):
             y = y.to_numpy()
+
+        xyin = np.stack((x, y)).copy()
+
+        xyin[0] = -(xyin[0] - self.mcs_boresight_x_pix)   # rotate 180 about centre
+        xyin[1] = -(xyin[1] - self.mcs_boresight_y_pix)
+
+        xy = CoordinateTransform(xyin, "mcs_pfi", za=90.0 - self.altitude, inr=self.insrot)
+        xp, yp = xy[0], -xy[1]
+
+        if self.applyDistortion:
+            xp, yp = self.mcsDistort.distort(xp, yp, inverse=False)
+
+        return xp, yp
 
         return self.mcsDistort.distort(x, y, inverse=False)
 
@@ -509,8 +532,8 @@ class USMCSTransform(SimpleTransform):
     def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
-        if insrot > 0:
-            self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
-        else:
-        #self.mcsDistort.setArgs([-240, 350, insrot, -0.929, 0])
-            self.mcsDistort.setArgs([-2.39005199e+02, 3.52438317e+02, insrot, -1.07073873, 5.57219392e-13])
+        #if insrot > 0:
+        #    self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
+        #else:
+        self.mcsDistort.setArgs([-1.39638187e-01, -8.35787896e+00,  1.80458126e+02, -1.07676321e-01, -4.29326275e-07])
+        #self.mcsDistort.setArgs([0 ,-10  , 0 ,-1.85,0])
