@@ -4,6 +4,8 @@ import scipy.optimize
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from pfs.utils.display import CircleHandler
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 
 __all__ = ["matchIds", "makePfiTransform", "MeasureDistortion"]
 
@@ -558,7 +560,7 @@ class ASRD71MTransform(SimpleTransform):
 
 class USMCSTransform(SimpleTransform):
     """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
-    def __init__(self, altitude=90, insrot=0, applyDistortion=True, PFIcenters = None, nsigma=None, alphaRot=0):
+    def __init__(self, altitude=90, insrot=0, applyDistortion=True, PFIcenters = None, , nsigma=None, alphaRot=0):
         self.setParams(altitude, insrot, nsigma, alphaRot)
 
         self.applyDistortion = applyDistortion
@@ -573,10 +575,6 @@ class USMCSTransform(SimpleTransform):
     def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
-        
-        
-        #if insrot > 0:
-        #    self.mcsDistort.setArgs([-240, 350, insrot, -0.929, -2.25647580e-13])
-        #else:
-        self.mcsDistort.setArgs([-1.39638187e-01, -8.35787896e+00,  1.80458126e+02, -1.07676321e-01, -4.29326275e-07])
-        #self.mcsDistort.setArgs([0 ,-10  , 0 ,-1.85,0]) 
+    
+        self.mcsDistort.setArgs([-1.42451239e-01, -8.35577428e+00,  
+            1.80458189e+02, -1.07665741e-01, -4.29174306e-07])
