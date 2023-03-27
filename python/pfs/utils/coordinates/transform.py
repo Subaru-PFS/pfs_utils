@@ -7,7 +7,7 @@ from pfs.utils.display import CircleHandler
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 
-__all__ = ["matchIds", "makePfiTransform", "MeasureDistortion"]
+__all__ = ["searchParams","matchIds", "makePfiTransform", "MeasureDistortion"]
 
 from .CoordTransp import CoordinateTransform
 
@@ -440,13 +440,116 @@ class SimpleTransform(PfiTransform):
         self.insrot = insrot
         self.nsigma = nsigma
         self.alphaRot = alphaRot
-
-        
         #
         # The correct number of initial values; must match code in __call__()
         #
         self.mcsDistort = MeasureDistortion([], [], [], [], [], [], nsigma=0, alphaRot=self.alphaRot)
         self.mcsDistort.setArgs(np.array([0, 0, -insrot, 0, 0], dtype=float))
+
+    def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
+        """Update our estimate of the transform, based on the positions of fiducial fibres
+
+        mcs_data:              Pandas DataFrame containing mcs_center_x_pix, mcs_center_y_pix
+                               (measured positions in pixels in metrology camera)
+        fiducials:             Pandas DataFrame containing x_mm, y_mm, fiducialId
+                               (Fiducial positions in mm on PFI)
+                               As returned by `butler.get("fiducials")
+        matchRadius:           Radius to match points and fiducials (mm)
+        nMatchMin:             Minimum number of permissible matches
+                               (if <= 1, interpreted as the fraction of the number of fiducials)
+        fig                    matplotlib figure for displays; or None
+
+        Returns:
+           fids:      array of `int`
+                array of length mcs_data giving indices into fiducials or -1
+           distance:  array of `float`
+                array of length mcs_data giving distance in mm to nearest fiducial
+        """
+        if nMatchMin <= 1:
+            nMatchMin *= len(fiducials.fiducialId)
+
+        mcs_x_pix = mcs_data.mcs_center_x_pix.to_numpy()
+        mcs_y_pix = mcs_data.mcs_center_y_pix.to_numpy()
+
+        x_fid_mm = fiducials.x_mm.to_numpy()
+        y_fid_mm = fiducials.y_mm.to_numpy()
+        fiducialId = fiducials.fiducialId.to_numpy()
+
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+        nMatch = sum(fid > 0)
+
+        self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
+
+        if nMatch < nMatchMin:
+            raise RuntimeError(f"I only matched {nMatch} out of {len(fiducialId)} fiducial fibres")
+
+        distortion = MeasureDistortion(mcs_x_pix, mcs_y_pix, fid, x_fid_mm, y_fid_mm, fiducialId,
+                                       self.nsigma, self.alphaRot)
+        distortion.frozen = self.mcsDistort.frozen
+
+        res = scipy.optimize.minimize(distortion, distortion.getArgs(), method='Powell')
+        self.mcsDistort.setArgs(res.x)
+        #print(res.x)
+        xd, yd = self.mcsToPfi(mcs_x_pix, mcs_y_pix)
+        fid, dmin = matchIds(xd, yd, x_fid_mm, y_fid_mm, fiducialId, matchRadius=matchRadius)
+
+        self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
+
+        return (fid, dmin)
+
+    def mcsToPfi(self, x, y):
+        """transform camera pixels to pfi mm
+        x, y:  position in mcs pixels
+
+        returns:
+            x, y in pfi mm
+        """
+        if isinstance(x, pd.Series):
+            x = x.to_numpy()
+        if isinstance(y, pd.Series):
+            y = y.to_numpy()
+
+        return self.mcsDistort.distort(x, y, inverse=False)
+
+    def pfiToMcs(self, x, y, niter=5, lam=1.0):
+        """transform pfi mm to camera mcs pixels
+        x, y:  position in pfi mm
+        niter: number of iterations (ignored)
+        lam:   convergence factor for iteration (ignored)
+
+        returns:
+            x, y in mcs pixels
+        """
+        if isinstance(x, pd.Series):
+            x = x.to_numpy()
+        if isinstance(y, pd.Series):
+            y = y.to_numpy()
+
+        return self.mcsDistort.distort(x, y, inverse=True)
+
+
+class ASRD71MTransform(SimpleTransform):
+    """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
+    def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
+        super().setParams(altitude, insrot, nsigma, alphaRot)
+
+        self.mcsDistort.setArgs([-376.0, -268.71, -0.575, -0.924753269, -2.25647580e-13])
+
+class USMCSTransform(SimpleTransform):
+    """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
+    def __init__(self, altitude=90, insrot=0, applyDistortion=True, PFIcenters = None, nsigma=None, alphaRot=0):
+        self.setParams(altitude, insrot, nsigma, alphaRot)
+
+        self.applyDistortion = applyDistortion
+
+        if PFIcenters is None:
+            self.mcs_boresight_x_pix = 5048
+            self.mcs_boresight_y_pix = 3518.70
+        else:
+            self.mcs_boresight_x_pix = PFIcenters[0]
+            self.mcs_boresight_y_pix = PFIcenters[1]
+
 
     def updateTransform(self, mcs_data, fiducials, matchRadius=1, nMatchMin=0.75, fig=None):
         """Update our estimate of the transform, based on the positions of fiducial fibres
@@ -534,43 +637,6 @@ class SimpleTransform(PfiTransform):
 
         return self.mcsDistort.distort(x, y, inverse=False)
 
-    def pfiToMcs(self, x, y, niter=5, lam=1.0):
-        """transform pfi mm to camera mcs pixels
-        x, y:  position in pfi mm
-        niter: number of iterations (ignored)
-        lam:   convergence factor for iteration (ignored)
-
-        returns:
-            x, y in mcs pixels
-        """
-        if isinstance(x, pd.Series):
-            x = x.to_numpy()
-        if isinstance(y, pd.Series):
-            y = y.to_numpy()
-
-        return self.mcsDistort.distort(x, y, inverse=True)
-
-
-class ASRD71MTransform(SimpleTransform):
-    """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
-    def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
-        super().setParams(altitude, insrot, nsigma, alphaRot)
-
-        self.mcsDistort.setArgs([-376.0, -268.71, -0.575, -0.924753269, -2.25647580e-13])
-
-class USMCSTransform(SimpleTransform):
-    """A version of SimpleTransform that's initialised for the ASRD RMOD 71M"""
-    def __init__(self, altitude=90, insrot=0, applyDistortion=True, PFIcenters = None, , nsigma=None, alphaRot=0):
-        self.setParams(altitude, insrot, nsigma, alphaRot)
-
-        self.applyDistortion = applyDistortion
-
-        if PFIcenters is None:
-            self.mcs_boresight_x_pix = 5048
-            self.mcs_boresight_y_pix = 3518.70
-        else:
-            self.mcs_boresight_x_pix = PFIcenters[0]
-            self.mcs_boresight_y_pix = PFIcenters[1]
 
     def setParams(self, altitude=90, insrot=0, nsigma=None, alphaRot=0):
         super().setParams(altitude, insrot, nsigma, alphaRot)
