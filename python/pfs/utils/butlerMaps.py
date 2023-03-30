@@ -13,7 +13,11 @@ dataMap['fpsRun'] = dict(template="raw/{pfsDay}/fps/{visit:06d}")
 
 dataMap['spsFile'] = dict(template="raw/{pfsDay}/sps/PF{site}A{visit:06d}{spectrograph}{armNum}.fits")
 dataMap['ccdFile'] = dataMap['spsFile']
-dataMap['rampFile'] = dict(template="raw/{pfsDay}/sps/PF{site}B{visit:06d}{spectrograph}{armNum}.fits")
+
+# Hmm. For JHU and LAM:
+#dataMap['rampFile'] = dict(template="ramps/{pfsDay}/PF{site}B{visit:06d}{spectrograph}3.fits")
+dataMap['rampFile'] = dict(template="raw/{pfsDay}/ramps/PF{site}B{visit:06d}{spectrograph}3.fits")
+
 dataMap['mcsFile'] = dict(template="raw/{pfsDay}/mcs/PF{site}C{visit:06d}{frame:02d}.fits")
 dataMap['agccFile'] = dict(template="raw/{pfsDay}/mcs/PF{site}D{visit:06d}{frame:02d}.fits")
 
