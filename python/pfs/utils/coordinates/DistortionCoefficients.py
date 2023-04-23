@@ -514,9 +514,9 @@ class Coeff:
             logging.info("Interpolated the base offset")
 
             if self.do_off2:
-                offsetx = np.array([x_itrp.ev(i, j)-x_itrp2.ev(i, j)
+                offsetx = np.array([x_itrp.ev(i, j)+x_itrp2.ev(i, j)
                                     for i, j in zip(*xyin)])
-                offsety = np.array([y_itrp.ev(i, j)-y_itrp2.ev(i, j)
+                offsety = np.array([y_itrp.ev(i, j)+y_itrp2.ev(i, j)
                                     for i, j in zip(*xyin)])
                 rin = np.array([np.sqrt(i*i+j*j) for i, j in zip(*xyin)])
                 # print(rin)
