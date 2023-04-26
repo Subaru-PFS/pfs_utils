@@ -174,6 +174,10 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
     elif c.mode == 'mcs_pfi':
+        distCorr=Subaru_POPT2_PFS.distCorr()
+        dx, dy = distCorr.xy2dxdy(x, y)
+        x = x - dx
+        y = y - dy
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
