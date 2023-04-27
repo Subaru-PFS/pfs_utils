@@ -179,7 +179,7 @@ def convert_out_position(x, y, inr, c, cent, time):
         dx, dy = distCorr.xy2dxdy(x, y)
         x = x - dx
         y = y - dy
-        logging.info("Before: x= %s, y=%s", x[:11], y[:11])
+        logging.info("After: x= %s, y=%s", x[:11], y[:11])
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
@@ -390,7 +390,7 @@ def deviation_zenith_angle(xyin, za, c, adc=0.):
         sl_itrp = ipol.splrep(za_a, sl_a, k=2, s=0)
         cy5 = ipol.splev(za, sl_itrp)
         cy5 = 0.
-    if c.mode == 'sky_pfi_old':
+    if c.mode == 'sky_pfi_old' or 'mcs_pfi':
         adc = DCoeff.calc_adc_position(za)
 
     logging.info("ADC pos: %s", adc)
