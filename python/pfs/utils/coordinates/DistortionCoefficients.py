@@ -88,8 +88,8 @@ pfi_diffscale = 0.999232042
 
 # correction during the Sep 2022 run
 inr_tel_offset = 0.12  # deg (0.08 + 0.03 + 0.01)
-pfi_x_offset = -0.09  # mm
-pfi_y_offset = 0.01  # mm
+pfi_x_offset = -0.115  # -0.09 -0.025  mm
+pfi_y_offset = 0.03  # 0.01 + 0.02  mm
 
 # Wavelength used in AG
 wl_ag = 0.62
