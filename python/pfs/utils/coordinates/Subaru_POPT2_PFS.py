@@ -554,6 +554,10 @@ class PFS():
 
 
 class distCorr():
+
+    def __init__(self):
+        self.correction_factor = 3.0
+
     def xy2dxdy(self, xt, yt):
 
         #### 2023/04/29, after rot. center correction
