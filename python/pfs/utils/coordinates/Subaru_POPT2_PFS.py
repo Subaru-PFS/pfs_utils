@@ -556,7 +556,7 @@ class PFS():
 class distCorr():
 
     def __init__(self):
-        self.correction_factor = 3.0
+        self.correction_factor = 1.0
 
     def xy2dxdy(self, xt, yt):
 
