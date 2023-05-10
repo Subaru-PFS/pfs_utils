@@ -552,6 +552,47 @@ class PFS():
         ydp  = xpfi
         return xdp, ydp
 
+
+class distCorr():
+
+    def __init__(self):
+        self.correction_factor = 0.0
+
+    def xy2dxdy(self, xt, yt):
+
+        #### 2023/04/29, after rot. center correction
+        z0x  =     0.000427
+        z1x  =    -0.017455
+        z2x  =     0.037186
+        z3x  =    -0.017051
+        z4x  =    -0.000702
+        z5x  =     0.002373
+        z6x  =    -0.006613
+        z7x  =     0.002376
+        z8x  =     0.046141
+        z9x  =    -0.003332
+        z12x =    -0.001974
+        z0y  =    -0.003307
+        z1y  =     0.010444
+        z2y  =    -0.025497
+        z3y  =     0.004787
+        z4y  =    -0.008803
+        z5y  =     0.006628
+        z6y  =     0.013729
+        z7y  =     0.027915
+        z8y  =    -0.007858
+        z9y  =     0.005144
+        z12y =    -0.006350
+
+        # xt,yt in mm
+        x = xt / 250.0
+        y = yt / 250.0
+        ox = z0x + z1x*y + z2x*x + z3x*2*x*y + z4x*(2*(x**2+y**2)-1) + z5x*(x**2-y**2) + z6x*( 3*(x**2+y**2)-4*y**2)*y + z7x*( 3*(x**2+y**2)-2)*y + z8x*( 3*(x**2+y**2)-2)*x + z9x*(-3*(x**2+y**2)+4*x**2)*x + z12x*(6*(x**2+y**2)**2-6*(x**2+y**2)+1)
+        oy = z0y + z1y*y + z2y*x + z3y*2*x*y + z4y*(2*(x**2+y**2)-1) + z5y*(x**2-y**2) + z6y*( 3*(x**2+y**2)-4*y**2)*y + z7y*( 3*(x**2+y**2)-2)*y + z8y*( 3*(x**2+y**2)-2)*x + z9y*(-3*(x**2+y**2)+4*x**2)*x + z12y*(6*(x**2+y**2)**2-6*(x**2+y**2)+1)
+
+        return ox,oy
+
+
 ###
 if __name__ == "__main__":
     print('# basic functions for Subaru telescope, POPT2 and PFS')
