@@ -179,3 +179,6 @@ class HeaderFixDatabase:
         self.add("S", self.inclRange(84795, 84824), W_PFDSGN=designIdDCBSuNSS)
         self.add("S", self.inclRange(84827, 84886), W_PFDSGN=designIdDCBSuNSS)
         self.add("S", self.inclRange(84905, 84934), W_PFDSGN=designIdDCBSuNSS)
+
+        # Correcting quartz lamp status for ring lamp exposures during 2023 April/May engineering run
+        self.add("S", self.inclRange(91427, 91436), W_AITQTH=True)
