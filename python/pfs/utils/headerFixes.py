@@ -179,3 +179,7 @@ class HeaderFixDatabase:
         self.add("S", self.inclRange(84795, 84824), W_PFDSGN=designIdDCBSuNSS)
         self.add("S", self.inclRange(84827, 84886), W_PFDSGN=designIdDCBSuNSS)
         self.add("S", self.inclRange(84905, 84934), W_PFDSGN=designIdDCBSuNSS)
+
+        # Engineering run april 23.
+        self.add("S", [91057, 91681], W_PFDSGN=0x662cf9deec5c1ce9)
+        self.add("S", [92481], W_PFDSGN=0x15adaf923f34fb55)
