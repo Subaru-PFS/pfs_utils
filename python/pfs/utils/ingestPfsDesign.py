@@ -110,7 +110,8 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
     db.close()
 
 
-def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None, converg_elapsed_time=None):
+def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None, converg_elapsed_time=None,
+                    converg_tolerance=None):
     '''
         Description
         -----------
@@ -143,6 +144,7 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None, converg
                        'pa_config': [pfsConfig.posAng],
                        'converg_num_iter': [converg_num_iter],
                        'converg_elapsed_time': [converg_elapsed_time],
+                       'converg_tolerance': [converg_tolerance],
                        'alloc_rms_scatter': [None],
                        'allocated_at': [allocated_at],
                        'was_observed': [False]
