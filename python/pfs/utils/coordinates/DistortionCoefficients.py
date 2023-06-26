@@ -671,7 +671,8 @@ def calc_atmospheric_refraction(za, wl=0.575):
     return np.rad2deg(pr)
 
 
-def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=True):
+def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
+                    log=True, returnRaDec=False):
 
     # Set Observation Site (Subaru)
     tel = EarthLocation.of_site('Subaru')
@@ -746,4 +747,7 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None, log=Tr
     # subaru = Subaru_POPT2_PFS.Subaru()
     # inr = subaru.radec2inr(coord3.ra, coord3.dec, obs_time)
 
-    return az, el, inr
+    if returnRaDec:
+        return az, el, inr, coord3.ra.deg, coord3.dec.deg
+    else:
+        return az, el, inr
