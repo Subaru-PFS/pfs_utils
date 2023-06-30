@@ -65,7 +65,7 @@ def update_target_position(radec, pa, cent, pm, par, obstime, epoch=2016.0):
     '''
 
     xyout = CoordinateTransform(radec, 'sky_pfi', pa=pa, cent=cent,
-                                pm=pm, par=par, time=obstime)
+                                pm=pm, par=par, time=obstime, epoch=epoch)
 
     pfi_now_x, pfi_now_y = xyout[0,:], xyout[1,:]
 
