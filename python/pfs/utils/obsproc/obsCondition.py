@@ -2,27 +2,22 @@
 
 import numpy as np
 import pandas as pd
-import psycopg2
-from sqlalchemy import create_engine
-
+from sqlalchemy import create_engine, exc, text
+import toml
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from matplotlib.ticker import MultipleLocator
-from matplotlib.patches import Circle
-from matplotlib.collections import PatchCollection
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 __all__ = ["Condition"]
 
-AG_PIX_SCALE = 0.133           # arcsec/pix?  (FIXME)
-TRANSPARENCY_CORRECTION = 2.0  # tentative transparency correction factor  (FIXME)
 
-conn_obdb_config = {
-    'user': 'pfs',
-    'host': 'pfsa-db01',
-    'port': '5432',
-    'database': 'opdb'
-}
+def read_conf(conf):
+    config = toml.load(conf)
+    return config
+
+
+def get_url(conf):
+    url = f'{conf["dialect"]}://{conf["user"]}@{conf["host"]}:{conf["port"]}/{conf["dbname"]}'
+    return url 
+
 
 class Condition(object):
     """Observing condition
@@ -37,17 +32,44 @@ class Condition(object):
 
     """
 
-    def __init__(self, visits):
-        self._conn_opdb = psycopg2.connect(**conn_obdb_config)
-        #self._conn_qadb = psycopg2.connect(**conn_qadb_config)
-        self._engine_qadb = create_engine(f'postgresql://pfs@pfsa-db01:5433/qadb_e2e_test')
+    def __init__(self, visits, conf='config.toml'):
+        self.conf = read_conf(conf)       
+        self._engine_opdb = create_engine(get_url(self.conf["db"]["opdb"]))
+        self._engine_qadb = create_engine(get_url(self.conf["db"]["qadb"]))
+        self._conn_opdb = self._engine_opdb.raw_connection()
+        self._conn_qadb = self._engine_qadb.raw_connection()
         self.visits = visits
         self.visitList = []
         self.df = None
-
+        
     def populateQATable(self, tableName, df):
-        df.to_sql(tableName, self._engine_qadb, if_exists='append', index=False)
-
+        ''' FIXME (this is not a smart way...) '''
+        for idx, data in df.iterrows():
+            df_new = pd.DataFrame(
+                data={k: [v] for k, v in data.items()}
+                )
+            try:
+                df_new.to_sql(tableName, self._engine_qadb, if_exists='append', index=False)
+            except exc.IntegrityError:
+                if 'pfs_visit_id' in data.keys():
+                    pfs_visit_id = int(data['pfs_visit_id'])
+                    keys = ''
+                    vals = ''
+                    for k, v in data.items():
+                        keys = keys + k + ','
+                        vals = vals + str(v) + ','
+                    if len(data) > 1:
+                        sqlCmd = text(f'UPDATE {tableName} SET ({keys[:-1]}) = ({vals[:-1]}) WHERE pfs_visit_id={pfs_visit_id}')
+                    else:
+                        sqlCmd = text(f'UPDATE {tableName} SET {keys[:-1]} = {vals[:-1]} WHERE pfs_visit_id={pfs_visit_id}')
+                        
+                    with self._engine_qadb.connect() as conn:
+                        conn.execute(sqlCmd)
+                    print(f'pfs_visit_id={pfs_visit_id} updated!')
+                else:
+                    print('No update...')
+                    pass
+        
     def getAgcData(self):
         sqlWhere = ''
         if type(self.visits) == int:
@@ -111,35 +133,34 @@ class Condition(object):
         g1 = self.df['central_image_moment_20_pix'] + self.df['central_image_moment_02_pix']
         g2 = self.df['central_image_moment_20_pix'] - self.df['central_image_moment_02_pix']
         g3 = np.sqrt(g2**2 + 4*self.df['central_image_moment_11_pix']**2)
-        sigma_a = AG_PIX_SCALE * np.sqrt((g1+g3)/2)
-        sigma_b = AG_PIX_SCALE * np.sqrt((g1-g3)/2)
+        sigma_a = self.conf['agc']['ag_pix_scale'] * np.sqrt((g1+g3)/2)
+        sigma_b = self.conf['agc']['ag_pix_scale'] * np.sqrt((g1-g3)/2)
         sigma = 0.5 * (sigma_a + sigma_b)
         fwhm = sigma * 2.355
 
         taken_at_seq = []
-        fwhm_mean=[]          # calculate median per each AG exposure
-        fwhm_median=[]          # calculate median per each AG exposure
-        fwhm_stddev=[]          # calculate median per each AG exposure
+        fwhm_mean = []          # calculate median per each AG exposure
+        fwhm_median = []          # calculate median per each AG exposure
+        fwhm_stddev = []          # calculate median per each AG exposure
         for s in seq:
-            taken_at_seq.append(taken_at[agc_exposure_id==s].values[0])
-            fwhm_mean.append(np.nanmean(fwhm[agc_exposure_id==s]))
-            fwhm_median.append(np.nanmedian(fwhm[agc_exposure_id==s]))
-            fwhm_stddev.append(np.nanstd(fwhm[agc_exposure_id==s]))
-        visit_p_visit=[]
-        fwhm_mean_p_visit=[]    # calculate mean per visit
-        fwhm_median_p_visit=[]  # calculate median per visit
-        fwhm_stddev_p_visit=[]  # calculate sigma per visit
+            taken_at_seq.append(taken_at[agc_exposure_id == s].values[0])
+            fwhm_mean.append(fwhm[agc_exposure_id == s].mean(skipna=True))
+            fwhm_median.append(fwhm[agc_exposure_id == s].median(skipna=True))
+            fwhm_stddev.append(fwhm[agc_exposure_id == s].std(skipna=True))
+        visit_p_visit = []
+        fwhm_mean_p_visit = []    # calculate mean per visit
+        fwhm_median_p_visit = []  # calculate median per visit
+        fwhm_stddev_p_visit = []  # calculate sigma per visit
         for v in np.unique(pfs_visit_ids):
             visit_p_visit.append(v)
-            fwhm_mean_p_visit.append(np.nanmean(fwhm[pfs_visit_ids==v]))
-            fwhm_median_p_visit.append(np.nanmedian(fwhm[pfs_visit_ids==v]))
-            fwhm_stddev_p_visit.append(np.nanstd(fwhm[pfs_visit_ids==v]))
+            fwhm_mean_p_visit.append(fwhm[pfs_visit_ids == v].mean(skipna=True))
+            fwhm_median_p_visit.append(fwhm[pfs_visit_ids == v].median(skipna=True))
+            fwhm_stddev_p_visit.append(fwhm[pfs_visit_ids == v].std(skipna=True))
             
         ''' insert into qaDB '''
         df = pd.DataFrame(
-            data={'pfs_visit_id': visit_p_visit
-            }
-        )
+            data={'pfs_visit_id': visit_p_visit}
+            )
         self.populateQATable('pfs_visit', df)
 
         df = pd.DataFrame(
@@ -152,27 +173,27 @@ class Condition(object):
         self.populateQATable('seeing', df)
         
         ''' plotting '''
-        if plot == True:
-            fig = plt.figure(figsize=(8,5))
+        if plot is True:
+            fig = plt.figure(figsize=(8, 5))
             axe = fig.add_subplot()
             axe.set_xlabel('taken_at (HST)')
             axe.set_ylabel('seeing FWHM (arcsec.)')
             axe.set_title(f'visits:{self.visits}')
             axe.set_ylim(0., 2.0)
-            if cc=='cameraId':
+            if cc == 'cameraId':
                 for cid in self.cameraIds:
-                    msk = self.df['agc_camera_id']==cid
+                    msk = self.df['agc_camera_id'] == cid
                     axe.scatter(taken_at[msk], fwhm[msk], marker='o', s=10, alpha=0.5, rasterized=True, label=f'cameraId={cid}')
-            elif cc=='visit':
+            elif cc == 'visit':
                 for v in self.visitList:
-                    msk = self.df['pfs_visit_id']==v
+                    msk = self.df['pfs_visit_id'] == v
                     axe.scatter(taken_at[msk], fwhm[msk], marker='o', s=10, alpha=0.5, rasterized=True)
             else:
                 axe.scatter(taken_at[msk], fwhm[msk], marker='o', s=10, edgecolor='none', facecolor='C0', alpha=0.5, rasterized=True)
-            #axe.scatter(taken_at_seq, fwhm_median, marker='o', s=50, edgecolor='none', facecolor='C1', alpha=0.8, rasterized=True)
+            # axe.scatter(taken_at_seq, fwhm_median, marker='o', s=50, edgecolor='none', facecolor='C1', alpha=0.8, rasterized=True)
             axe.plot(taken_at_seq, fwhm_median, ls='solid', lw=2, color='k', alpha=0.8)
             axe.plot([min(taken_at_seq), max(taken_at_seq)],
-                    [0.8, 0.8], ls='dashed', lw=2, color='k', alpha=0.8)
+                     [0.8, 0.8], ls='dashed', lw=2, color='k', alpha=0.8)
             axe.legend(loc='upper left', ncol=2, fontsize=8)
 
         return agc_exposure_id, taken_at_seq, fwhm_mean, fwhm_median, fwhm_stddev, fwhm_mean_p_visit, fwhm_median_p_visit, fwhm_stddev_p_visit
@@ -201,20 +222,57 @@ class Condition(object):
         agc_exposure_id = self.df['agc_exposure_id']
         seq = np.unique(agc_exposure_id)
         taken_at = self.df['taken_at']
+        pfs_visit_ids = self.df['pfs_visit_id']
 
         mag1 = self.df['guide_star_magnitude']
         mag2 = self.df['estimated_magnitude']
         dmag = mag2 - mag1
-        transp = 10**(-0.4*dmag) / TRANSPARENCY_CORRECTION
+        transp = 10**(-0.4*dmag) / self.conf['agc']['transparency_correction']
 
         taken_at_seq = []
-        transp_median=[]     # calculate median per each AG exposure
+        transp_mean = []     # calculate median per each AG exposure
+        transp_median = []     # calculate median per each AG exposure
+        transp_stddev = []     # calculate median per each AG exposure
         for s in seq:
-            taken_at_seq.append(taken_at[agc_exposure_id==s].values[0])
-            transp_median.append(np.nanmedian(transp[agc_exposure_id==s]))
+            taken_at_seq.append(taken_at[agc_exposure_id == s].values[0])
+            data = transp[agc_exposure_id == s]
+            if len(data[data.notna()]) > 0:
+                transp_mean.append(data.mean(skipna=True))
+                transp_median.append(data.median(skipna=True))
+                transp_stddev.append(data.std(skipna=True))
+            else:
+                transp_mean.append(np.nan)
+                transp_median.append(np.nan)
+                transp_stddev.append(np.nan)
+                
+        visit_p_visit = []
+        transp_mean_p_visit = []    # calculate mean per visit
+        transp_median_p_visit = []  # calculate median per visit
+        transp_stddev_p_visit = []  # calculate sigma per visit
+        for v in np.unique(pfs_visit_ids):
+            visit_p_visit.append(v)
+            data = transp[pfs_visit_ids == v]
+            if len(data[data.notna()]) > 0:
+                transp_mean_p_visit.append(data.mean(skipna=True))
+                transp_median_p_visit.append(data.median(skipna=True))
+                transp_stddev_p_visit.append(data.std(skipna=True))
+            else:
+                transp_mean_p_visit.append(np.nan)
+                transp_median_p_visit.append(np.nan)
+                transp_stddev_p_visit.append(np.nan)
+                
+        ''' insert into qaDB '''
+        df = pd.DataFrame(
+            data={'pfs_visit_id': visit_p_visit,
+                  'transparency_mean': transp_mean_p_visit,
+                  'transparency_median': transp_median_p_visit,
+                  'transparency_sigma': transp_stddev_p_visit
+                  }
+            )
+        self.populateQATable('transparency', df)
 
         ''' plotting '''
-        if plot == True:
+        if plot is True:
             '''
             xmin = 12.0
             xmax = 22.0
@@ -240,26 +298,26 @@ class Condition(object):
             axe.plot([xmin, xmax], [1.0, 1.0], ls='dashed', color='k')
             axe.legend(loc='upper left', ncol=2, fontsize=8)
             '''
-            fig = plt.figure(figsize=(8,5))
+            fig = plt.figure(figsize=(8, 5))
             axe = fig.add_subplot()
             axe.set_xlabel('taken_at (HST)')
             axe.set_ylabel(r'transparency ($\times0.5$ tentatively)')
             axe.set_title(f'visits:{self.visits}')
             axe.set_ylim(0., 2.0)
-            if cc=='cameraId':
+            if cc == 'cameraId':
                 for cid in self.cameraIds:
-                    msk = self.df['agc_camera_id']==cid
+                    msk = self.df['agc_camera_id'] == cid
                     axe.scatter(taken_at[msk], transp[msk], marker='o', s=10, alpha=0.5, rasterized=True, label=f'cameraId={cid}')
-            elif cc=='visit':
+            elif cc == 'visit':
                 for v in self.visitList:
-                    msk = self.df['pfs_visit_id']==v
+                    msk = self.df['pfs_visit_id'] == v
                     axe.scatter(taken_at[msk], transp[msk], marker='o', s=10, alpha=0.5, rasterized=True)
             else:
                 axe.scatter(taken_at[msk], transp[msk], marker='o', s=10, edgecolor='none', facecolor='C0', alpha=0.5, rasterized=True)
             axe.plot(taken_at_seq, transp_median, ls='solid', lw=2, color='k', alpha=0.8)
             axe.plot([min(taken_at_seq), max(taken_at_seq)],
-                    [1.0, 1.0], ls='dashed', lw=2, color='k', alpha=0.8)
+                     [1.0, 1.0], ls='dashed', lw=2, color='k', alpha=0.8)
             axe.legend(loc='upper left', ncol=2, fontsize=8)
 
         # return mag1, dmag, transp
-        return agc_exposure_id, taken_at_seq, transp_median
+        return agc_exposure_id, taken_at_seq, transp_mean, transp_median, transp_stddev, transp_mean_p_visit, transp_median_p_visit, transp_stddev_p_visit
