@@ -316,8 +316,10 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         # Az-El to offset angle from the center (Targets)
         if c.mode == 'sky_pfi':
             subaru = Subaru_POPT2_PFS.Subaru()
-            str_sep, str_zpa = subaru.starSepZPA(ra0, dec0,
-                                                 xyin[0, :], xyin[1, :],
+            ra, dec = subaru.radec2radecplxpm(epoch, xyin[0, :], xyin[1, :],
+                                              par, pm[0, :], pm[1, :], time)
+            str_sep, str_zpa = subaru.starSepZPA(ra0, dec0, ra, dec,
+#                                                 xyin[0, :], xyin[1, :],
                                                  DCoeff.wl_ag, time)
             xyconv = np.vstack((str_sep, str_zpa))
 
