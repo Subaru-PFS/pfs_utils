@@ -266,7 +266,7 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
     dec = np.zeros_like(fiberId, dtype=float)
     pfiNominal = np.zeros((num, 2), dtype=float)
 
-    epoch = np.full_like(targetTypes, "J2000.0")
+    epoch = np.full(len(targetTypes), "J2000.0")
     pmRa = np.zeros_like(targetTypes, dtype=np.float32)
     pmDec = np.zeros_like(targetTypes, dtype=np.float32)
     parallax = np.full_like(targetTypes, 1.0e-5, dtype=np.float32)
