@@ -24,6 +24,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   raBoresight=100, decBoresight=100, posAng=0, arms='br',
                   tract=1, patch='1,1', catId=-1, objId=-1, targetType=TargetType.SCIENCE,
                   fiberStatus=FiberStatus.GOOD,
+                  epoch="J2000.0", pmRa=0.0, pmDec=0.0, parallax=1e-8,
                   fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
                   fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
                   filterNames=None, guideStars=None, designName=None):
@@ -66,6 +67,16 @@ def makePfsDesign(pfiNominal, ra, dec,
     fiberStatus : `numpy.ndarray` of `int`
         Status of each fiber. Values must be convertible to `FiberStatus`
         (which limits the range of values).
+    epoch : `numpy.chararray`
+        reference epoch for each fiber.
+    pmRa : `numpy.ndarray` of `float32`
+        Proper motion in direction of Right Ascension
+        for each fiber, mas/year.
+    pmDec : `numpy.ndarray` of `float32`
+        Proper motion in direction of Declination
+        for each fiber, mas/year.
+    parallax : `numpy.ndarray` of `float32`
+        parallax for each fiber, mas.
     fiberFlux : `list` of `numpy.ndarray` of `float`
         Array of fiber fluxes for each fiber, in [nJy].
     psfFlux : `list` of `numpy.ndarray` of `float`
@@ -141,6 +152,11 @@ def makePfsDesign(pfiNominal, ra, dec,
     targetType = setDefaultValues(sciVal=targetType, engVal=TargetType.ENGINEERING, dtype=int)
     fiberStatus = setDefaultValues(sciVal=fiberStatus, engVal=FiberStatus.GOOD)
 
+    epoch = setDefaultValues(sciVal=epoch, engVal="J2000.0", dtype="U32")
+    pmRa = setDefaultValues(sciVal=pmRa, engVal=0.0, dtype="float32")
+    pmDec = setDefaultValues(sciVal=pmDec, engVal=0.0, dtype="float32")
+    parallax = setDefaultValues(sciVal=parallax, engVal=1.0e-8, dtype="float32")
+
     # I might be overaccommodating here but ...
     if filterNames is None:
         # making sure some input data are not discarded silently
@@ -172,7 +188,9 @@ def makePfsDesign(pfiNominal, ra, dec,
     totalFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in totalFluxErr]
 
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
-                          targetType, fiberStatus, fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
+                          targetType, fiberStatus,
+                          epoch, pmRa, pmDec, parallax,
+                          fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
                           totalFluxErr, filterList, pfiNominal, guideStars)
 
     if designName is not None:
