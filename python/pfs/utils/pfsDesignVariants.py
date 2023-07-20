@@ -65,6 +65,7 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
                           pfsDesign0.fiberId, pfsDesign0.tract, pfsDesign0.patch, ra, dec,
                           pfsDesign0.catId, pfsDesign0.objId,
                           pfsDesign0.targetType, pfsDesign0.fiberStatus,
+                          pfsDesign0.epoch, pfsDesign0.pmRa, pfsDesign0.pmDec, pfsDesign0.parallax,
                           pfsDesign0.fiberFlux,
                           pfsDesign0.psfFlux,
                           pfsDesign0.totalFlux,
