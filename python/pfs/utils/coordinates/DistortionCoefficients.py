@@ -748,7 +748,7 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
     # Disable for the time being.
     # Enabled back (2023.07)
     subaru = Subaru_POPT2_PFS.Subaru()
-    inr = subaru.radec2inr(coord3.ra, coord3.dec, obs_time)
+    inr = subaru.radec2inr(ra*u.deg, dec*u.deg, obs_time)
 
     if returnRaDec:
         return az, el, inr, coord3.ra.deg, coord3.dec.deg
