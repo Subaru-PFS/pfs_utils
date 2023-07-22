@@ -14,7 +14,7 @@ Unknown_Scale_Factor = 1.0
 wfc_scale_M2POS3_coeff = 1.01546e-4
 
 ### Subaru location
-sbr_lat =   +19.8225
+sbr_lat =   +19.8255
 sbr_lon =  +204.523972222
 sbr_hei = +4163.0
 Lsbr = ac.EarthLocation(lat=sbr_lat,lon=sbr_lon,height=sbr_hei)
