@@ -67,7 +67,7 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
         df['variant'] = 0
         df['design_id0'] = 0
 
-    #db.bulkInsert('pfs_design', df)
+    # db.bulkInsert('pfs_design', df)
     db.insert('pfs_design', df)
 
     ''' insert into `pfs_design_fiber` table '''
@@ -83,6 +83,10 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
                        'fiber_status': pfsDesign.fiberStatus,
                        'pfi_nominal_x_mm': pfsDesign.pfiNominal[:, 0],
                        'pfi_nominal_y_mm': pfsDesign.pfiNominal[:, 1],
+                       'target_pm_ra': pfsDesign.pmRa,
+                       'target_pm_dec': pfsDesign.pmDec,
+                       'target_parallax': pfsDesign.parallax,
+                       'epoch': pfsDesign.epoch,
                        'is_on_source': [True for _ in pfsDesign.fiberId]
                        })
     db.insert('pfs_design_fiber', df)

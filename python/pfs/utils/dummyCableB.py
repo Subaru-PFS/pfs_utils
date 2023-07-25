@@ -266,12 +266,18 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
     dec = np.zeros_like(fiberId, dtype=float)
     pfiNominal = np.zeros((num, 2), dtype=float)
 
+    epoch = np.full(len(targetTypes), "J2000.0")
+    pmRa = np.zeros_like(targetTypes, dtype=np.float32)
+    pmDec = np.zeros_like(targetTypes, dtype=np.float32)
+    parallax = np.full_like(targetTypes, 1.0e-5, dtype=np.float32)
+
     empty = [[] for _ in fiberId]
 
     return PfsDesign(pfsDesignId, raBoresight, decBoresight,
                      posAng, arms,
                      fiberId, tract, patch, ra, dec, catId, objId, targetTypes,
                      fiberStatus,
+                     epoch, pmRa, pmDec, parallax,
                      empty, empty, empty, empty, empty, empty, empty,
                      pfiNominal,
                      GuideStars.empty())
@@ -299,7 +305,7 @@ def main(args=None):
                         help="Setup(s) specifying fibers that were lit")
     parser.add_argument("--arms", type=str, default='brn',
                         help="single-character identifier for arms that will be exposed, eg 'brn'.")
-                
+
     args = parser.parse_args(args=args)
 
     nbad = 0
