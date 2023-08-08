@@ -729,11 +729,17 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
     # Instrument rotator angle
     # Use Subaru_POPT2_PFS to have commonality (disabled: 2022.09.20)
 
+    # Disable for the time being.
+    # Enabled back (2023.07)
     if inr is None:
+        subaru = Subaru_POPT2_PFS.Subaru()
+        paa = subaru.radec2inr(ra*u.deg, dec*u.deg, obs_time)
+        """
         paa = tel2.parallactic_angle(obs_time, coord3).deg
         # lat = tel2.location.lat.deg
         dc = coord3.dec.deg
         logging.debug(dc)
+        """
         inr = paa + pa
 
     # check inr range is within +/- 180 degree
@@ -743,9 +749,6 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
     elif inr >= +180:
         logging.info("InR will exceed the upper limit (+180 deg)")
         inr = inr - 360.
-    # Disable for the time being.
-    # subaru = Subaru_POPT2_PFS.Subaru()
-    # inr = subaru.radec2inr(coord3.ra, coord3.dec, obs_time)
 
     if returnRaDec:
         return az, el, inr, coord3.ra.deg, coord3.dec.deg
