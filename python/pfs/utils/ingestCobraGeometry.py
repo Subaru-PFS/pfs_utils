@@ -55,7 +55,7 @@ def ingestCobraGeometry(calibrated_at=None, comments=None):
     cobra_geometry_calib_id = max(df['cobra_geometry_calib_id'])
 
     ''' populate `cobra_geometry` '''
-    df = pd.DataFrame({'cobra_geometry_calib_id': [cobra_geometry_calib_id for _ in range(pfi.nCobras)],
+    df = pd.DataFrame({'cobra_geometry_calib_id': cobra_geometry_calib_id,
                        'cobra_id': [i+1 for i in range(pfi.nCobras)],
                        'center_x_mm': pfi.centers.real,
                        'center_y_mm': pfi.centers.imag,
