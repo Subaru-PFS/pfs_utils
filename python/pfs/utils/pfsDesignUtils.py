@@ -25,6 +25,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   tract=1, patch='1,1', catId=-1, objId=-1, targetType=TargetType.SCIENCE,
                   fiberStatus=FiberStatus.GOOD,
                   epoch="J2000.0", pmRa=0.0, pmDec=0.0, parallax=1e-8,
+                  proposalId="N/A", obCode="N/A",
                   fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
                   fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
                   filterNames=None, guideStars=None, designName=None):
@@ -77,6 +78,10 @@ def makePfsDesign(pfiNominal, ra, dec,
         for each fiber, mas/year.
     parallax : `numpy.ndarray` of `float32`
         parallax for each fiber, mas.
+    proposalId : `numpy.chararray`
+        Proposal ID of each fiber (e.g, S23A-001QN).
+    obCode : `numpy.chararray`
+        Code for an Observing Block (OB) of each fiber.
     fiberFlux : `list` of `numpy.ndarray` of `float`
         Array of fiber fluxes for each fiber, in [nJy].
     psfFlux : `list` of `numpy.ndarray` of `float`
@@ -157,6 +162,9 @@ def makePfsDesign(pfiNominal, ra, dec,
     pmDec = setDefaultValues(sciVal=pmDec, engVal=0.0, dtype="float32")
     parallax = setDefaultValues(sciVal=parallax, engVal=1.0e-8, dtype="float32")
 
+    proposalId = setDefaultValues(sciVal=proposalId, engVal="N/A", dtype="U32")
+    obCode = setDefaultValues(sciVal=obCode, engVal="N/A", dtype="U32")
+
     # I might be overaccommodating here but ...
     if filterNames is None:
         # making sure some input data are not discarded silently
@@ -190,6 +198,7 @@ def makePfsDesign(pfiNominal, ra, dec,
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
                           targetType, fiberStatus,
                           epoch, pmRa, pmDec, parallax,
+                          proposalId, obCode,
                           fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
                           totalFluxErr, filterList, pfiNominal, guideStars)
 
