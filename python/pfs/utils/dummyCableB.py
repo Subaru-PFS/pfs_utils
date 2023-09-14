@@ -271,6 +271,9 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
     pmDec = np.zeros_like(targetTypes, dtype=np.float32)
     parallax = np.full_like(targetTypes, 1.0e-5, dtype=np.float32)
 
+    proposalId = np.full(len(fiberId), "N/A")
+    obCode = np.full(len(fiberId), "N/A")
+
     empty = [[] for _ in fiberId]
 
     return PfsDesign(pfsDesignId, raBoresight, decBoresight,
@@ -278,6 +281,7 @@ def makePfsDesign(pfsDesignId, fiberId, arms):
                      fiberId, tract, patch, ra, dec, catId, objId, targetTypes,
                      fiberStatus,
                      epoch, pmRa, pmDec, parallax,
+                     proposalId, obCode,
                      empty, empty, empty, empty, empty, empty, empty,
                      pfiNominal,
                      GuideStars.empty())
