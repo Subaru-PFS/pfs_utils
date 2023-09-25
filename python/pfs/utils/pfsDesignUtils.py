@@ -163,7 +163,7 @@ def makePfsDesign(pfiNominal, ra, dec,
     parallax = setDefaultValues(sciVal=parallax, engVal=1.0e-8, dtype="float32")
 
     proposalId = setDefaultValues(sciVal=proposalId, engVal="N/A", dtype="U32")
-    obCode = setDefaultValues(sciVal=obCode, engVal="N/A", dtype="U32")
+    obCode = setDefaultValues(sciVal=obCode, engVal="N/A", dtype=object)  # string with arbitrary lengths
 
     # I might be overaccommodating here but ...
     if filterNames is None:
