@@ -8,7 +8,7 @@ from astropy.time import Time
 
 ### unknown scale factor
 Unknown_Scale_Factor_AG = 1.0 + 6.2e-04 # focus offset glass added 20230421   # + 1.7e-04
-Unknown_Scale_Factor_cobra = 1.0
+Unknown_Scale_Factor_cobra = 1.0 - 1e-5
 
 ### constants proper to WFC optics
 wfc_scale_M2POS3_coeff = 1.01546e-4
