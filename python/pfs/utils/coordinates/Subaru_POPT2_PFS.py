@@ -4,11 +4,10 @@ import numpy as np
 import astropy.units as au
 import astropy.time as at
 import astropy.coordinates as ac
-from astropy.time import Time
 
 ### unknown scale factor
 Unknown_Scale_Factor_AG = 1.0 + 6.2e-04 # focus offset glass added 20230421   # + 1.7e-04
-Unknown_Scale_Factor_cobra = 1.0 - 1e-5
+Unknown_Scale_Factor_cobra = 1.0 - 5.0e-5
 
 ### constants proper to WFC optics
 wfc_scale_M2POS3_coeff = 1.01546e-4
@@ -33,8 +32,8 @@ inr_zero_offset   = +0.00 # in degree
 # inr_axis_on_dp_x  =  0.03 # in mm, from insrot observation on 2023/04
 # inr_axis_on_dp_y  = -0.01 # in mm, from insrot observation on 2023/04
 
-inr_axis_on_dp_x  = +0.00 # in mm
-inr_axis_on_dp_y  = +0.00 # in mm
+inr_axis_on_dp_x  =  0.00 # in mm
+inr_axis_on_dp_y  =  0.00 # in mm
 
 inr_axis_on_pfi_x = inr_axis_on_dp_y
 inr_axis_on_pfi_y = inr_axis_on_dp_x
@@ -52,7 +51,6 @@ inr_axis_on_pfi_y = inr_axis_on_dp_x
 
 ### pfi parity (flip y)
 pfi_parity = -1.0 # -1 or +1, 
-
 
 class Subaru():
     def radec2inr(self, tel_ra, tel_de, t):
@@ -85,6 +83,7 @@ class Subaru():
 
         str_sep =  tel_altaz.separation(str_altaz).degree
         str_zpa = -tel_altaz.position_angle(str_altaz).degree
+
         return str_sep, str_zpa
 
     def starRADEC(self, tel_ra, tel_de, str_sep, str_zpa, wl, t):
@@ -107,7 +106,7 @@ class Subaru():
                                 distance=ac.Distance(parallax=str_plx * au.mas, allow_negative=False),             
                                 pm_ra_cosdec = str_pmRA * au.mas/au.yr,
                                 pm_dec = str_pmDE * au.mas/au.yr,
-                                obstime=Time(gaia_epoch, format='decimalyear'),
+                                obstime=at.Time(gaia_epoch, format='decimalyear'),
                                 frame='fk5')
         str_coord_obstime = str_coord.apply_space_motion(at.Time(t))
         ra = str_coord_obstime.ra.degree
@@ -346,24 +345,24 @@ class POPT2():
             cy[9]*(2*(x**2+y**2)-1) +\
             cy[10]*((6*(x**2+y**2)**2-6*(x**2+y**2)+1))
 
-    def celestial2focalplane(self, sep, zpa, adc, m2pos3, wl, flag):
+    def celestial2focalplane(self, sep, zpa, adc, inr, el, m2pos3, wl, flag):
         f = np.atleast_1d(flag).astype(float)
         # f = flag.astype(float)
         f[np.where(f>1)]=0.5
         f[np.where(f<0)]=0.5
-        xfp_wisp, yfp_wisp = POPT2.celestial2focalplane_wisp(self, sep, zpa, adc, m2pos3, wl)
-        xfp_wosp, yfp_wosp = POPT2.celestial2focalplane_wosp(self, sep, zpa, adc, m2pos3, wl)
+        xfp_wisp, yfp_wisp = POPT2.celestial2focalplane_wisp(self, sep, zpa, adc, inr, el, m2pos3, wl)
+        xfp_wosp, yfp_wosp = POPT2.celestial2focalplane_wosp(self, sep, zpa, adc, inr, el, m2pos3, wl)
         xfp = xfp_wosp*(1-f) + xfp_wisp*(f)
         yfp = yfp_wosp*(1-f) + yfp_wisp*(f)
         return xfp,yfp
 
-    def focalplane2celestial(self, xt, yt, adc, m2pos3, wl, flag):
+    def focalplane2celestial(self, xt, yt, adc, inr, el, m2pos3, wl, flag):
         f = np.atleast_1d(flag).astype(float)
         # f = flag.astype(float)
         f[np.where(f>1)]=0.5
         f[np.where(f<0)]=0.5
-        r_wisp, t_wisp = POPT2.focalplane2celestial_wisp(self, xt, yt, adc, m2pos3, wl)
-        r_wosp, t_wosp = POPT2.focalplane2celestial_wosp(self, xt, yt, adc, m2pos3, wl)
+        r_wisp, t_wisp = POPT2.focalplane2celestial_wisp(self, xt, yt, adc, inr, el, m2pos3, wl)
+        r_wosp, t_wosp = POPT2.focalplane2celestial_wosp(self, xt, yt, adc, inr, el, m2pos3, wl)
         r = r_wosp*(1-f) + r_wisp*(f)
         t = t_wosp*(1-f) + t_wisp*(f)
         return r,t
