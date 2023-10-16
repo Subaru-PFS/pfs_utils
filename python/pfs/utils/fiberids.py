@@ -1,7 +1,6 @@
 import glob
 import os
 
-import eups
 import numpy as np
 
 
@@ -54,6 +53,7 @@ class FiberIds(object):
 
     def __init__(self, path=None):
         if path is None:
+            import eups
             path = os.path.join(eups.productDir('PFS_UTILS'),
                                 'data', 'fiberids')
         self.filepath = 'unset'
