@@ -28,7 +28,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   proposalId="N/A", obCode="N/A",
                   fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
                   fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
-                  filterNames=None, guideStars=None, designName=None):
+                  filterNames=None, guideStars=None, designName=None, fiberidsPath=None):
     """ Make PfsDesign object from cobra x and y required positions.
 
     Parameters
@@ -100,6 +100,10 @@ def makePfsDesign(pfiNominal, ra, dec,
         Guide star data. If `None`, an empty GuideStars instance will be created.
     designName : `str`
         Name for design file. If `None` use default
+    fiberidsPath : `str` or None
+        Path to the directory containing information of fiber IDs.
+        This will be passed as the `path` keyword to `FiberIds()`.
+        Default is set to `None`, i.e., `eups` will be used to search the path.
 
     Returns
     -------
@@ -108,7 +112,7 @@ def makePfsDesign(pfiNominal, ra, dec,
     """
 
     # Grand Fiber Map
-    gfm = FiberIds()
+    gfm = FiberIds(path=fiberidsPath)
     isEmpty = gfm.scienceFiberId == FiberIds.EMPTY
     isEng = gfm.scienceFiberId == FiberIds.ENGINEERING
     isCobra = ~isEmpty & ~isEng
