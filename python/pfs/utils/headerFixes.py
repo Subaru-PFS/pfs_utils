@@ -181,6 +181,7 @@ class HeaderFixDatabase:
         self.add("S", self.inclRange(84905, 84934), W_PFDSGN=designIdDCBSuNSS)
 
         # Engineering run april 23.
+        self.add("S", self.inclRange(90330, 90338), W_PFDSGN=0x2b93ac9f29d54530)
         self.add("S", [91057, 91681], W_PFDSGN=0x662cf9deec5c1ce9)
         self.add("S", [92481], W_PFDSGN=0x15adaf923f34fb55)
 
@@ -208,3 +209,6 @@ class HeaderFixDatabase:
         self.add("S", self.inclRange(97487, 97494), W_AITQTH=False)
         self.add("S", self.inclRange(97497, 97502), W_AITQTH=False)
         self.add("S", [98531, 98661], W_AITQTH=False)
+        
+        # Subaru AIT SM2/4
+        self.add("S", [101728], W_PFDSGN=0x5f4e1afdab0d8bf9)
