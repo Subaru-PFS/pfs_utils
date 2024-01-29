@@ -92,8 +92,8 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
         m3pos = DCoeff.calc_m3pos(za)
         adc = DCoeff.calc_adc_position(za)
         telx, tely = popt2.celestial2focalplane_cobra(xyin[0, :], xyin[1, :],
-                                                      adc, m3pos,
-                                                      inr, (90.0-za),
+                                                      adc, inr,
+                                                      (90.0-za), m3pos,
                                                       DCoeff.wl_ag)
         xx, yy = convert_out_position(telx, tely, inr, c, cent, time)
         xyout = np.vstack((xx, yy, dmya))
