@@ -1,27 +1,25 @@
 import datetime
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import numpy as np
 import pytz
-
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-
 from astropy import units as u
-from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-
+from astropy.time import Time
 from pfs.datamodel import PfsDesign, FiberStatus, TargetType
 from pfs.datamodel.utils import calculate_pfsDesignId
-
 from pfs.utils.fiberids import FiberIds
 
 __all__ = ["makePfsDesign", "showPfsDesign"]
 
-subaru = None                           # we'll look it up if we need it
+subaru = None  # we'll look it up if we need it
 utcoffset = -10  # UTC -> HST.  No daylight saving to worry about
+fakeRa, fakeDec = 100, -89.99
 
 
 def makePfsDesign(pfiNominal, ra, dec,
-                  raBoresight=100, decBoresight=100, posAng=0, arms='br',
+                  raBoresight=fakeRa, decBoresight=fakeDec, posAng=0, arms='br',
                   tract=1, patch='1,1', catId=-1, objId=-1, targetType=TargetType.SCIENCE,
                   fiberStatus=FiberStatus.GOOD,
                   epoch="J2000.0", pmRa=0.0, pmDec=0.0, parallax=1e-8,
@@ -237,24 +235,24 @@ def showPfsDesign(pfsDesigns, date=None, timerange=8, showTime=None, showDesignI
         now = datetime.datetime.now(pytz.timezone('US/Hawaii'))
         date = now.date()
 
-        now += datetime.timedelta(utcoffset/24)  # all times are actually kept in UTC
+        now += datetime.timedelta(utcoffset / 24)  # all times are actually kept in UTC
     else:
         now = None
 
     midnight = Time(f'{date} 00:00:00')  # UTC, damn astropy
-    time = midnight + np.linspace(24 - timerange/2, 24 + timerange/2, 100)*u.hour
+    time = midnight + np.linspace(24 - timerange / 2, 24 + timerange / 2, 100) * u.hour
 
     global subaru
     if subaru is None:
         subaru = EarthLocation.of_site('Subaru')
 
-    telstate = AltAz(obstime=time - utcoffset*u.hour, location=subaru)  # AltAz needs UTC
+    telstate = AltAz(obstime=time - utcoffset * u.hour, location=subaru)  # AltAz needs UTC
 
     xformatter = mdates.DateFormatter('%H:%M')
     plt.gca().xaxis.set_major_formatter(xformatter)
 
     for pfsDesign in pfsDesigns:
-        boresight = SkyCoord(ra=pfsDesign.raBoresight*u.degree, dec=pfsDesign.decBoresight*u.degree,
+        boresight = SkyCoord(ra=pfsDesign.raBoresight * u.degree, dec=pfsDesign.decBoresight * u.degree,
                              frame='icrs')
 
         label = showDesignId
