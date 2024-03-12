@@ -241,8 +241,11 @@ class PfiTransform:
         #self.mcs_boresight_x_pix = 4470.8 - 0.218*altitude
         #self.mcs_boresight_y_pix = 2845.7 + 0.333*altitude
         # Measurement in 2024.01.17
-        self.mcs_boresight_x_pix = 4447.1991 - 0.218*altitude
-        self.mcs_boresight_y_pix = 2835.1381 + 0.333*altitude
+        # self.mcs_boresight_x_pix = 4447.1991 - 0.218*altitude
+        # self.mcs_boresight_y_pix = 2835.1381 + 0.333*altitude
+        # Measurement in 2024.03.10
+        self.mcs_boresight_x_pix = 4460.5 - 0.2289*altitude
+        self.mcs_boresight_y_pix = 2784.8 + 0.6018*altitude
         #
         # Initial camera distortion; updated using updateTransform
         #
