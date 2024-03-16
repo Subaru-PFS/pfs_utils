@@ -88,7 +88,7 @@ pfi_diffscale = 0.999232042
 
 # correction during the Sep 2022 run
 # 2024.03 add more rotation offset
-inr_tel_offset = 0.115  # deg (0.08 + 0.03 + 0.01 - 0.005)
+inr_tel_offset = 0.125  # deg (0.08 + 0.03 + 0.01 + 0.005)
 pfi_x_offset = -0.115  # -0.09 -0.025  mm
 pfi_y_offset = 0.03  # 0.01 + 0.02  mm
 
