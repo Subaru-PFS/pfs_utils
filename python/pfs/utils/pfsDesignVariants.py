@@ -24,11 +24,22 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFractio
     if variant == 0:
         randomFraction = 0
 
+    # Count non-NaN values in ra and dec
+    non_nan_mask = ~np.isnan(pfsDesign0.ra) & ~np.isnan(pfsDesign0.dec)
+    non_nan_indices = np.arange(len(pfsDesign0))[non_nan_mask]
+    non_nan_count = np.sum(non_nan_mask)
+
     # Initialize dra and ddec arrays with zeros
     dra, ddec = np.zeros((2, len(pfsDesign0)))
-    random_indices = np.random.choice(len(pfsDesign0), size=int(round(len(pfsDesign0) * randomFraction)), replace=False)
+    dra_non_nan, ddec_non_nan = np.zeros((2, non_nan_count))
+
+    # Generate random indices and offsets based on the non-NaN count and randomFraction
+    random_indices = np.random.choice(non_nan_count, size=int(round(non_nan_count * randomFraction)), replace=False)
+    random_offsets = np.random.normal(0, sigma, size=(2, len(random_indices)))  # arcsec
+
     # Apply random offsets only to the selected indices
-    dra[random_indices], ddec[random_indices] = np.random.normal(0, sigma, size=(2, len(random_indices)))  # arcsec
+    dra_non_nan[random_indices], ddec_non_nan[random_indices] = random_offsets
+    dra[non_nan_indices], ddec[non_nan_indices] = dra_non_nan, ddec_non_nan
 
     # add random dithers to ra and dec
     ra = pfsDesign0.ra + dra / (3600 * np.cos(np.deg2rad(pfsDesign0.dec)))
