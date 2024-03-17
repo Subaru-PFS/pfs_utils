@@ -1,16 +1,17 @@
 import numpy as np
-from pfs.utils.coordinates.CoordTransp import CoordinateTransform
-from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.datamodel.pfsConfig import PfsDesign
+from pfs.datamodel.utils import calculate_pfsDesignId
+from pfs.utils.coordinates.CoordTransp import CoordinateTransform
 
 __all__ = ["makeVariantDesign", ]
 
 
-def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
+def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFraction=1):
     """Return a copy of pfsDesign0, modified suitably
     variant : int; which variant is required (0: no change)
     sigma   : float; standard deviation of random offsets in arcsec
     doHex   : generate a hexagonal dither (not implemented)
+    randomFraction : float; fraction of positions to be set to random (default: 1)
     """
 
     assert not doHex
@@ -21,13 +22,17 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
     np.random.seed((pfsDesign0.pfsDesignId + variant) & 0xffffffff)  # numpy doesn't like more than 32 bits
 
     if variant == 0:
-        dra, ddec = np.zeros((2, len(pfsDesign0)))
-    else:
-        dra, ddec = np.random.normal(0, sigma, size=(2, len(pfsDesign0)))  # arcsec
+        randomFraction = 0
+
+    # Initialize dra and ddec arrays with zeros
+    dra, ddec = np.zeros((2, len(pfsDesign0)))
+    random_indices = np.random.choice(len(pfsDesign0), size=int(round(len(pfsDesign0) * randomFraction)), replace=False)
+    # Apply random offsets only to the selected indices
+    dra[random_indices], ddec[random_indices] = np.random.normal(0, sigma, size=(2, len(random_indices)))  # arcsec
 
     # add random dithers to ra and dec
-    ra = pfsDesign0.ra   + dra/(3600*np.cos(np.deg2rad(pfsDesign0.dec)))
-    dec = pfsDesign0.dec + ddec/3600
+    ra = pfsDesign0.ra + dra / (3600 * np.cos(np.deg2rad(pfsDesign0.dec)))
+    dec = pfsDesign0.dec + ddec / 3600
 
     # And now add the _same_ random dithers to pfiNominal
     boresight = [[pfsDesign0.raBoresight], [pfsDesign0.decBoresight]]
@@ -39,7 +44,7 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
     x0, y0 = CoordinateTransform(np.stack(([pfsDesign0.ra], [pfsDesign0.dec])),  # original (ra, dec) mapped to mm
                                  mode="sky_pfi", za=90.0 - altitude,
                                  pa=pa, cent=boresight, time=utc)[0:2]
-    x, y = CoordinateTransform(np.stack(([ra], [dec])),                          # dithered (ra, dec) mapped to mm
+    x, y = CoordinateTransform(np.stack(([ra], [dec])),  # dithered (ra, dec) mapped to mm
                                mode="sky_pfi", za=90.0 - altitude,
                                pa=pa, cent=boresight, time=utc)[0:2]
 
@@ -49,7 +54,7 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False):
     pfiNominal.T[1] += y - y0
 
     if False:
-        pfiNominal = np.stack([x0, y0]).T   # check that (x0, y0) aren't crtazy
+        pfiNominal = np.stack([x0, y0]).T  # check that (x0, y0) aren't crtazy
     #
     # Create the variant PfsDesign
     #
