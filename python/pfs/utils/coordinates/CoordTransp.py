@@ -187,14 +187,15 @@ def convert_out_position(x, y, inr, c, cent, time):
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
     elif c.mode == 'mcs_pfi':
-        '''
+
+        logging.info("Correct extra distortion @ tel")
         logging.info("Before: x= %s, y=%s", x[:11], y[:11])
         distCorr=Subaru_POPT2_PFS.distCorr()
         dx, dy = distCorr.xy2dxdy(x, y)
-        x = x - dx
-        y = y - dy
+        x = x + distCorr.correction_factor*dx
+        y = y + distCorr.correction_factor*dy
         logging.info("After: x= %s, y=%s", x[:11], y[:11])
-        '''
+
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
     elif c.mode == 'pfi_sky':  # WFC to Ra-Dec
