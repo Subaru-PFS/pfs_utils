@@ -47,7 +47,7 @@ Distortion Coefficients
  ver 8.0 : (2022.05)
            update based on 2021 Nov-run's analysis, implemented Kawanomoto's 
            library as default for sky-pfi
- ver 9.0 : (2022.19)
+ ver 9.0 : (2022.10)
            update based on 2022 June & Sep run's analysis, implemented Kawanomoto's 
            library as default for sky-pfi
 """
@@ -87,7 +87,8 @@ pfi_offrot = 0.765507  # deg
 pfi_diffscale = 0.999232042
 
 # correction during the Sep 2022 run
-inr_tel_offset = 0.12  # deg (0.08 + 0.03 + 0.01)
+# 2024.03 add more rotation offset
+inr_tel_offset = 0.125  # deg (0.08 + 0.03 + 0.01 + 0.005)
 pfi_x_offset = -0.115  # -0.09 -0.025  mm
 pfi_y_offset = 0.03  # 0.01 + 0.02  mm
 
