@@ -159,7 +159,8 @@ def convert_out_position(x, y, inr, c, cent, time):
     # Rotation to PFI coordinates
     elif c.mode == 'sky_pfi':
 
-        logging.info("Correct extra distortion @ tel")
+        """
+        logging.info("Correct extra distortion @ tel -- skipped")
         logging.info("Before: x= %s, y=%s", x[:11], y[:11])
         distCorr=Subaru_POPT2_PFS.distCorr()
         dx, dy = distCorr.xy2dxdy(x, y)
@@ -167,6 +168,7 @@ def convert_out_position(x, y, inr, c, cent, time):
         x = x + distCorr.correction_factor*dx
         y = y + distCorr.correction_factor*dy
         logging.info("After: x= %s, y=%s", x[:11], y[:11])
+        """
 
         # telescope to designed PFI
         logging.info("Telescope to PFI")
