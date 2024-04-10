@@ -11,11 +11,33 @@ from pfs.datamodel import PfsDesign, FiberStatus, TargetType
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 
-__all__ = ["makePfsDesign", "showPfsDesign"]
+__all__ = ["makePfsDesign", "showPfsDesign", "fakeRaDecFromPfiNominal"]
 
 subaru = None  # we'll look it up if we need it
 utcoffset = -10  # UTC -> HST.  No daylight saving to worry about
-fakeRa, fakeDec = 100, -89.99
+fakeRa, fakeDec = 100, -89.
+
+
+def fakeRaDecFromPfiNominal(pfiNominal):
+    """
+    This function generates fake right ascension (RA) and declination (Dec) values
+    from the given cobra positions (x and y) in the PFI coordinate system.
+
+    Parameters
+    ----------
+    pfiNominal : numpy.ndarray of float, shape: (nFiber, 2)
+        Intended target cobra position (2-vector) of each fiber on the PFI, in millimeters.
+
+    Returns
+    -------
+    ra : numpy.ndarray of float, shape: (nFiber),
+        Fake right ascension values generated from the input cobra positions.
+    dec : numpy.ndarray of float, shape: (nFiber),
+        Fake declination values generated from the input cobra positions.
+    """
+    ra = fakeRa + pfiNominal[:, 0].astype('float64') / 250
+    dec = fakeDec + pfiNominal[:, 1].astype('float64') / 250
+    return ra, dec
 
 
 def makePfsDesign(pfiNominal, ra, dec,
