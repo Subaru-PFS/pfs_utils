@@ -82,6 +82,10 @@ class HeaderFixDatabase:
 
         This is the official list of header fixes to apply.
         """
+        # Simulated data, generated 2023 August and September
+        self.add("F", self.inclRange(0, 61), INSROT=0.0)  # Integration test and weekly
+        self.add("F", self.inclRange(1000, 1007), INSROT=0.0)  # Science sims
+
         # Fix duplicate no-value (DM-23928)
         # Undefined values occurred in LAM data
         # between 2019-05-03 and 2019-06-14
