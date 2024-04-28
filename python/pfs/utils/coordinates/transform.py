@@ -506,6 +506,66 @@ class SimpleTransform(PfiTransform):
         self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
 
         return (fid, dmin)
+    def pfiToMcs(self, x, y, niter=5, lam=1.0):
+        """transform pfi mm to mcs pixels
+        x, y:  position in pfi mm
+        niter: number of iterations
+        lam:   convergence factor for iteration
+
+        returns:
+            x, y in mcs pixels
+
+        The pfi_mcs transformation simply applies the scale change, whereas the mcs_pfi
+        transformation includes the distortion, so we'll iterate until the computed mcs positions
+        transform back to the input pfi positions
+        """
+        if isinstance(x, pd.Series):
+            x = x.to_numpy()
+        if isinstance(y, pd.Series):
+            y = y.to_numpy()
+
+        if self.applyDistortion:
+            xm, ym = self.mcsDistort.distort(x, y, inverse=True)
+        else:
+            xm, ym = x.copy(), y.copy()
+
+        xyin = np.stack((xm, ym))
+        xyout = CoordinateTransform(xyin, "pfi_mcs", za=90.0 - self.altitude,
+                                    inr=self.insrot) # first guess at MCS coordinates
+        #
+        # Deal with coordinate transformations on the MCS
+        #
+        xyout = -xyout  # rotate 180 about centre
+        xyout[0] = -xyout[0]
+        xyout[0] += self.mcs_boresight_x_pix   # include centre of mcs
+        xyout[1] += self.mcs_boresight_y_pix
+        #
+        # This is our first guess at the MCS position, but it's not very good, so we'll iterate
+        # We assume that the unaccounted-for distortion is purely radial
+        #
+        applyDistortion = self.applyDistortion
+        try:
+            self.applyDistortion = False
+            for i in range(niter):
+                # reverse transform, i.e. back to pfi
+                nx, ny = self.mcsToPfi(xyout[0], xyout[1])
+
+                xyout[0] -= self.mcs_boresight_x_pix   # relative to centre of mcs
+                xyout[1] -= self.mcs_boresight_y_pix
+
+                nr = np.hypot(nx, ny)
+                r = np.hypot(xm, ym)
+                scale = 1 + lam*np.where(r < 1e-5, 0, (nr - r)/r)
+
+                xyout[0] /= scale
+                xyout[1] /= scale
+
+                xyout[0] += self.mcs_boresight_x_pix   # include centre of mcs
+                xyout[1] += self.mcs_boresight_y_pix
+        finally:
+            self.applyDistortion = applyDistortion
+
+        return xyout[0], xyout[1]
 
     def mcsToPfi(self, x, y):
         """transform camera pixels to pfi mm
@@ -521,21 +581,21 @@ class SimpleTransform(PfiTransform):
 
         return self.mcsDistort.distort(x, y, inverse=False)
 
-    def pfiToMcs(self, x, y, niter=5, lam=1.0):
-        """transform pfi mm to camera mcs pixels
-        x, y:  position in pfi mm
-        niter: number of iterations (ignored)
-        lam:   convergence factor for iteration (ignored)
-
-        returns:
-            x, y in mcs pixels
-        """
-        if isinstance(x, pd.Series):
-            x = x.to_numpy()
-        if isinstance(y, pd.Series):
-            y = y.to_numpy()
-
-        return self.mcsDistort.distort(x, y, inverse=True)
+    #def pfiToMcs(self, x, y, niter=5, lam=1.0):
+    #    """transform pfi mm to camera mcs pixels
+    #    x, y:  position in pfi mm
+    #    niter: number of iterations (ignored)
+    #    lam:   convergence factor for iteration (ignored)
+    #
+    #    returns:
+    #        x, y in mcs pixels
+    #    """
+    #    if isinstance(x, pd.Series):
+    #        x = x.to_numpy()
+    #    if isinstance(y, pd.Series):
+    #        y = y.to_numpy()
+    #
+    #    return self.mcsDistort.distort(x, y, inverse=True)
 
 
 class ASRD71MTransform(SimpleTransform):
