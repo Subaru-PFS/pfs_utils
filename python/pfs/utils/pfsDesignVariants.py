@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
@@ -48,24 +50,23 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFractio
     # And now add the _same_ random dithers to pfiNominal
     boresight = [[pfsDesign0.raBoresight], [pfsDesign0.decBoresight]]
 
-    altitude = 70  # we're making a differential offset so the actual value isn't critical
     pa = pfsDesign0.posAng
-    utc = "2022-02-05 00:00:00"  # again, the actual value isn't critical
+    utc = datetime.now().isoformat()  # again, the actual value isn't critical
 
     x0, y0 = CoordinateTransform(np.stack(([pfsDesign0.ra], [pfsDesign0.dec])),  # original (ra, dec) mapped to mm
-                                 mode="sky_pfi", za=90.0 - altitude,
+                                 mode="sky_pfi",
                                  pa=pa, cent=boresight, time=utc)[0:2]
     x, y = CoordinateTransform(np.stack(([ra], [dec])),  # dithered (ra, dec) mapped to mm
-                               mode="sky_pfi", za=90.0 - altitude,
+                               mode="sky_pfi",
                                pa=pa, cent=boresight, time=utc)[0:2]
+    dx, dy = x - x0, y - y0
 
     pfiNominal = pfsDesign0.pfiNominal.copy()
-
-    pfiNominal.T[0] += x - x0
-    pfiNominal.T[1] += y - y0
+    pfiNominal.T[0] += dx
+    pfiNominal.T[1] += dy
 
     if False:
-        pfiNominal = np.stack([x0, y0]).T  # check that (x0, y0) aren't crtazy
+        pfiNominal = np.stack([x0, y0]).T  # check that (x0, y0) aren't crazy
     #
     # Create the variant PfsDesign
     #
