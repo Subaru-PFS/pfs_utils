@@ -52,7 +52,6 @@ def setFiberStatus(pfsDesign, calibModel=None):
         tuple
             A tuple containing the FIBER_BROKEN_MASK and COBRA_BROKEN_MASK.
         """
-        nestor = Nestor()
         calibModel = nestor.get('moduleXml', moduleName='ALL', version='') if calibModel is None else calibModel
 
         FIBER_BROKEN_MASK = (calibModel.status & calibModel.FIBER_BROKEN_MASK).astype('bool')
@@ -61,6 +60,9 @@ def setFiberStatus(pfsDesign, calibModel=None):
 
         return FIBER_BROKEN_MASK, COBRA_BROKEN_MASK
 
+    nestor = Nestor()
+
+    # first setting BROKENFIBER and BROKENCOBRA fiberStatus.
     FIBER_BROKEN_MASK, COBRA_BROKEN_MASK = loadCobraMaskFromXml(calibModel=calibModel)
 
     engFiberMask = pfsDesign.targetType == TargetType.ENGINEERING
@@ -71,8 +73,11 @@ def setFiberStatus(pfsDesign, calibModel=None):
 
     fiberStatus[FIBER_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENFIBER
     fiberStatus[COBRA_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENCOBRA
-
     pfsDesign.fiberStatus[~engFiberMask] = fiberStatus
+
+    # then setting BLOCKED fiberStatus.
+    fiberBlocked = nestor.get('fiberBlocked').set_index('fiberId')
+    pfsDesign.fiberStatus[fiberBlocked.loc[pfsDesign.fiberId].status.to_numpy()] = FiberStatus.BLOCKED
 
     return pfsDesign
 
