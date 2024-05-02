@@ -1,10 +1,12 @@
-import yaml
 import pandas as pd
+import yaml
+
 
 def load_yaml(fname):
     """Load yaml from file fname"""
     with open(fname) as fd:
         return yaml.full_load(fd)
+
 
 configMap = dict()
 dataMap = dict()
@@ -32,3 +34,5 @@ configMap['fiducials'] = dict(template="pfi/fiducial_positions.csv",
                               loader=lambda fname: pd.read_csv(fname, comment='#'))
 configMap['black_dots'] = dict(template="pfi/dot/black_dots_mm.csv",
                                loader=lambda fname: pd.read_csv(fname, comment='#'))
+configMap['fiberBlocked'] = dict(template="fiberBlocked.csv",
+                                 loader=lambda fname: pd.read_csv(fname, comment='#'))

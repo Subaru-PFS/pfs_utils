@@ -9,13 +9,77 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from pfs.datamodel import PfsDesign, FiberStatus, TargetType
 from pfs.datamodel.utils import calculate_pfsDesignId
-from pfs.utils.fiberids import FiberIds
 
 __all__ = ["makePfsDesign", "showPfsDesign", "fakeRaDecFromPfiNominal"]
 
 subaru = None  # we'll look it up if we need it
 utcoffset = -10  # UTC -> HST.  No daylight saving to worry about
 fakeRa, fakeDec = 100, -89.
+
+from pfs.utils.butler import Butler as Nestor
+from pfs.utils.fiberids import FiberIds
+
+
+def setFiberStatus(pfsDesign, calibModel=None):
+    """
+    Set the fiber status for the PFS design based on cobra calibration model.
+
+    Parameters
+    ----------
+    pfsDesign : PfsDesign
+        The PFS design object.
+    calibModel : CalibModel, optional
+        The cobra calibration model. If None, the latest version of the moduleXml is retrieved.
+
+    Returns
+    -------
+    PfsDesign
+        The updated PFS design object with the fiber status set.
+    """
+
+    def loadCobraMaskFromXml(calibModel):
+        """
+        Load the cobra masks from the cobra XML file.
+
+        Parameters
+        ----------
+        calibModel : CalibModel, optional
+            The calibration model object. If None, the latest version of the moduleXml
+            is retrieved using Nestor.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the FIBER_BROKEN_MASK and COBRA_BROKEN_MASK.
+        """
+        calibModel = nestor.get('moduleXml', moduleName='ALL', version='') if calibModel is None else calibModel
+
+        FIBER_BROKEN_MASK = (calibModel.status & calibModel.FIBER_BROKEN_MASK).astype('bool')
+        COBRA_OK_MASK = (calibModel.status & calibModel.COBRA_OK_MASK).astype('bool')
+        COBRA_BROKEN_MASK = np.logical_and(~COBRA_OK_MASK, ~FIBER_BROKEN_MASK)
+
+        return FIBER_BROKEN_MASK, COBRA_BROKEN_MASK
+
+    nestor = Nestor()
+
+    # first setting BROKENFIBER and BROKENCOBRA fiberStatus.
+    FIBER_BROKEN_MASK, COBRA_BROKEN_MASK = loadCobraMaskFromXml(calibModel=calibModel)
+
+    engFiberMask = pfsDesign.targetType == TargetType.ENGINEERING
+    fiberId = pfsDesign.fiberId[~engFiberMask]
+    cobraId = FiberIds().fiberIdToCobraId(fiberId)
+
+    fiberStatus = pfsDesign.fiberStatus[~engFiberMask].copy()
+
+    fiberStatus[FIBER_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENFIBER
+    fiberStatus[COBRA_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENCOBRA
+    pfsDesign.fiberStatus[~engFiberMask] = fiberStatus
+
+    # then setting BLOCKED fiberStatus.
+    fiberBlocked = nestor.get('fiberBlocked').set_index('fiberId')
+    pfsDesign.fiberStatus[fiberBlocked.loc[pfsDesign.fiberId].status.to_numpy()] = FiberStatus.BLOCKED
+
+    return pfsDesign
 
 
 def fakeRaDecFromPfiNominal(pfiNominal):
