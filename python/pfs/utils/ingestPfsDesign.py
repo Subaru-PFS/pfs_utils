@@ -87,6 +87,8 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
                        'target_pm_dec': pfsDesign.pmDec,
                        'target_parallax': pfsDesign.parallax,
                        'epoch': pfsDesign.epoch,
+                       'proposal_id': pfsDesign.proposalId,
+                       'ob_code': pfsDesign.obCode,
                        'is_on_source': [True for _ in pfsDesign.fiberId]
                        })
     db.insert('pfs_design_fiber', df)
