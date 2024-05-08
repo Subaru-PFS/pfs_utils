@@ -632,7 +632,7 @@ class distCorr():
         z9y  =    +5.20598052522325e-03
         z12y =    -1.90307999915411e-03
         
-        unkown_y = -0.03   # 2024.05 30um shift in tel-Y
+        unkown_y = 0  #-0.03   # 2024.05 30um shift in tel-Y
 
         # xt,yt in mm
         x = xt / 270.0
