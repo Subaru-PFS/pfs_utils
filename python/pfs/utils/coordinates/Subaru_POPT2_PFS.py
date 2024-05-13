@@ -605,7 +605,7 @@ class PFS():
 
 class distCorr():
     def __init__(self):
-        self.correction_factor = 1.0
+        self.correction_factor = -1.0
 
     def xy2dxdy(self, xt, yt):
         #### 2024/03/16, after rot. center correction
@@ -632,11 +632,15 @@ class distCorr():
         z9y  =    +5.20598052522325e-03
         z12y =    -1.90307999915411e-03
         
+        unkown_y = 0  #-0.03   # 2024.05 30um shift in tel-Y
+
         # xt,yt in mm
         x = xt / 270.0
         y = yt / 270.0
         ox = z0x + z1x*y + z2x*x + z3x*2*x*y + z4x*(2*(x**2+y**2)-1) + z5x*(x**2-y**2) + z6x*( 3*(x**2+y**2)-4*y**2)*y + z7x*( 3*(x**2+y**2)-2)*y + z8x*( 3*(x**2+y**2)-2)*x + z9x*(-3*(x**2+y**2)+4*x**2)*x + z12x*(6*(x**2+y**2)**2-6*(x**2+y**2)+1)
         oy = z0y + z1y*y + z2y*x + z3y*2*x*y + z4y*(2*(x**2+y**2)-1) + z5y*(x**2-y**2) + z6y*( 3*(x**2+y**2)-4*y**2)*y + z7y*( 3*(x**2+y**2)-2)*y + z8y*( 3*(x**2+y**2)-2)*x + z9y*(-3*(x**2+y**2)+4*x**2)*x + z12y*(6*(x**2+y**2)**2-6*(x**2+y**2)+1)
+
+        oy += unkown_y
 
         return ox,oy
 
