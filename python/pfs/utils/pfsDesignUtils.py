@@ -20,7 +20,7 @@ from pfs.utils.butler import Butler as Nestor
 from pfs.utils.fiberids import FiberIds
 
 
-def setFiberStatus(pfsDesign, calibModel=None):
+def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=None):
     """
     Set the fiber status for the PFS design based on cobra calibration model.
 
@@ -30,6 +30,12 @@ def setFiberStatus(pfsDesign, calibModel=None):
         The PFS design object.
     calibModel : CalibModel, optional
         The cobra calibration model. If None, the latest version of the moduleXml is retrieved.
+    configRoot : path-like, optional
+        The root of the configuration directory tree.
+        Defaults to None (will be set to $PFS_INSTDATA_DIR/data by the Nestor (Butler) class)
+    fiberIdsPath : path-like, optional
+        The path to the fiberids data.
+        Defaults to None (will be set to $PFS_UTILS_DIR/data/fiberids).
 
     Returns
     -------
@@ -60,14 +66,14 @@ def setFiberStatus(pfsDesign, calibModel=None):
 
         return FIBER_BROKEN_MASK, COBRA_BROKEN_MASK
 
-    nestor = Nestor()
+    nestor = Nestor(configRoot=configRoot)
 
     # first setting BROKENFIBER and BROKENCOBRA fiberStatus.
     FIBER_BROKEN_MASK, COBRA_BROKEN_MASK = loadCobraMaskFromXml(calibModel=calibModel)
 
     engFiberMask = pfsDesign.targetType == TargetType.ENGINEERING
     fiberId = pfsDesign.fiberId[~engFiberMask]
-    cobraId = FiberIds().fiberIdToCobraId(fiberId)
+    cobraId = FiberIds(path=fiberIdsPath).fiberIdToCobraId(fiberId)
 
     fiberStatus = pfsDesign.fiberStatus[~engFiberMask].copy()
 
