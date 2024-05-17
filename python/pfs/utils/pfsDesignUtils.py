@@ -30,6 +30,12 @@ def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=Non
         The PFS design object.
     calibModel : CalibModel, optional
         The cobra calibration model. If None, the latest version of the moduleXml is retrieved.
+    configRoot : path-like, optional
+        The root of the configuration directory tree.
+        Defaults to None (will be set to $PFS_INSTDATA_DIR/data by the Nestor (Butler) class)
+    fiberIdsPath : path-like, optional
+        The path to the fiberids data.
+        Defaults to None (will be set to $PFS_UTILS_DIR/data/fiberids).
 
     Returns
     -------
