@@ -75,7 +75,9 @@ def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=Non
     fiberId = pfsDesign.fiberId[~engFiberMask]
     cobraId = FiberIds(path=fiberIdsPath).fiberIdToCobraId(fiberId)
 
+    # resetting fiberStatus to GOOD.
     fiberStatus = pfsDesign.fiberStatus[~engFiberMask].copy()
+    fiberStatus[:] = FiberStatus.GOOD
 
     fiberStatus[FIBER_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENFIBER
     fiberStatus[COBRA_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENCOBRA
