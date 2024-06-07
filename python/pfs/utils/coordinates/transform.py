@@ -6,6 +6,7 @@ from matplotlib.patches import Circle
 from pfs.utils.display import CircleHandler
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
+from pfs.utils.butler import Butler
 
 __all__ = ["searchParams","matchIds", "makePfiTransform", "MeasureDistortion"]
 
@@ -213,6 +214,7 @@ class MeasureDistortion:
 
 class PfiTransform:
     def __init__(self, altitude=90, insrot=0, applyDistortion=True, nsigma=None, alphaRot=0):
+        self.boresight = Butler().get('mcsBoresight')
         self.setParams(altitude, insrot, nsigma, alphaRot)
 
         self.applyDistortion = applyDistortion
@@ -244,8 +246,9 @@ class PfiTransform:
         # self.mcs_boresight_x_pix = 4447.1991 - 0.218*altitude
         # self.mcs_boresight_y_pix = 2835.1381 + 0.333*altitude
         # Measurement in 2024.03.10
-        self.mcs_boresight_x_pix = 4460.5 - 0.2289*altitude
-        self.mcs_boresight_y_pix = 2784.8 + 0.6018*altitude
+
+        self.mcs_boresight_x_pix = self.boresight['xCenter'] + self.boresight['xAltitudeCoeff']*altitude
+        self.mcs_boresight_y_pix = self.boresight['yCenter'] + self.boresight['yAltitudeCoeff']*altitude
         #
         # Initial camera distortion; updated using updateTransform
         #
