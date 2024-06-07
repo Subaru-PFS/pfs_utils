@@ -34,5 +34,5 @@ configMap['fiducials'] = dict(template="pfi/fiducials/fiducial_positions.csv",
                               loader=lambda fname: pd.read_csv(fname, comment='#'))
 configMap['black_dots'] = dict(template="pfi/dot/black_dots_mm.csv",
                                loader=lambda fname: pd.read_csv(fname, comment='#'))
-configMap['fiberBlocked'] = dict(template="fiberBlocked.csv",
+configMap['fiberBlocked'] = dict(template="fibers/blocked.csv",
                                  loader=lambda fname: pd.read_csv(fname, comment='#'))
