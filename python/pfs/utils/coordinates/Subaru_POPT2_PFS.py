@@ -57,8 +57,8 @@ class Subaru():
         pr  = 0.0   # Subaru InR ignore atmospheric refraction
         wl  = 0.62  # so wavelength is selected freely in visible light
 
-        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='fk5',equinox='J2000.0')
-        np_coord  = ac.SkyCoord(ra=0.0,    dec=90.0,   unit=(au.deg, au.deg), frame='fk5',equinox=t) # north pole at observing time
+        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='icrs',equinox='J2000.0')
+        np_coord  = ac.SkyCoord(ra=0.0,    dec=90.0,   unit=(au.deg, au.deg), frame='icrs',equinox=t) # north pole at observing time
         frame_subaru = ac.AltAz(obstime  = t, location = Lsbr, \
                                 pressure = pr*au.hPa, obswl = wl*au.micron)
         tel_altaz = tel_coord.transform_to(frame_subaru)
@@ -67,15 +67,15 @@ class Subaru():
         return inr_cal
 
     def radec2azel(self, tel_ra, tel_de, wl, t):
-        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='fk5',equinox='J2000.0')
+        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='icrs',equinox='J2000.0')
         frame_subaru = ac.AltAz(obstime  = t, location = Lsbr, \
                                 pressure = sbr_press*au.hPa, obswl = wl*au.micron)
         tel_altaz = tel_coord.transform_to(frame_subaru)
         return tel_altaz.az.degree,tel_altaz.alt.degree
 
     def starSepZPA(self, tel_ra, tel_de, str_ra, str_de, wl, t):
-        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='fk5')
-        str_coord = ac.SkyCoord(ra=str_ra, dec=str_de, unit=(au.deg, au.deg), frame='fk5')
+        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='icrs')
+        str_coord = ac.SkyCoord(ra=str_ra, dec=str_de, unit=(au.deg, au.deg), frame='icrs')
         frame_subaru = ac.AltAz(obstime  = t, location = Lsbr,\
                                 pressure = sbr_press*au.hPa, obswl = wl*au.micron)
         tel_altaz = tel_coord.transform_to(frame_subaru)
@@ -90,12 +90,12 @@ class Subaru():
         str_sep = str_sep*au.degree
         str_zpa = str_zpa*au.degree
 
-        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='fk5')
+        tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='icrs')
         frame_subaru = ac.AltAz(obstime  = t, location = Lsbr,\
                                 pressure = sbr_press*au.hPa, obswl = wl*au.micron)
         tel_altaz = tel_coord.transform_to(frame_subaru)
         str_altaz = tel_altaz.directional_offset_by(str_zpa, str_sep)
-        str_coord = str_altaz.transform_to('fk5')
+        str_coord = str_altaz.transform_to('icrs')
         ra = str_coord.ra.degree
         de = str_coord.dec.degree
         return ra, de
@@ -107,7 +107,7 @@ class Subaru():
                                 pm_ra_cosdec = str_pmRA * au.mas/au.yr,
                                 pm_dec = str_pmDE * au.mas/au.yr,
                                 obstime=at.Time(gaia_epoch, format='decimalyear'),
-                                frame='fk5')
+                                frame='icrs')
         str_coord_obstime = str_coord.apply_space_motion(at.Time(t))
         ra = str_coord_obstime.ra.degree
         de = str_coord_obstime.dec.degree
@@ -632,15 +632,11 @@ class distCorr():
         z9y  =    +5.20598052522325e-03
         z12y =    -1.90307999915411e-03
         
-        unkown_y = 0  #-0.03   # 2024.05 30um shift in tel-Y
-
         # xt,yt in mm
         x = xt / 270.0
         y = yt / 270.0
         ox = z0x + z1x*y + z2x*x + z3x*2*x*y + z4x*(2*(x**2+y**2)-1) + z5x*(x**2-y**2) + z6x*( 3*(x**2+y**2)-4*y**2)*y + z7x*( 3*(x**2+y**2)-2)*y + z8x*( 3*(x**2+y**2)-2)*x + z9x*(-3*(x**2+y**2)+4*x**2)*x + z12x*(6*(x**2+y**2)**2-6*(x**2+y**2)+1)
         oy = z0y + z1y*y + z2y*x + z3y*2*x*y + z4y*(2*(x**2+y**2)-1) + z5y*(x**2-y**2) + z6y*( 3*(x**2+y**2)-4*y**2)*y + z7y*( 3*(x**2+y**2)-2)*y + z8y*( 3*(x**2+y**2)-2)*x + z9y*(-3*(x**2+y**2)+4*x**2)*x + z12y*(6*(x**2+y**2)**2-6*(x**2+y**2)+1)
-
-        oy += unkown_y
 
         return ox,oy
 
