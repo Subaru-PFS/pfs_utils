@@ -216,3 +216,11 @@ class HeaderFixDatabase:
         
         # Subaru AIT SM2/4
         self.add("S", [101728], W_PFDSGN=0x5f4e1afdab0d8bf9)
+
+        # Subaru run19, start of 2023-10-23
+        designIdCobraHome = 0x5a0b4efc2df9711a
+        designNameCobraHome = "cobraHome"
+        self.add("S", [115821, 115822], W_PFDSGN=designIdCobraHome)
+        self.add("S", [115821, 115822], W_PFDSNM=designNameCobraHome)
+        self.add("S", self.inclRange(115824, 115838), W_PFDSGN=designIdCobraHome)
+        self.add("S", self.inclRange(115824, 115838), W_PFDSNM=designNameCobraHome)
