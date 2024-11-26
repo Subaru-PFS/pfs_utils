@@ -616,8 +616,8 @@ class USMCSTransform(SimpleTransform):
         self.applyDistortion = applyDistortion
 
         if PFIcenters is None:
-            self.mcs_boresight_x_pix = 5048
-            self.mcs_boresight_y_pix = 3518.70
+            self.mcs_boresight_x_pix = 5086.1
+            self.mcs_boresight_y_pix = 3494.36
         else:
             self.mcs_boresight_x_pix = PFIcenters[0]
             self.mcs_boresight_y_pix = PFIcenters[1]
@@ -714,5 +714,4 @@ class USMCSTransform(SimpleTransform):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
     
-        self.mcsDistort.setArgs([-1.42451239e-01, -8.35577428e+00,  
-            1.80458189e+02, -1.07665741e-01, -4.29174306e-07])
+        self.mcsDistort.setArgs([-3.67236341e-01, -1.37524676e+01,  1.79008070e+02, -1.07584708e-01, -4.29238521e-07])
