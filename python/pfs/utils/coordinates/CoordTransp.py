@@ -80,13 +80,9 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
     # Transform iput coordinates to those the same as WFC as-built model
     xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c,
                                          cent, time, pm, par, epoch)
-    if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old') or (mode == 'pfi_sky')) and (za1 != za):
+    if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old') ) and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
-        if mode == 'pfi_sky':
-            inr = inr - DCoeff.inr_tel_offset
-        else:
-            inr = inr + DCoeff.inr_tel_offset
 
 
     if (mode == 'sky_pfi'):
@@ -221,7 +217,7 @@ def convert_out_position(x, y, inr, c, cent, time):
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
     elif c.mode == 'pfi_sky':
         subaru = Subaru_POPT2_PFS.Subaru()
-        xx, yy = subaru.starRADEC(cent[0][0], cent[1][0], x, -1*y,
+        xx, yy = subaru.starRADEC(cent[0][0], cent[1][0], x, y,
                                   DCoeff.wl_ag, time)
     elif c.mode == 'pfi_sky_old':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
@@ -333,6 +329,9 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
                      cent[0], cent[1], az0, el0, inr)
         za = 90. - el0
+
+        inr = inr + DCoeff.inr_tel_offset
+
         # set 0 if pm = None, and 1e-7 if par = None
         if pm is None:
             pm = np.zeros(xyin.shape)
@@ -387,6 +386,8 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         logging.info("FoV center: Ra,Dec=(%s %s) is Az,El,InR=(%s %s %s)",
                      cent[0], cent[1], az0, el0, inr)
         za = 90. - el0
+
+        inr = inr + DCoeff.inr_tel_offset
 
         #paa = tel2.parallactic_angle(obs_time, coord_cent).deg
         #lat = tel2.location.lat.deg
