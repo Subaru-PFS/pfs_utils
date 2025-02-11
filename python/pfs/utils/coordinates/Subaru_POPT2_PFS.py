@@ -88,7 +88,7 @@ class Subaru():
 
     def starRADEC(self, tel_ra, tel_de, str_sep, str_zpa, wl, t):
         str_sep = str_sep*au.degree
-        str_zpa = str_zpa*au.degree
+        str_zpa = -str_zpa*au.degree
 
         tel_coord = ac.SkyCoord(ra=tel_ra, dec=tel_de, unit=(au.deg, au.deg), frame='icrs')
         frame_subaru = ac.AltAz(obstime  = t, location = Lsbr,\
