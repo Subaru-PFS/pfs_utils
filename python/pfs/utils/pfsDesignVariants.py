@@ -4,6 +4,7 @@ import numpy as np
 from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.coordinates.CoordTransp import CoordinateTransform
+from pfs.utils.versions import getVersion
 
 __all__ = ["makeVariantDesign", ]
 
@@ -76,6 +77,8 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFractio
                       designId0=pfsDesign0.pfsDesignId,
                       designName=f'{pfsDesign0.designName} V{variant:03}')
 
+    pfsUtilsVer = getVersion('pfs_utils')
+
     pfsDesign = PfsDesign(pfsDesignId, pfsDesign0.raBoresight, pfsDesign0.decBoresight,
                           pfsDesign0.posAng,
                           pfsDesign0.arms,
@@ -92,6 +95,8 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFractio
                           pfsDesign0.totalFluxErr,
                           pfsDesign0.filterNames, pfiNominal,
                           pfsDesign0.guideStars,
+                          obstime=utc,
+                          pfsUtilsVer=pfsUtilsVer,
                           **kwargs)
 
     return pfsDesign
