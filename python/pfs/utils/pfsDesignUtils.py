@@ -9,6 +9,7 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from pfs.datamodel import PfsDesign, FiberStatus, TargetType
 from pfs.datamodel.utils import calculate_pfsDesignId
+from pfs.utils.versions import getVersion
 
 __all__ = ["makePfsDesign", "showPfsDesign", "fakeRaDecFromPfiNominal"]
 
@@ -18,7 +19,6 @@ fakeRa, fakeDec = 100, -89.
 
 from pfs.utils.butler import Butler as Nestor
 from pfs.utils.fiberids import FiberIds
-
 
 def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=None):
     """
@@ -120,7 +120,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   proposalId="N/A", obCode="N/A",
                   fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
                   fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
-                  filterNames=None, guideStars=None, designName=None, fiberidsPath=None):
+                  filterNames=None, guideStars=None, designName=None, fiberidsPath=None, obstime=""):
     """ Make PfsDesign object from cobra x and y required positions.
 
     Parameters
@@ -196,6 +196,8 @@ def makePfsDesign(pfiNominal, ra, dec,
         Path to the directory containing information of fiber IDs.
         This will be passed as the `path` keyword to `FiberIds()`.
         Default is set to `None`, i.e., `eups` will be used to search the path.
+    obstime : `str`, optional
+        Designed observation time ISO format (UTC-time).
 
     Returns
     -------
@@ -291,12 +293,14 @@ def makePfsDesign(pfiNominal, ra, dec,
     psfFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in psfFluxErr]
     totalFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in totalFluxErr]
 
+    pfsUtilsVer = getVersion('pfs_utils')
+
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
                           targetType, fiberStatus,
                           epoch, pmRa, pmDec, parallax,
                           proposalId, obCode,
                           fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
-                          totalFluxErr, filterList, pfiNominal, guideStars)
+                          totalFluxErr, filterList, pfiNominal, guideStars, obstime=obstime, pfsUtilsVer=pfsUtilsVer)
 
     if designName is not None:
         pfsDesign.designName = designName
