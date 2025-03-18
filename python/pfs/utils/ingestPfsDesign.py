@@ -11,7 +11,7 @@ dbname = 'opdb'
 username = 'pfs'
 
 
-def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
+def ingestPfsDesign(pfsDesign, designed_at=None):
     '''
         Description
         -----------
@@ -21,13 +21,13 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
         ----------
             pfsDesign : `pfs.datamodel.pfsConfig.PfsDesign`
             designed_at : `datetime`
-            to_be_observed_at : `datetime`
 
         Returns
         -------
             None
 
     '''
+
     db = opdb.OpDB(hostname=hostname,
                    port=port,
                    dbname=dbname,
@@ -44,6 +44,8 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
     ''' insert into `pfs_design` table '''
     df = pd.DataFrame({'pfs_design_id': [pfsDesign.pfsDesignId],
                        'design_name': [pfsDesign.designName],
+                       'variant': [pfsDesign.variant],
+                       'design_id0': [pfsDesign.designId0],
                        'tile_id': [None],
                        'ra_center_designed': [pfsDesign.raBoresight],
                        'dec_center_designed': [pfsDesign.decBoresight],
@@ -57,15 +59,10 @@ def ingestPfsDesign(pfsDesign, designed_at=None, to_be_observed_at=None):
                        'ets_version': [None],
                        'ets_assigner': [None],
                        'designed_at': [designed_at],
-                       'to_be_observed_at': [to_be_observed_at],
+                       'to_be_observed_at': [pfsDesign.obstime],
+                       'pfs_utils_version': [pfsDesign.pfsUtilsVer],
                        'is_obsolete': [False]
                        })
-    try:
-        df['variant'] = pfsDesign.variant
-        df['design_id0'] = pfsDesign.designId0
-    except AttributeError:
-        df['variant'] = 0
-        df['design_id0'] = 0
 
     # db.bulkInsert('pfs_design', df)
     db.insert('pfs_design', df)
@@ -153,6 +150,10 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None, converg
                        'converg_tolerance': [converg_tolerance],
                        'alloc_rms_scatter': [None],
                        'allocated_at': [allocated_at],
+                       'to_be_observed_at': [pfsConfig.obstime],
+                       'pfs_utils_version': [pfsConfig.pfsUtilsVer],
+                       'to_be_observed_at_design': [pfsConfig.obstimeDesign],
+                       'pfs_utils_version_design': [pfsConfig.pfsUtilsVerDesign],
                        'was_observed': [False]
                        })
     db.insert('pfs_config', df)
