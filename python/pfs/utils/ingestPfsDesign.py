@@ -92,6 +92,7 @@ def ingestPfsDesign(pfsDesign, designed_at=None):
 
     ''' insert into `pfs_design_agc` table '''
     guideStars = pfsDesign.guideStars
+
     df = pd.DataFrame({'pfs_design_id': [pfsDesign.pfsDesignId for _ in guideStars.objId],
                        'guide_star_id': guideStars.objId,
                        'epoch': guideStars.epoch,
@@ -106,6 +107,7 @@ def ingestPfsDesign(pfsDesign, designed_at=None):
                        'agc_camera_id': guideStars.agId,
                        'agc_target_x_pix': guideStars.agX,
                        'agc_target_y_pix': guideStars.agY,
+                       'guide_star_flag': guideStars.flag,
                        })
     db.insert('pfs_design_agc', df)
 
