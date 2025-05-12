@@ -36,4 +36,5 @@ configMap['black_dots'] = dict(template="pfi/dot/black_dots_mm.csv",
                                loader=lambda fname: pd.read_csv(fname, comment='#'))
 configMap['fiberBlocked'] = dict(template="fibers/blocked.csv",
                                  loader=lambda fname: pd.read_csv(fname, comment='#'))
+configMap['fiberBadPsf'] = dict(template="fibers/badPsf.yaml", loader=load_yaml)
 configMap['mcsBoresight'] = dict(template="mcs/boresight.yaml", loader=load_yaml)
