@@ -736,13 +736,19 @@ def tweakFiducials(x_fid_mm, y_fid_mm, inr=0, za=0.):
     # PFI -> Tel
     x = x_fid_mm + DCoeff.pfi_x_offset
     y = y_fid_mm + DCoeff.pfi_y_offset
-    x, y = rotation(x, y, inr, rot_off=-1*DCoeff.inr_pfi)
+    x, y = rotation(x, y, inr, rot_off=1*DCoeff.inr_pfi)
 
     # Shift in Tel-Y
-    y = y +  DCoeff.shift_tel_y(za)
+    logging.info("Before shift of FF (on Tel): x= %s, y=%s", x[:11], y[:11])
+    x_tel_shift = 0.
+    y_tel_shift = -1*DCoeff.shift_tel_y(za)
+    logging.info("Shift of FF (on Tel): x= %s, y=%s", x_tel_shift, y_tel_shift)
+    x = x + x_tel_shift
+    y = y + y_tel_shift
+    logging.info("After shift of FF (on Tel): x= %s, y=%s", x[:11], y[:11])
 
     # Tel -> PFI
-    x, y = rotation(x, y, -1*inr, rot_off=1*DCoeff.inr_pfi)
+    x, y = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
     x = x - DCoeff.pfi_x_offset
     y = y - DCoeff.pfi_y_offset
     
