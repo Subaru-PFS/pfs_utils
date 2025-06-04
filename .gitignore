@@ -2,6 +2,7 @@
 .sconf_temp
 .sconsign.dblite
 python/pfs/utils/version.py
+python/pfs_utils.dist-info
 bin/*
 tests/.tests
 .coverage
