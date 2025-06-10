@@ -122,8 +122,8 @@ def makePfsDesign(pfiNominal, ra, dec,
                   fiberStatus=FiberStatus.GOOD,
                   epoch="J2000.0", pmRa=0.0, pmDec=0.0, parallax=1e-8,
                   proposalId="N/A", obCode="N/A",
-                  fiberFlux=np.NaN, psfFlux=np.NaN, totalFlux=np.NaN,
-                  fiberFluxErr=np.NaN, psfFluxErr=np.NaN, totalFluxErr=np.NaN,
+                  fiberFlux=np.nan, psfFlux=np.nan, totalFlux=np.nan,
+                  fiberFluxErr=np.nan, psfFluxErr=np.nan, totalFluxErr=np.nan,
                   filterNames=None, guideStars=None, designName=None, fiberidsPath=None, obstime=""):
     """ Make PfsDesign object from cobra x and y required positions.
 
@@ -245,13 +245,13 @@ def makePfsDesign(pfiNominal, ra, dec,
     if len(pfiNominal) == 0:
         raise RuntimeError("You must specify at least one position (n.b. [(NaN, NaN)] is acceptable)")
 
-    pfiNominal = setDefaultValues(sciVal=pfiNominal, engVal=np.NaN, shape=(nFiber, 2))
+    pfiNominal = setDefaultValues(sciVal=pfiNominal, engVal=np.nan, shape=(nFiber, 2))
 
     tract = setDefaultValues(sciVal=tract, engVal=-1, dtype='int32')
     patch = setDefaultValues(sciVal=patch, engVal='0,0', dtype='U32')
 
-    ra = setDefaultValues(sciVal=ra, engVal=np.NaN)
-    dec = setDefaultValues(sciVal=dec, engVal=np.NaN)
+    ra = setDefaultValues(sciVal=ra, engVal=np.nan)
+    dec = setDefaultValues(sciVal=dec, engVal=np.nan)
 
     catId = setDefaultValues(sciVal=catId, engVal=-1, dtype='int32')
     objId = setDefaultValues(sciVal=objId, engVal=-1, dtype='int64')
