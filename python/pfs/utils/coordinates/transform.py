@@ -331,7 +331,7 @@ class PfiTransform:
 
         self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
 
-        return (fid, dmin)
+        return (fid, dmin, x_fid_mm , y_fid_mm)
 
     #
     # Note that these two routines use instance values of mcs_boresight_[xy]_pix
