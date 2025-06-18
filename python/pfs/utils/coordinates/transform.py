@@ -10,7 +10,7 @@ from pfs.utils.butler import Butler
 
 __all__ = ["searchParams","matchIds", "makePfiTransform", "MeasureDistortion"]
 
-from .CoordTransp import CoordinateTransform
+from .CoordTransp import CoordinateTransform, tweakFiducials
 
 def searchParams(mcsData, fids):
     mcs_x = mcsData['mcs_center_x_pix'].to_numpy()          
@@ -292,6 +292,10 @@ class PfiTransform:
         y_fid_mm = fiducials.y_mm.to_numpy()
         fiducialId = fiducials.fiducialId.to_numpy()
 
+        # adjust FF position taking into account global shift
+        x_fid_mm , y_fid_mm = tweakFiducials(x_fid_mm, y_fid_mm, inr=self.insrot, za=90.-self.altitude)
+        
+
         # Get our best estimate of the transformed positions to give ourselves the
         # best chance of matching to the fiducial fibres
         #
@@ -327,7 +331,7 @@ class PfiTransform:
 
         self._plotMatches(fig, x_fid_mm, y_fid_mm, xd, yd, fid, matchRadius, nMatch)
 
-        return (fid, dmin)
+        return (fid, dmin, x_fid_mm , y_fid_mm)
 
     #
     # Note that these two routines use instance values of mcs_boresight_[xy]_pix

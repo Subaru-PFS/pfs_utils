@@ -758,3 +758,10 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
         return az, el, inr, coord3.ra.deg, coord3.dec.deg
     else:
         return az, el, inr
+
+# global shift: tel-y
+def shift_tel_y(za):
+
+    ang = np.deg2rad(za)
+    return (-62.85*(1-np.cos(ang)) + 11.06)/1000.
+    
