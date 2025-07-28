@@ -8,4 +8,5 @@ tests/.tests
 .coverage
 .pytest_cache
 pytest_session.txt
-
+.idea/
+*egg-info*
