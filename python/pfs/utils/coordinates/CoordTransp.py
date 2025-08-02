@@ -8,8 +8,7 @@ from scipy import interpolate as ipol
 
 from astropy import units as u
 from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from astroplan import Observer
+from astropy.coordinates import SkyCoord, AltAz
 import astropy.coordinates as ascor
 
 from scipy.spatial.transform import Rotation as R
@@ -25,6 +24,7 @@ from scipy.spatial.transform import Rotation as R
 
 from . import DistortionCoefficients as DCoeff
 from . import Subaru_POPT2_PFS
+from pfs.utils.location import SUBARU
 
 mypath = os.path.dirname(os.path.abspath(__file__))+'/'
 
@@ -225,7 +225,7 @@ def convert_out_position(x, y, inr, c, cent, time, za):
                                   DCoeff.wl_ag, time)
     elif c.mode == 'pfi_sky_old':  # WFC to Ra-Dec
         # Set Observation Site (Subaru)
-        tel = EarthLocation.of_site('Subaru')
+        tel = SUBARU.location
         obs_time = Time(time)
 
         aref_file = mypath+'data/Refraction_data_635nm.txt'

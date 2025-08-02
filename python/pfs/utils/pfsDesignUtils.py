@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytz
 from astropy import units as u
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 from pfs.datamodel import PfsDesign, FiberStatus, TargetType
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.versions import getVersion
+from pfs.utils.location import SUBARU
 
 __all__ = ["makePfsDesign", "showPfsDesign", "fakeRaDecFromPfiNominal"]
 
-subaru = None  # we'll look it up if we need it
 utcoffset = -10  # UTC -> HST.  No daylight saving to worry about
 fakeRa, fakeDec = 100, -89.
 
@@ -344,11 +344,7 @@ def showPfsDesign(pfsDesigns, date=None, timerange=8, showTime=None, showDesignI
     midnight = Time(f'{date} 00:00:00')  # UTC, damn astropy
     time = midnight + np.linspace(24 - timerange / 2, 24 + timerange / 2, 100) * u.hour
 
-    global subaru
-    if subaru is None:
-        subaru = EarthLocation.of_site('Subaru')
-
-    telstate = AltAz(obstime=time - utcoffset * u.hour, location=subaru)  # AltAz needs UTC
+    telstate = AltAz(obstime=time - utcoffset * u.hour, location=SUBARU.location)  # AltAz needs UTC
 
     xformatter = mdates.DateFormatter('%H:%M')
     plt.gca().xaxis.set_major_formatter(xformatter)

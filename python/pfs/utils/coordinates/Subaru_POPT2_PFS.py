@@ -5,6 +5,8 @@ import astropy.units as au
 import astropy.time as at
 import astropy.coordinates as ac
 
+from pfs.utils.location import SUBARU
+
 ### unknown scale factor
 Unknown_Scale_Factor_AG = 1.0 + 6.2e-04 # focus offset glass added 20230421   # + 1.7e-04
 Unknown_Scale_Factor_cobra = 1.0 - 5.0e-5
@@ -13,10 +15,7 @@ Unknown_Scale_Factor_cobra = 1.0 - 5.0e-5
 wfc_scale_M2POS3_coeff = 1.01546e-4
 
 ### Subaru location
-sbr_lat =   +19.8255
-sbr_lon =  +204.523972222
-sbr_hei = +4163.0
-Lsbr = ac.EarthLocation(lat=sbr_lat,lon=sbr_lon,height=sbr_hei)
+Lsbr = SUBARU.location
 
 ### misc.
 sbr_press  = 620.0
