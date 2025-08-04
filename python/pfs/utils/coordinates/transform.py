@@ -248,7 +248,7 @@ class PfiTransform:
         # Measurement in 2024.03.10
 
         self.mcs_boresight_x_pix = self.boresight['xCenter'] + self.boresight['xAltitudeCoeff']*altitude
-        self.mcs_boresight_y_pix = self.boresight['yCenter'] + self.boresight['yAltitudeCoeff']*altitude
+        self.mcs_boresight_y_pix = self.boresight['yCenter'] + self.boresight['yAltitudeCoeff']*altitude + self.boresight['yAltitudeCoeff2']*altitude*altitude
         #
         # Initial camera distortion; updated using updateTransform
         #
@@ -293,7 +293,7 @@ class PfiTransform:
         fiducialId = fiducials.fiducialId.to_numpy()
 
         # adjust FF position taking into account global shift
-        x_fid_mm , y_fid_mm = tweakFiducials(x_fid_mm, y_fid_mm, inr=self.insrot, za=90.-self.altitude)
+        #x_fid_mm , y_fid_mm = tweakFiducials(x_fid_mm, y_fid_mm, inr=self.insrot, za=90.-self.altitude)
         
 
         # Get our best estimate of the transformed positions to give ourselves the
