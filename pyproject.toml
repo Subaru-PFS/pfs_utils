@@ -6,18 +6,25 @@ build-backend = "setuptools.build_meta"
 name = "pfs-utils"
 description = "Common util tools for the Subaru PFS DRP"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "astroplan",
     "astropy",
     "matplotlib",
-    "numpy >= 2",
+    "numpy",
     "pandas",
-    "pfs-datamodel",
+    "pfs-datamodel @ git+https://github.com/Subaru-PFS/datamodel.git",
     "pytz",
     "scipy",
 ]
 dynamic = ["version"]
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "lsst-versions",
+    "pytest>=8.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/Subaru-PFS/pfs_utils"
@@ -28,7 +35,7 @@ include = ["pfs", "pfs.*"]
 
 [tool.black]
 line-length = 110
-target-version = ["py312"]
+target-version = ["py311"]
 
 [tool.isort]
 profile = "black"
