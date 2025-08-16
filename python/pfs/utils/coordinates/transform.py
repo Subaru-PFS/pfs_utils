@@ -248,7 +248,7 @@ class PfiTransform:
         # Measurement in 2024.03.10
 
         self.mcs_boresight_x_pix = self.boresight['xCenter'] + self.boresight['xAltitudeCoeff']*altitude
-        self.mcs_boresight_y_pix = self.boresight['yCenter'] + self.boresight['yAltitudeCoeff']*altitude + self.boresight['yAltitudeCoeff2']*altitude*altitude
+        self.mcs_boresight_y_pix = self.boresight['yCenter'] + self.boresight['yAltitudeCoeff']*altitude
         #
         # Initial camera distortion; updated using updateTransform
         #
