@@ -277,7 +277,7 @@ class Coeff:
                      "mcs_pfi_wofe": False,
                      "mcs_pfi_asrd": True}
         # Whether to execute offset base 2
-        do_off2 = {"sky_pfi": False,
+        do_off2 = {"sky_pfi_old": False,
                    "sky_pfi_hsc": False,
                    "pfi_sky": False,
                    "pfi_mcs": False,
