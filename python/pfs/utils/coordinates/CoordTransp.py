@@ -313,6 +313,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
     if (c.mode == 'mcs_pfi') or (c.mode == 'mcs_pfi_wofe'):
         xyconv = pixel_to_mm(xyin, 0., cent,
                              pix=DCoeff.mcspixel, invx=1., invy=-1.)
+        # Still investigating if this is needed or not.
         #xyconv = xyconv + [[0.],[DCoeff.shift_tel_y(za)/c.rsc[0]]]
     elif c.mode == 'mcs_pfi_asrd':
         xyconv = pixel_to_mm(xyin, inr, cent,

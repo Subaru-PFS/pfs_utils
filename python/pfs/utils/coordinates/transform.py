@@ -293,6 +293,7 @@ class PfiTransform:
         fiducialId = fiducials.fiducialId.to_numpy()
 
         # adjust FF position taking into account global shift
+        # Note: switch on/off will handled by INSTRM-2597, until then comment out for operation.
         #x_fid_mm , y_fid_mm = tweakFiducials(x_fid_mm, y_fid_mm, inr=self.insrot, za=90.-self.altitude)
         
 
