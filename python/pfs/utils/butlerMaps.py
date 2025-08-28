@@ -38,3 +38,5 @@ configMap['fiberBlocked'] = dict(template="fibers/blocked.csv",
                                  loader=lambda fname: pd.read_csv(fname, comment='#'))
 configMap['fiberBadPsf'] = dict(template="fibers/badPsf.yaml", loader=load_yaml)
 configMap['mcsBoresight'] = dict(template="mcs/boresight.yaml", loader=load_yaml)
+configMap['cobraInterferenced'] = dict(template="pfi/fiducials/cobraInterferenceROM_20250627.csv",
+                              loader=lambda fname: pd.read_csv(fname, comment='#'))
