@@ -86,11 +86,22 @@ pfi_offy = -0.998  # mm
 pfi_offrot = 0.765507  # deg
 pfi_diffscale = 0.999232042
 
-# correction during the Sep 2022 run
+# correction in the Sep 2022 run
+# shift: (x, y) = (-0.09, 0.01) mm
+# rotation: 0.08+0.03+0.01  deg
+# Here, the measured value is written with the same sign.
+# Additional correction in the Apr 2023 run
+# shift: (x, y) = (-0.025, 0.02) mm
+# Here, the measured value is written with the same sign.
 # 2024.03 add more rotation offset
-inr_tel_offset = 0.125  # deg (0.08 + 0.03 + 0.01 + 0.005)
-pfi_x_offset = -0.115  # -0.09 -0.025  mm
-pfi_y_offset = 0.03  # 0.01 + 0.02  mm
+# Here, the measured value (by AG this time) is written with the opposite sign.
+# correction after the Jun 2025 run
+# shift: (x, y) = (+0.005, 0)  mm
+# rotation: -0.001  deg
+# Here, the measured value is written with the same sign.
+inr_tel_offset = 0.124  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001)
+pfi_x_offset = -0.11  # -0.09 -0.025 + 0.005  mm
+pfi_y_offset = 0.03  # 0.01 + 0.02 + 0 mm
 
 # Wavelength used in AG
 wl_ag = 0.62
@@ -731,19 +742,11 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
         pass
 
     # Instrument rotator angle
-    # Use Subaru_POPT2_PFS to have commonality (disabled: 2022.09.20)
-
-    # Disable for the time being.
+    # Use Subaru_POPT2_PFS to have commonality
     # Enabled back (2023.07)
     if inr is None:
         subaru = Subaru_POPT2_PFS.Subaru()
         paa = subaru.radec2inr(ra*u.deg, dec*u.deg, obs_time)
-        """
-        paa = tel2.parallactic_angle(obs_time, coord3).deg
-        # lat = tel2.location.lat.deg
-        dc = coord3.dec.deg
-        logging.debug(dc)
-        """
         inr = paa + pa
 
     # check inr range is within +/- 180 degree
@@ -758,6 +761,7 @@ def radec_to_subaru(ra, dec, pa, time, epoch, pmra, pmdec, par, inr=None,
         return az, el, inr, coord3.ra.deg, coord3.dec.deg
     else:
         return az, el, inr
+
 
 # global shift: tel-y
 def shift_tel_y(za):
