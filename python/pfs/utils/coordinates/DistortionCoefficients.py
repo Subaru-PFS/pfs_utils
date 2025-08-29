@@ -70,12 +70,16 @@ distc_y_asrd = -2.62071
 # AG camera parameters
 # AG pixel scale : 13um/pixel
 agpixel = 1.3e-2
-agcent = 241.292  # mm
-# AG centre position and rotation (measured in Nov 2021)
+# 241.292 is the center of CCD
+# 241.314 is the center of half region of CCD.
+agcent = 241.314 #241.292  # mm
+# AG centre position and rotation (measured in Nov 2021) -- update as of May 2025
 # dy[mm] dx[mm] dt[deg] for each camera in PFI coordinates
-agcent_off = [[-0.405, 0.668, -0.253368], [-0.055, -0.081, 0.234505],
-              [-0.357, -0.180, 0.329449], [0.270, -0.357, 0.416894],
-              [0.444, -0.138, 0.0589071], [0.067, 0.077, 0.234977]]
+
+agcent_off = [[-0.423, 1.035, -0.253368], [-0.037, -0.067, 0.234505],
+              [-0.300, -0.148, 0.2755336], [0.285, -0.359, 0.416894],
+              [0.336, -0.047, -0.0781999], [0.048, 0.096, 0.234977]]
+
 
 # PFI InR offset from the telescope telescope
 inr_pfi = -90  # deg
