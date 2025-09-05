@@ -186,6 +186,8 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None, converg
                        'agc_final_x_pix': guideStars.agX,
                        'agc_final_y_pix': guideStars.agY,
                        'comments': [None for _ in guideStars.objId],
+                       'guide_star_ra': guideStars.ra,
+                       'guide_star_dec': guideStars.dec,
                        })
     db.insert('pfs_config_agc', df)
 
