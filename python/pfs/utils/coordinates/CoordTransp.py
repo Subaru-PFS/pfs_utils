@@ -360,7 +360,9 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
                      cent[0], cent[1], az0, el0, inr)
         za = 90. - el0
 
-        inr = inr + DCoeff.inr_tel_offset
+        # Measured offset in rotation (fiber plane) through raster scan
+        if c.mode == 'sky_pfi':
+            inr = inr + DCoeff.inr_tel_offset
 
         # set 0 if pm = None, and 1e-7 if par = None
         if pm is None:
@@ -371,7 +373,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         # Ra-Dec to Az-El (Targets)
 
         # Az-El to offset angle from the center (Targets)
-        if (c.mode == 'sky_pfi') or c.mode == 'sky_pfi_ag':
+        if (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_ag'):
             subaru = Subaru_POPT2_PFS.Subaru()
             ra, dec = subaru.radec2radecplxpm(epoch, xyin[0, :], xyin[1, :],
                                               par, pm[0, :], pm[1, :], time)
