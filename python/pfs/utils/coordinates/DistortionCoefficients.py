@@ -91,20 +91,24 @@ pfi_offrot = 0.765507  # deg
 pfi_diffscale = 0.999232042
 
 # correction in the Sep 2022 run
-# shift: (x, y) = (-0.09, 0.01) mm
+# shift: (x, y) = (-0.09, 0.01) mm on the pfi plane
 # rotation: 0.08+0.03+0.01  deg
 # Here, the measured value is written with the same sign.
 # Additional correction in the Apr 2023 run
-# shift: (x, y) = (-0.025, 0.02) mm
+# shift: (x, y) = (-0.025, 0.02) mm on the pfi plane
 # Here, the measured value is written with the same sign.
 # 2024.03 add more rotation offset
 # Here, the measured value (by AG this time) is written with the opposite sign.
 # correction after the Jun 2025 run
-# shift: (x, y) = (+0.005, 0)  mm
+# shift: (x, y) = (+0.005, 0)  mm on the telescope plane
 # rotation: -0.001  deg
 # Here, the measured value is written with the same sign.
 inr_tel_offset = 0.124  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001)
-pfi_x_offset = -0.11  # -0.09 -0.025 + 0.005  mm
+# This is applied on PFI plane (before tel->pfi rotation)
+tel_x_offset = 0.005  # + 0.005  mm
+tel_y_offset = 0.
+# This is applied on PFI plane (after tel->pfi rotation)
+pfi_x_offset = -0.115  # -0.09 -0.025 mm
 pfi_y_offset = 0.03  # 0.01 + 0.02 + 0 mm
 
 # Wavelength used in AG
