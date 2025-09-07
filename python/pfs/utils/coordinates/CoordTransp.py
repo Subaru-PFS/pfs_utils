@@ -188,6 +188,8 @@ def convert_out_position(x, y, inr, c, cent, time, za):
 
         # telescope to designed PFI
         logging.info("Telescope to PFI")
+        x = x - DCoeff.tel_x_offset
+        y = y - DCoeff.tel_y_offset
         xx, yy = rotation(x, y, -1*inr, rot_off=-1*DCoeff.inr_pfi)
         xx = xx - DCoeff.pfi_x_offset
         yy = yy - DCoeff.pfi_y_offset
