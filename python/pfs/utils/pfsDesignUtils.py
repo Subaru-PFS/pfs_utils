@@ -7,7 +7,7 @@ import pytz
 from astropy import units as u
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
-from pfs.datamodel import PfsDesign, FiberStatus, TargetType
+from pfs.datamodel import PfsDesign, FiberStatus, TargetType, CobraId
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.versions import getVersion
 from pfs.utils.location import SUBARU
@@ -218,6 +218,8 @@ def makePfsDesign(pfiNominal, ra, dec,
     nFiber = len(gfm.scienceFiberId)
     nScienceFiber = len(gfm.scienceFiberId[isCobra])
     fiberId = gfm.fiberId
+    cobraId = gfm.cobraId
+    cobraId[isEng] = CobraId.ENGINEERING # gfm is incorrect at the moment, so overriding.
 
     def setDefaultValues(sciVal, engVal, shape=nFiber, dtype=float):
         """assign provided sci values to cobra index and default value to engineering fibers. "
@@ -299,12 +301,13 @@ def makePfsDesign(pfiNominal, ra, dec,
 
     pfsUtilsVer = getVersion('pfs_utils')
 
-    pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId, objId,
-                          targetType, fiberStatus,
+    pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId,
+                          objId, targetType, fiberStatus,
                           epoch, pmRa, pmDec, parallax,
                           proposalId, obCode,
                           fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
-                          totalFluxErr, filterList, pfiNominal, guideStars, obstime=obstime, pfsUtilsVer=pfsUtilsVer)
+                          totalFluxErr, filterList, pfiNominal, guideStars,
+                          obstime=obstime, pfsUtilsVer=pfsUtilsVer, cobraId=cobraId)
 
     if designName is not None:
         pfsDesign.designName = designName
