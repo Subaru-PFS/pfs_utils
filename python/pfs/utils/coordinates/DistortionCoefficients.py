@@ -102,10 +102,13 @@ pfi_diffscale = 0.999232042
 # correction after the Jun 2025 run
 # shift: (x, y) = (+0.005, 0)  mm on the telescope plane
 # rotation: -0.001  deg
+# correction after the September 2025 run
+# It turned out measurement in June 2025 was wrong.
+# Shift was (x, y) = (-0.006, 0)  mm on the telescope plane
 # Here, the measured value is written with the same sign.
 inr_tel_offset = 0.124  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001)
 # This is applied on PFI plane (before tel->pfi rotation)
-tel_x_offset = 0.005  # + 0.005  mm
+tel_x_offset = -0.006  # + 0.006  mm
 tel_y_offset = 0.
 # This is applied on PFI plane (after tel->pfi rotation)
 pfi_x_offset = -0.115  # -0.09 -0.025 mm
