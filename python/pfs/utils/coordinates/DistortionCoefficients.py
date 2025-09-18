@@ -645,6 +645,57 @@ class Coeff:
         return r_itrp
 
 
+    def extra_distortion(self, za, x, y):
+        """
+        Analysis of MCS image with cobra Home position at different EL/InR in 2025.09
+        revealed a distortion pattern.
+        Distortion is described as displacement from EL=90, as dev_[xy]_pattern, and
+        its scale is fit with 2-order polynomial (setting 0 at EL=90).
+        
+        Parameters
+        
+        za : `float`
+            zenith andle [deg]
+        x : `float`
+            x position on the telescope plane [mm]
+        y : `float`
+            y position on the telescope plane [mm]
+        ----------
+        Returns
+        extra_distortion_x : `float`
+            distortion in x axis on the telescope plane [mm]
+        extra_distortion_y : `float`
+            distortion in y axis on the telescope plane [mm]
+        -------
+        """
+
+        factor = -1   # I may have to change sign, disable, or tune.
+
+        # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
+        factor_el = -3.89265717e-06*za*za + 1.68732141e-02*za
+
+        # Coefficient of the distortion pattern as 3-order polynomial.
+        # Here, displacement between EL=30 and EL=90 is used
+        coeffs_matrix_x = np.array([[ 4.04639419e-02,  1.96172301e-06, -6.27527827e-07, -1.00269520e-10],
+                                    [ 1.45816861e-06, -1.31849120e-06, -1.42711438e-10, -2.05480202e-11],
+                                    [-1.91842765e-06, -7.49966259e-12, -3.84848717e-12, -1.40025944e-15],
+                                    [-4.81901253e-11, -1.98986149e-11, -2.68864360e-15,  3.59767080e-16]])
+        coeffs_matrix_y = np.array([[ 5.15526884e-02,  3.53623223e-06, -2.66055391e-06, -8.33473178e-11],
+                                    [ 4.18085896e-06, -1.03626346e-06, -1.81708655e-10, -6.30460603e-12],
+                                    [-6.59049044e-07,  1.71873698e-10, -1.86178568e-12, -2.93596920e-14],
+                                    [-9.95743501e-11, -7.32823620e-12,  6.10660992e-16,  4.72271690e-17]])
+        logging.debug(coeffs_matrix_x.shape)
+        extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
+        extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
+
+        logging.info("Extra distortion: factor %s for za=%s", factor_el*factor, za)
+        logging.debug(extra_distortion_x)
+        extra_distortion_x = extra_distortion_x*factor_el*factor
+        extra_distortion_y = extra_distortion_y*factor_el*factor
+
+        return extra_distortion_x , extra_distortion_y
+
+
 # General functions
 def calc_m3pos(za):
 

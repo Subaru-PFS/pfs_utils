@@ -208,16 +208,15 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         yy = -1.*yy
     elif c.mode == 'mcs_pfi':
 
-        """
-        # extra distortion
+        # extra distortion (2025.09)
         logging.info("Correct extra distortion @ tel")
         logging.info("Before: x= %s, y=%s", x[:11], y[:11])
-        distCorr=Subaru_POPT2_PFS.distCorr()
-        dx, dy = distCorr.xy2dxdy(x, y)
-        x = x - distCorr.correction_factor*dx
-        y = y - distCorr.correction_factor*dy
+
+        dx, dy = c.extra_distortion(za, x, y)
+        logging.info("Extra displacement : dx= %s, dy=%s", dx[:11], dy[:11])
+        x = x +dx
+        y = y +dy
         logging.info("After: x= %s, y=%s", x[:11], y[:11])
-        """
 
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
