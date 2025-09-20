@@ -669,10 +669,10 @@ class Coeff:
         -------
         """
 
-        factor = -1   # I may have to change sign, disable, or tune.
+        factor = -1 #-1  # I may have to change sign, disable, or tune.
 
         # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
-        factor_el = -3.89265717e-06*za*za + 1.68732141e-02*za
+        factor_el = 5.00593771e-07*za*za + 1.66391111e-02*za
 
         # Coefficient of the distortion pattern as 3-order polynomial.
         # Here, displacement between EL=30 and EL=90 is used
@@ -692,6 +692,14 @@ class Coeff:
         logging.debug(extra_distortion_x)
         extra_distortion_x = extra_distortion_x*factor_el*factor
         extra_distortion_y = extra_distortion_y*factor_el*factor
+
+        # Median of shift
+        extra_shift_x = -0.01987953*za
+        extra_shift_y = -0.05217034*za
+
+        extra_distortion_x = extra_distortion_x - extra_shift_x
+        extra_distortion_y = extra_distortion_y - extra_shift_y
+        
 
         return extra_distortion_x , extra_distortion_y
 
