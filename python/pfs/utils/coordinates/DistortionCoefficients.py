@@ -669,21 +669,22 @@ class Coeff:
         -------
         """
 
-        factor = -1 #-1  # I may have to change sign, disable, or tune.
+        factor = 1 #-1  # I may have to change sign, disable, or tune.
 
         # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
         factor_el = 5.00593771e-07*za*za + 1.66391111e-02*za
 
         # Coefficient of the distortion pattern as 3-order polynomial.
         # Here, displacement between EL=30 and EL=90 is used
-        coeffs_matrix_x = np.array([[ 4.04639419e-02,  1.96172301e-06, -6.27527827e-07, -1.00269520e-10],
-                                    [ 1.45816861e-06, -1.31849120e-06, -1.42711438e-10, -2.05480202e-11],
-                                    [-1.91842765e-06, -7.49966259e-12, -3.84848717e-12, -1.40025944e-15],
-                                    [-4.81901253e-11, -1.98986149e-11, -2.68864360e-15,  3.59767080e-16]])
-        coeffs_matrix_y = np.array([[ 5.15526884e-02,  3.53623223e-06, -2.66055391e-06, -8.33473178e-11],
-                                    [ 4.18085896e-06, -1.03626346e-06, -1.81708655e-10, -6.30460603e-12],
-                                    [-6.59049044e-07,  1.71873698e-10, -1.86178568e-12, -2.93596920e-14],
-                                    [-9.95743501e-11, -7.32823620e-12,  6.10660992e-16,  4.72271690e-17]])
+        coeffs_matrix_x = np.array([[-4.02211167e-02, -2.90160669e-06,  6.19514225e-07, 7.76916074e-11],
+                                    [-3.88367964e-08,  1.35242768e-06, -1.75575985e-10, 1.87746159e-11],
+                                    [ 1.89943103e-06, -3.17322101e-11,  3.56365031e-12, -3.41684719e-15],
+                                    [-1.38730946e-10,  1.79314754e-11,  6.35257507e-15, -2.64253527e-16]])
+        coeffs_matrix_y = np.array([[-5.13033153e-02, -1.76213297e-07,  2.65809219e-06, 1.75945254e-11],
+                                    [-1.27338655e-06,  1.02685454e-06, -1.47678795e-10, 6.51391697e-12],
+                                    [ 6.47088588e-07,  1.65387235e-10,  2.58952224e-12, -1.57454200e-14],
+                                    [-6.89752427e-11,  6.89718517e-12,  8.54210910e-15, -4.60897096e-18]])
+        
         logging.debug(coeffs_matrix_x.shape)
         extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
         extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
@@ -694,11 +695,11 @@ class Coeff:
         extra_distortion_y = extra_distortion_y*factor_el*factor
 
         # Median of shift
-        extra_shift_x = -0.01987953*za
-        extra_shift_y = -0.05217034*za
+        extra_shift_x = 0.01987953*za
+        extra_shift_y = 0.05217034*za
 
-        extra_distortion_x = extra_distortion_x - extra_shift_x
-        extra_distortion_y = extra_distortion_y - extra_shift_y
+        extra_distortion_x = extra_distortion_x + extra_shift_x
+        extra_distortion_y = extra_distortion_y + extra_shift_y
         
 
         return extra_distortion_x , extra_distortion_y
