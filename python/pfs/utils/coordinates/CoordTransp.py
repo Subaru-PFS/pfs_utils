@@ -212,7 +212,7 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         logging.info("Correct extra distortion @ tel")
         logging.info("Before: x= %s, y=%s", x[:11], y[:11])
 
-        dx, dy = c.extra_distortion(za, x, y)
+        dx, dy = c.extra_distortion(za, inr, x, y)
         logging.info("Extra displacement : dx= %s, dy=%s", dx[:11], dy[:11])
         x = x +dx
         y = y +dy

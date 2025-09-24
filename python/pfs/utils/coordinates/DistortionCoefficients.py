@@ -645,7 +645,7 @@ class Coeff:
         return r_itrp
 
 
-    def extra_distortion(self, za, x, y):
+    def extra_distortion(self, za, inr, x, y):
         """
         Analysis of MCS image with cobra Home position at different EL/InR in 2025.09
         revealed a distortion pattern.
@@ -656,6 +656,8 @@ class Coeff:
         
         za : `float`
             zenith andle [deg]
+        inr : `float`
+            rotator andle [deg]
         x : `float`
             x position on the telescope plane [mm]
         y : `float`
@@ -672,10 +674,13 @@ class Coeff:
         factor = 1 #-1  # I may have to change sign, disable, or tune.
 
         # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
-        factor_el = 5.00593771e-07*za*za + 1.66391111e-02*za
+        #factor_el = 5.00593771e-07*za*za + 1.66391111e-02*za
+        # simply scale to 1 at EL=30, and 0 at EL=90
+        factor_el = 1/60.*za
 
         # Coefficient of the distortion pattern as 3-order polynomial.
         # Here, displacement between EL=30 and EL=90 is used
+        """
         coeffs_matrix_x = np.array([[-4.02211167e-02, -2.90160669e-06,  6.19514225e-07, 7.76916074e-11],
                                     [-3.88367964e-08,  1.35242768e-06, -1.75575985e-10, 1.87746159e-11],
                                     [ 1.89943103e-06, -3.17322101e-11,  3.56365031e-12, -3.41684719e-15],
@@ -684,7 +689,15 @@ class Coeff:
                                     [-1.27338655e-06,  1.02685454e-06, -1.47678795e-10, 6.51391697e-12],
                                     [ 6.47088588e-07,  1.65387235e-10,  2.58952224e-12, -1.57454200e-14],
                                     [-6.89752427e-11,  6.89718517e-12,  8.54210910e-15, -4.60897096e-18]])
-        
+        """
+        coeffs_matrix_x = np.array([[-2.49784355e-03,  7.39152235e-05, -4.54464154e-08, -7.98800557e-10],
+                                    [-9.19289103e-06, -2.47699510e-06,  2.64913004e-09, 9.10193192e-12],
+                                    [ 9.08810021e-08, -1.85587164e-09,  2.94148192e-12, 9.08430368e-14],
+                                    [ 7.93570923e-10,  3.17294348e-11, -1.51853324e-13, -3.55455682e-16]])
+        coeffs_matrix_y = np.array([[ 2.97648819e-02, -8.30154306e-05, -2.23506879e-06, 1.71542447e-09],
+                                    [ 5.08444438e-05,  1.20534598e-06,  2.20472247e-10, -2.63010425e-11],
+                                    [-4.67316588e-07,  2.07818134e-09, -1.10572290e-11,  1.40241348e-14],
+                                    [-3.30462091e-10, -3.01121073e-11, -8.18378331e-15, -4.83825219e-18]])
         logging.debug(coeffs_matrix_x.shape)
         extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
         extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
@@ -695,8 +708,10 @@ class Coeff:
         extra_distortion_y = extra_distortion_y*factor_el*factor
 
         # Median of shift
-        extra_shift_x = 0.01987953*za
-        extra_shift_y = 0.05217034*za
+        extra_shift_x = 1.16321514e-04*za*za-6.95157036e-03*za+8.68307267e-02-7.92317583e-04*za*np.cos(np.deg2rad(inr)+4.73255906e-01)  
+        extra_shift_y = -5.06454776e-04*za*za+3.00197644e-02*za-7.14223981e-02-7.92317583e-04*za*np.sin(np.deg2rad(inr)+4.73255906e-01)  
+        
+   
 
         extra_distortion_x = extra_distortion_x + extra_shift_x
         extra_distortion_y = extra_distortion_y + extra_shift_y
