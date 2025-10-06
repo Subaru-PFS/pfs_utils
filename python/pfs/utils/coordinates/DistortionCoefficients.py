@@ -7,7 +7,7 @@ from scipy import interpolate as ipol
 
 from astropy import units as u
 from astropy.time import Time, TimeDelta
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, Distance, SkyOffsetFrame
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, Distance
 try:
     from astropy.coordinates import TETE
 except ImportError:
@@ -18,7 +18,6 @@ except ImportError:
         return FK5(equinox=obstime.jyear_str)
 
 from astroplan import Observer
-import astropy.coordinates as ascor
 
 from . import Subaru_POPT2_PFS
 
@@ -671,28 +670,14 @@ class Coeff:
         -------
         """
 
-        factor = 1 #-1  # I may have to change sign, disable, or tune.
+        factor = 1
 
         # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
-        #factor_el = 5.00593771e-07*za*za + 1.66391111e-02*za
         # simply scale to 1 at EL=30, and 0 at EL=90
         factor_el = (1-np.cos(np.deg2rad(za)))/(1-np.cos(np.deg2rad(60.)))
 
-        # Coefficient of the distortion pattern as 3-order polynomial.
+        # Coefficient of the distortion pattern as 7-order polynomial.
         # Here, displacement between EL=30 and EL=90 is used
-        """
-        coeffs_matrix_x = np.array([[-2.06724125e-03,  4.82477538e-05, -1.40482753e-08, -5.51603750e-10],
-                                    [-1.06695233e-05, -2.51468619e-06,  2.45862758e-09, 9.86149313e-12],
-                                    [ 1.15569551e-07, -1.40102713e-09, -5.71396585e-14, 1.05861861e-13],
-                                    [ 8.72401019e-10,  3.42722013e-11, -1.26249061e-13, -4.06067595e-16]])
-        coeffs_matrix_y = np.array([[ 2.63076932e-02, -5.36098540e-05, -2.16756252e-06, 1.30252514e-09],
-                                    [ 3.64563818e-05,  1.34619604e-06,  5.18930866e-10, -3.04872890e-11],
-                                    [-4.15445098e-07,  1.64781898e-09, -1.23815277e-11, 1.04335655e-15],
-                                    [-4.27525139e-11, -3.45402530e-11, -1.49235787e-14, 1.48264647e-16]])
-        logging.debug(coeffs_matrix_x.shape)
-        extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
-        extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
-        """
         coeffs_matrix_x = np.array([[-1.85342514e-03,  3.04658854e-05, -9.23408413e-07,
                                       1.23049151e-09,  3.87757007e-11, -8.36312061e-14,
                                      -3.45493738e-16,  1.16485900e-18],
@@ -745,6 +730,7 @@ class Coeff:
         extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
 
         # residual: tilt?  
+        # Prbably need to roate at different EL.
         coeffs2_matrix_x = np.array([[ 1.26260818e-03,  4.66367928e-05],
                                      [ 4.06280486e-07, -1.22913743e-08]])
         coeffs2_matrix_y = np.array([[-2.33847060e-02,  1.92912241e-05],
@@ -756,26 +742,19 @@ class Coeff:
         extra_distortion_x = extra_distortion_x - extra_distortion2_x
         extra_distortion_y = extra_distortion_y - extra_distortion2_y
 
-        #extra_distortion_x = polynomial2d_dev((x, y), coeffs_matrix_x)
-        #extra_distortion_y = polynomial2d_dev((x, y), coeffs_matrix_y)
-        
         logging.info("Extra distortion: factor %s for za=%s", factor_el*factor, za)
         logging.debug(extra_distortion_x)
         extra_distortion_x = extra_distortion_x*factor_el*factor
         extra_distortion_y = extra_distortion_y*factor_el*factor
 
         # Median of shift
-        """
-        extra_shift_x = 4.57359645e-05*za*za-3.06051887e-03*za+4.40792302e-02  
-        extra_shift_y = -0.00052896*za*za+0.03189783*za-0.1087476
-        """
         extra_shift_x = 3.57621628e-05*za*za-2.42989457e-03*za+4.19211948e-02 
         extra_shift_y = -0.00055421*za*za+0.03383519*za-0.13475046
                                                          
         extra_distortion_x = extra_distortion_x + extra_shift_x
         extra_distortion_y = extra_distortion_y + extra_shift_y
 
-        # to model
+        # to make model
         #extra_distortion_x = extra_distortion_x*0.
         #extra_distortion_y = extra_distortion_y*0.
 

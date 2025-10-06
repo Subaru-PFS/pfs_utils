@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from locale import dcgettext
 import os
 import logging
 import numpy as np
