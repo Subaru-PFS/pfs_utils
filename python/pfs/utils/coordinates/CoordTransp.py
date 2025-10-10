@@ -15,6 +15,7 @@ from scipy.spatial.transform import Rotation as R
 # Dictionary keys ( argument name is mode)
 # sky_pfi : sky to PFI (using Kawanomoto's routine)
 # sky_pfi_old : sky to PFI (using Moritani's routine)
+# sky_pfi_ag : sky to PFI for AG cameras
 # sky_pfi_hsc : sky to hsc focal plane
 # sky_mcs : sky to MCS
 # pfi_mcs : PFI to MCS
@@ -79,7 +80,7 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
     # Transform iput coordinates to those the same as WFC as-built model
     xyin, inr, za1 = convert_in_position(xyin, za, inr, pa, c,
                                          cent, time, pm, par, epoch)
-    if ((mode == 'sky_pfi') or (mode == 'sky_pfi_old') ) and (za1 != za):
+    if ('sky_pfi' in mode) and (za1 != za):
         logging.info("Zenith angle for your field should be %s", za1)
         za = za1
 
@@ -94,6 +95,24 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
                                                       adc, inr,
                                                       (90.0-za), m3pos,
                                                       DCoeff.wl_ag)
+        xx, yy = convert_out_position(telx, tely, inr, c, cent, time, za)
+        xyout = np.vstack((xx, yy, dmya))
+    elif (mode == 'sky_pfi_ag'):
+        dmya = np.zeros((6, xyin.shape[1]))
+        # print(dmy)
+        popt2 = Subaru_POPT2_PFS.POPT2()
+        m3pos = DCoeff.calc_m3pos(za)
+        adc = DCoeff.calc_adc_position(za)
+        # TBF: iterate by guessing if targets will be on inside or outside
+        flag = np.full(xyin.shape[1], 2.)    # average inside and outside
+        telx, tely = popt2.celestial2focalplane(xyin[0, :], xyin[1, :],
+                                                adc, inr, (90.-za), m3pos,
+                                                DCoeff.wl_ag, flag)
+        adx, ady = popt2.additionaldistortion(telx, tely)
+        adx2, ady2 = popt2.additionaldistortion2(telx, tely, inr, (90.-za))
+        telx = telx + adx + adx2
+        tely = tely + ady + ady2
+
         xx, yy = convert_out_position(telx, tely, inr, c, cent, time, za)
         xyout = np.vstack((xx, yy, dmya))
     elif (mode == 'pfi_sky'):
@@ -202,6 +221,11 @@ def convert_out_position(x, y, inr, c, cent, time, za):
                           x0=DCoeff.pfi_offx, y0=DCoeff.pfi_offy,
                           sc=DCoeff.pfi_diffscale)
         """
+    # Rotation to PFI coordinates (AG)
+    elif c.mode == 'sky_pfi_ag':
+        pfs = Subaru_POPT2_PFS.PFS()
+        xx, yy = pfs.fp2pfi(x, y, inr)
+        yy = -1.*yy
     elif c.mode == 'sky_pfi_old' or c.mode == 'sky_pfi_hsc':
         xx, yy = rotation(x, y, inr, rot_off=DCoeff.inr_pfi)
         yy = -1.*yy
@@ -318,7 +342,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
     elif c.mode == 'mcs_pfi_asrd':
         xyconv = pixel_to_mm(xyin, inr, cent,
                              pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
-    elif (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_old') or (c.mode == 'sky_pfi_hsc'):
+    elif 'sky_pfi' in c.mode:  # sky_pfi, sky_pfi_ag, sky_pfi_old, sky_pfi_hsc
 
         # Ra-Dec to Az-El (Center): no proper motion nor parallax
         pmra_cent = 0.  # u.mas/u.yr
@@ -336,7 +360,9 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
                      cent[0], cent[1], az0, el0, inr)
         za = 90. - el0
 
-        inr = inr + DCoeff.inr_tel_offset
+        # Measured offset in rotation (fiber plane) through raster scan
+        if c.mode == 'sky_pfi':
+            inr = inr + DCoeff.inr_tel_offset
 
         # set 0 if pm = None, and 1e-7 if par = None
         if pm is None:
@@ -347,7 +373,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         # Ra-Dec to Az-El (Targets)
 
         # Az-El to offset angle from the center (Targets)
-        if c.mode == 'sky_pfi':
+        if (c.mode == 'sky_pfi') or (c.mode == 'sky_pfi_ag'):
             subaru = Subaru_POPT2_PFS.Subaru()
             ra, dec = subaru.radec2radecplxpm(epoch, xyin[0, :], xyin[1, :],
                                               par, pm[0, :], pm[1, :], time)

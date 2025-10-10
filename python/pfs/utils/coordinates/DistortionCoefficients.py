@@ -388,7 +388,7 @@ class Coeff:
                                     -4.11313E-08]}
 
         self.mode = mode
-        if mode != 'sky_pfi':
+        if (mode != 'sky_pfi') and mode != 'sky_pfi_ag':
             self.cx = dic_cx[mode]
             self.cy = dic_cy[mode]
             self.cx2 = dic_cx2[mode]
