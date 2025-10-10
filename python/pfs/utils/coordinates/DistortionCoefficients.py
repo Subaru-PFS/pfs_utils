@@ -7,7 +7,7 @@ from scipy import interpolate as ipol
 
 from astropy import units as u
 from astropy.time import Time, TimeDelta
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, Distance, SkyOffsetFrame
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5, Distance
 try:
     from astropy.coordinates import TETE
 except ImportError:
@@ -18,7 +18,6 @@ except ImportError:
         return FK5(equinox=obstime.jyear_str)
 
 from astroplan import Observer
-import astropy.coordinates as ascor
 
 from . import Subaru_POPT2_PFS
 
@@ -102,10 +101,13 @@ pfi_diffscale = 0.999232042
 # correction after the Jun 2025 run
 # shift: (x, y) = (+0.005, 0)  mm on the telescope plane
 # rotation: -0.001  deg
+# correction after the September 2025 run
+# It turned out measurement in June 2025 was wrong.
+# Shift was (x, y) = (-0.006, 0)  mm on the telescope plane
 # Here, the measured value is written with the same sign.
 inr_tel_offset = 0.124  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001)
 # This is applied on PFI plane (before tel->pfi rotation)
-tel_x_offset = 0.005  # + 0.005  mm
+tel_x_offset = -0.006  # + 0.006  mm
 tel_y_offset = 0.
 # This is applied on PFI plane (after tel->pfi rotation)
 pfi_x_offset = -0.115  # -0.09 -0.025 mm
@@ -640,6 +642,123 @@ class Coeff:
         r_itrp = ipol.splrep(IpolD[:, 0], IpolD[:, 1], s=1)
 
         return r_itrp
+
+
+    def extra_distortion(self, za, inr, x, y):
+        """
+        Analysis of MCS image with cobra Home position at different EL/InR in 2025.09
+        revealed a distortion pattern.
+        Distortion is described as displacement from EL=90, as dev_[xy]_pattern, and
+        its scale is fit with 2-order polynomial (setting 0 at EL=90).
+        
+        Parameters
+        
+        za : `float`
+            zenith andle [deg]
+        inr : `float`
+            rotator andle [deg]
+        x : `float`
+            x position on the telescope plane [mm]
+        y : `float`
+            y position on the telescope plane [mm]
+        ----------
+        Returns
+        extra_distortion_x : `float`
+            distortion in x axis on the telescope plane [mm]
+        extra_distortion_y : `float`
+            distortion in y axis on the telescope plane [mm]
+        -------
+        """
+
+        factor = 1
+
+        # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
+        # simply scale to 1 at EL=30, and 0 at EL=90
+        factor_el = (1-np.cos(np.deg2rad(za)))/(1-np.cos(np.deg2rad(60.)))
+
+        # Coefficient of the distortion pattern as 7-order polynomial.
+        # Here, displacement between EL=30 and EL=90 is used
+        coeffs_matrix_x = np.array([[-1.85342514e-03,  3.04658854e-05, -9.23408413e-07,
+                                      1.23049151e-09,  3.87757007e-11, -8.36312061e-14,
+                                     -3.45493738e-16,  1.16485900e-18],
+                                    [-3.54402633e-06, -4.56980318e-06, -1.85488052e-09,
+                                      3.07855041e-10,  6.78293678e-14, -9.54197732e-15,
+                                     -1.05722068e-19,  7.44760960e-20],
+                                    [ 1.78263904e-06,  2.06754001e-09, -6.79680450e-11,
+                                     -7.14852042e-13,  2.49867453e-15,  4.20104219e-17,
+                                     -3.99841425e-20, -6.40329870e-22],
+                                    [-1.52828750e-09,  2.71226562e-10,  8.90023278e-13,
+                                     -3.42711479e-14, -3.36228735e-17,  8.46890774e-19,
+                                      3.21606290e-22,  2.15292639e-24],
+                                    [-7.82705524e-11, -1.51848956e-13,  3.15369777e-15,
+                                      4.62459030e-17, -1.10972964e-19, -3.32527847e-21,
+                                      1.61279277e-24,  5.84937276e-26],
+                                    [ 7.90771528e-14, -8.15701068e-15, -4.66697137e-17,
+                                      1.01920474e-18,  1.16827082e-21, -1.05881718e-24,
+                                     -8.11470350e-28, -9.73240773e-28],
+                                    [ 8.71704937e-16,  2.80145904e-18, -3.05799466e-20,
+                                     -9.26224584e-22,  2.47197344e-24,  7.93752953e-26,
+                                     -5.50628901e-29, -1.55513631e-30],
+                                    [-8.75326203e-19,  7.18716281e-20,  6.19121712e-22,
+                                     -5.18915568e-24, -8.01756419e-27, -7.07333172e-28,
+                                     -1.27810329e-31,  3.11341538e-32]])
+        coeffs_matrix_y = np.array([[ 2.65556440e-02, -2.92012663e-05, -2.95960736e-06,
+                                      3.98596267e-09,  1.75955853e-11, -1.52292924e-13,
+                                      2.95092635e-17,  1.77275816e-18],
+                                    [ 3.04680454e-05,  4.57880686e-06,  1.63029441e-09,
+                                     -4.26048887e-10, -1.37745433e-13,  1.32052780e-14,
+                                      2.14729910e-18, -1.27224358e-19],
+                                    [-2.42810061e-07,  4.10202236e-09,  1.03512753e-10,
+                                     -3.75937874e-13, -7.80493150e-15,  9.03409666e-18,
+                                      1.11980028e-19,  6.84560688e-23],
+                                    [ 1.20932192e-09, -4.31627626e-10, -5.65294781e-13,
+                                      5.55043360e-14,  4.33570988e-17, -2.01818929e-18,
+                                     -7.51012868e-22,  2.03847432e-23],
+                                    [-7.41925064e-12, -5.63153219e-14, -1.03219643e-14,
+                                     -4.63148547e-18,  8.30112199e-19,  7.45519028e-22,
+                                     -1.35213134e-23, -2.82772001e-26],
+                                    [-6.44688046e-14,  1.41993058e-14,  1.93242117e-17,
+                                     -2.26846941e-18, -1.06070985e-21,  8.41633162e-23,
+                                      8.53246152e-27, -8.18993323e-28],
+                                    [-5.32591788e-17, -4.25325489e-19,  2.13725700e-19,
+                                      3.60506500e-22, -1.68189297e-23, -3.21645856e-26,
+                                      3.08351455e-28,  1.02829221e-30],
+                                    [ 8.28842369e-19, -1.52733544e-19, -1.59277577e-22,
+                                      2.89719831e-23, -5.49604547e-28, -1.12527385e-27,
+                                      3.20175147e-31,  1.26875540e-32]])
+        extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
+        extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
+
+        # residual: tilt?  
+        # Prbably need to roate at different EL.
+        coeffs2_matrix_x = np.array([[ 1.26260818e-03,  4.66367928e-05],
+                                     [ 4.06280486e-07, -1.22913743e-08]])
+        coeffs2_matrix_y = np.array([[-2.33847060e-02,  1.92912241e-05],
+                                    [ 5.54208415e-05,  1.07608115e-08]])
+
+        extra_distortion2_x = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_x)
+        extra_distortion2_y = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_y)
+
+        extra_distortion_x = extra_distortion_x - extra_distortion2_x
+        extra_distortion_y = extra_distortion_y - extra_distortion2_y
+
+        logging.info("Extra distortion: factor %s for za=%s", factor_el*factor, za)
+        logging.debug(extra_distortion_x)
+        extra_distortion_x = extra_distortion_x*factor_el*factor
+        extra_distortion_y = extra_distortion_y*factor_el*factor
+
+        # Median of shift
+        extra_shift_x = 3.57621628e-05*za*za-2.42989457e-03*za+4.19211948e-02 
+        extra_shift_y = -0.00055421*za*za+0.03383519*za-0.13475046
+                                                         
+        extra_distortion_x = extra_distortion_x + extra_shift_x
+        extra_distortion_y = extra_distortion_y + extra_shift_y
+
+        # to make model
+        #extra_distortion_x = extra_distortion_x*0.
+        #extra_distortion_y = extra_distortion_y*0.
+
+        return extra_distortion_x , extra_distortion_y
 
 
 # General functions
