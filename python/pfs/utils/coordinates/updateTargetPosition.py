@@ -1,28 +1,14 @@
 #!/usr/bin/env python
 
-from locale import dcgettext
 import os
-import logging
-import numpy as np
-from scipy import interpolate as ipol
 
-from astropy import units as u
-from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from astroplan import Observer
-import astropy.coordinates as ascor
-
-from scipy.spatial.transform import Rotation as R
-
-
-from .CoordTransp import CoordinateTransform
 from . import Subaru_POPT2_PFS
+from .CoordTransp import CoordinateTransform
+
+mypath = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
-mypath = os.path.dirname(os.path.abspath(__file__))+'/'
-
-def update_target_position(radec, pa, cent, pm, par, obstime, epoch=2016.0):
-
+def update_target_position(radec, pa, cent, pm, par, obstime, epoch=2016.0, mode='sky_pfi'):
     """ Update target position at the time of observation
 
     Parameters
@@ -54,19 +40,21 @@ def update_target_position(radec, pa, cent, pm, par, obstime, epoch=2016.0):
     pfi_now_y : `np.ndarray`, (1, N)
         Dec at the time of obserbation. Unit is mm
     """
+    if mode not in ['sky_pfi', 'sky_pfi_ag']:
+        raise ValueError('invalid mode to update target positions : "sky_pfi" for cobras "sky_pfi_ag" for guideStars')
 
     subaru = Subaru_POPT2_PFS.Subaru()
-    ra_now, dec_now = subaru.radec2radecplxpm(epoch, radec[0,:], radec[1,:],
-                                      par, pm[0, :], pm[1, :], obstime)
+    ra_now, dec_now = subaru.radec2radecplxpm(epoch, radec[0, :], radec[1, :],
+                                              par, pm[0, :], pm[1, :], obstime)
     '''
     d, d, d, ra_now, dec_now = radec_to_subaru(radec[0,:], radec[1,:], pa, obstime,
                                                epoch, pm[0,:], pm[1,:], par, 
                                                inr=None, returnRaDec=True)
     '''
 
-    xyout = CoordinateTransform(radec, 'sky_pfi', pa=pa, cent=cent,
+    xyout = CoordinateTransform(radec, mode=mode, pa=pa, cent=cent,
                                 pm=pm, par=par, time=obstime, epoch=epoch)
 
-    pfi_now_x, pfi_now_y = xyout[0,:], xyout[1,:]
+    pfi_now_x, pfi_now_y = xyout[0, :], xyout[1, :]
 
     return ra_now, dec_now, pfi_now_x, pfi_now_y
