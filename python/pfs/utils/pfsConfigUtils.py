@@ -6,7 +6,6 @@ from datetime import timezone
 import numpy as np
 import pfs.utils.butler as pfsButler
 import pfs.utils.coordinates.updateTargetPosition as updateTargetPosition
-from future.backports.datetime import timezone
 from pfs.datamodel.utils import convertToIso8601Utc
 from pfs.utils.coordinates.CoordTransp import ag_pfimm_to_pixel
 from pfs.utils.versions import getVersion
