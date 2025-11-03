@@ -761,6 +761,28 @@ class Coeff:
         return extra_distortion_x , extra_distortion_y
 
 
+    def extra_distortion_usmcs(self, x, y):
+        """
+        x,y : position on pfi
+        """
+
+        coeffs_matrix_x = np.array([[ 8.12230426e-02, -2.02370875e-05, -1.65533172e-07, -1.91662852e-09],
+                                    [-4.95589088e-04, -3.26465189e-06,  2.46960019e-08, -2.35921354e-11],
+                                    [-7.74513342e-06, -5.64505003e-10,  1.86951238e-11,  7.72484629e-14],
+                                    [ 2.11511602e-08, -2.46807099e-11, -6.27695640e-14,  4.31190592e-16]])
+
+        coeffs_matrix_y = np.array([[-1.37309503e-08, -5.10534795e-04, -4.85717347e-07,  2.30826678e-08, -6.52962171e-11],
+                                    [ 1.67396686e-04, -8.95802463e-06, -5.49936041e-09,  2.81407479e-11,  8.37274557e-14],
+                                    [ 3.80751988e-06,  3.35955712e-08, -3.51763495e-10,  -3.87555693e-13,  4.53649960e-15],
+                                    [ 3.33819489e-10,  4.16024871e-11,  1.27245378e-13,  -3.21675797e-17, -8.29959526e-19],
+                                    [-8.31133697e-11, -3.08775390e-13,  8.27917255e-15,   1.29256698e-17,  0.00000000e+00]])
+
+        extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
+        extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
+
+        return extra_distortion_x , extra_distortion_y
+
+
 # General functions
 def calc_m3pos(za):
 

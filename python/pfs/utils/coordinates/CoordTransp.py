@@ -253,6 +253,9 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         yy = y - 13.981094548141941
         xx, yy = rotation(xx, yy, -1.4, sc=0.97881131907738)
         #xx, yy = rotation(xx, yy, 0., sc=1.)
+        dx, dy = c.extra_distortion_usmcs(xx, yy)
+        xx = xx - dx
+        yy = yy - dy
     elif c.mode == 'pfi_sky':
         subaru = Subaru_POPT2_PFS.Subaru()
         xx, yy = subaru.starRADEC(cent[0][0], cent[1][0], x, y,
