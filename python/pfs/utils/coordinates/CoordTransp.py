@@ -138,8 +138,12 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
 
         # deviation
         # base
-        logging.info("Offset 1, at zenith")
-        offx1, offy1 = c.offset_base(xyin)
+        if c.skip1_off:
+            offx1 = np.zeros(xyin.shape[1])
+            offy1 = np.zeros(xyin.shape[1])
+        else:
+            logging.info("Offset 1, at zenith")
+            offx1, offy1 = c.offset_base(xyin)
 
         if c.skip2_off:
             offx2 = np.zeros(xyin.shape[1])
@@ -243,6 +247,12 @@ def convert_out_position(x, y, inr, c, cent, time, za):
 
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
+    # handle offset etc for ASRD camera
+    elif c.mode == 'mcs_pfi_asrd':
+        xx = -x - (-1.4533418109854914)
+        yy = y - 13.969143692074228
+        xx, yy = rotation(xx, yy, 0., sc=0.9794334827620936)
+        xx, yy = rotation(xx, yy, 0., sc=1.)
     elif c.mode == 'pfi_sky':
         subaru = Subaru_POPT2_PFS.Subaru()
         xx, yy = subaru.starRADEC(cent[0][0], cent[1][0], x, y,
@@ -340,7 +350,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         # Still investigating if this is needed or not.
         #xyconv = xyconv + [[0.],[DCoeff.shift_tel_y(za)/c.rsc[0]]]
     elif c.mode == 'mcs_pfi_asrd':
-        xyconv = pixel_to_mm(xyin, inr, cent,
+        xyconv = pixel_to_mm(xyin, inr-89.3, cent,
                              pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
     elif 'sky_pfi' in c.mode:  # sky_pfi, sky_pfi_ag, sky_pfi_old, sky_pfi_hsc
 

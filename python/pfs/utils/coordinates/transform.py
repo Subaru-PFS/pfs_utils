@@ -704,8 +704,8 @@ class USMCSTransform(SimpleTransform):
         xyin[0] = -(xyin[0] - self.mcs_boresight_x_pix)   # rotate 180 about centre
         xyin[1] = -(xyin[1] - self.mcs_boresight_y_pix)
 
-        xy = CoordinateTransform(xyin, "mcs_pfi", za=90.0 - self.altitude, inr=self.insrot)
-        xp, yp = xy[0], -xy[1]
+        xy = CoordinateTransform(xyin, "mcs_pfi_asrd", za=90.0 - self.altitude, inr=self.insrot)
+        xp, yp = xy[0], xy[1]
 
         if self.applyDistortion:
             xp, yp = self.mcsDistort.distort(xp, yp, inverse=False)

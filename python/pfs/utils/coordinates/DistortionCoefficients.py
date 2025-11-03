@@ -287,7 +287,7 @@ class Coeff:
                      "pfi_mcs_wofe": True,
                      "mcs_pfi": False,
                      "mcs_pfi_wofe": False,
-                     "mcs_pfi_asrd": False}
+                     "mcs_pfi_asrd": True}
         # Whether to skip use differential pattern
         skip2_off = {"sky_pfi_old": False,
                      "sky_pfi_hsc": False,
