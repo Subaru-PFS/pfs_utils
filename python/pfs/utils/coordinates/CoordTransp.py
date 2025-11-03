@@ -249,9 +249,9 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
     # handle offset etc for ASRD camera
     elif c.mode == 'mcs_pfi_asrd':
-        xx = -x - (-1.745899082400631)
-        yy = y - 41.62428186802964
-        xx, yy = rotation(xx, yy, -1.4, sc=0.9785360122445504)
+        xx = -x - (-1.2372863476362659)
+        yy = y - 13.981094548141941
+        xx, yy = rotation(xx, yy, -1.4, sc=0.97881131907738)
         #xx, yy = rotation(xx, yy, 0., sc=1.)
     elif c.mode == 'pfi_sky':
         subaru = Subaru_POPT2_PFS.Subaru()
