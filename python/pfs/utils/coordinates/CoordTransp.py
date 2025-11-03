@@ -249,10 +249,10 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
     # handle offset etc for ASRD camera
     elif c.mode == 'mcs_pfi_asrd':
-        xx = -x - (-1.4533418109854914)
-        yy = y - 13.969143692074228
-        xx, yy = rotation(xx, yy, 0., sc=0.9794334827620936)
-        xx, yy = rotation(xx, yy, 0., sc=1.)
+        xx = -x - (-1.745899082400631)
+        yy = y - 41.62428186802964
+        xx, yy = rotation(xx, yy, -1.4, sc=0.9785360122445504)
+        #xx, yy = rotation(xx, yy, 0., sc=1.)
     elif c.mode == 'pfi_sky':
         subaru = Subaru_POPT2_PFS.Subaru()
         xx, yy = subaru.starRADEC(cent[0][0], cent[1][0], x, y,
@@ -350,7 +350,7 @@ def convert_in_position(xyin, za, inr, pa, c, cent, time, pm, par, epoch):
         # Still investigating if this is needed or not.
         #xyconv = xyconv + [[0.],[DCoeff.shift_tel_y(za)/c.rsc[0]]]
     elif c.mode == 'mcs_pfi_asrd':
-        xyconv = pixel_to_mm(xyin, inr-89.3, cent,
+        xyconv = pixel_to_mm(xyin, inr-90.0, cent,
                              pix=DCoeff.mcspixel_asrd, invx=-1., invy=1.)
     elif 'sky_pfi' in c.mode:  # sky_pfi, sky_pfi_ag, sky_pfi_old, sky_pfi_hsc
 

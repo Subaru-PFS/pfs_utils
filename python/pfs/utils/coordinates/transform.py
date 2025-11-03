@@ -701,8 +701,8 @@ class USMCSTransform(SimpleTransform):
 
         xyin = np.stack((x, y)).copy()
 
-        xyin[0] = -(xyin[0] - self.mcs_boresight_x_pix)   # rotate 180 about centre
-        xyin[1] = -(xyin[1] - self.mcs_boresight_y_pix)
+        xyin[0] = (xyin[0] - self.mcs_boresight_x_pix)
+        xyin[1] = (xyin[1] - self.mcs_boresight_y_pix)
 
         xy = CoordinateTransform(xyin, "mcs_pfi_asrd", za=90.0 - self.altitude, inr=self.insrot)
         xp, yp = xy[0], xy[1]
@@ -719,5 +719,6 @@ class USMCSTransform(SimpleTransform):
         super().setParams(altitude, insrot, nsigma, alphaRot)
 
     
-        self.mcsDistort.setArgs([-1.42451239e-01, -8.35577428e+00,  
-            1.80458189e+02, -1.07665741e-01, -4.29174306e-07])
+        #self.mcsDistort.setArgs([-1.42451239e-01, -8.35577428e+00,  
+        #    1.80458189e+02, -1.07665741e-01, -4.29174306e-07])
+        self.mcsDistort.setArgs([0.0, 0.0, 0.0, 0.0, 0.0])
