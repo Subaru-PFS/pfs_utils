@@ -40,13 +40,13 @@ Arguments:
 -cobra_id: Which cobra to visualize
 
 To get design numbers:
-conn = psycopg2.connect("dbname='opdb' host='pfsa-db01' port=5432 user='pfs' password=####")
-with conn:
-     df = pd.read_sql("select pfs_visit.pfs_visit_id, pfs_design_id,
+from pfs.utils.database.opdb import OpDB
+opdb = OpDB()
+df = opdb.query_dataframe("select pfs_visit.pfs_visit_id, pfs_design_id,
                       iic_sequence.visit_set_id, sequence_type from iic_sequence inner join "
                       "visit_set on visit_set.visit_set_id=iic_sequence.visit_set_id inner
                       join pfs_visit on pfs_visit.pfs_visit_id=visit_set.pfs_visit_id "
-                      "where sequence_type='thetaCrossing' or sequence_type='phiCrossing' ", conn)
+                      "where sequence_type='thetaCrossing' or sequence_type='phiCrossing' ")
 
 Note that cobraGeometry file is read from pd.read_pickle(work_directory + "getCobraGeometry_cobra_id.pkl")
 
