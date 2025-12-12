@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
+requires = ["setuptools >= 77.0.3", "lsst-versions"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pfs-utils"
 description = "Common util tools for the Subaru PFS DRP"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "astroplan",
     "astropy",
@@ -14,16 +14,16 @@ dependencies = [
     "numpy",
     "pandas",
     "pfs-datamodel @ git+https://github.com/Subaru-PFS/datamodel.git",
+    "psycopg[binary]",
     "pytz",
     "scipy",
+    "sqlalchemy",
 ]
 dynamic = ["version"]
 [project.optional-dependencies]
 dev = [
-    "black",
-    "isort",
-    "lsst-versions",
     "pytest>=8.0",
+    "ruff"
 ]
 
 [project.urls]
@@ -33,20 +33,22 @@ dev = [
 where = ["python/"]
 include = ["pfs", "pfs.*"]
 
-[tool.black]
-line-length = 110
-target-version = ["py311"]
-
-[tool.isort]
-profile = "black"
-line_length = 110
-known_first_party = ["pfs"]
-
 [tool.lsst_versions]
 write_to = "python/pfs/utils/version.py"
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"  # Recommended as best practice
 
+[tool.ruff]
+line-length = 110
+
+# Ruff configuration to ignore naming capitalization/camelCase rules for functions, methods, and variables
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
+
 [tool.pydocstyle]
 convention = "numpy"
+
+[tool.hatch.metadata]
+allow-direct-references = true
