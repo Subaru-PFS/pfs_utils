@@ -39,14 +39,6 @@ write_to = "python/pfs/utils/version.py"
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"  # Recommended as best practice
 
-[tool.ruff]
-line-length = 110
-
-# Ruff configuration to ignore naming capitalization/camelCase rules for functions, methods, and variables
-[tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
-
 [tool.pydocstyle]
 convention = "numpy"
 
