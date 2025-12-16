@@ -10,8 +10,7 @@ class OpDB(DB):
         The base class that implements connection and query helpers.
     """
 
-    # Default parameters for the operational database
-    host = "db-ics"
-    user = "pfs"
-    dbname = "opdb"
-    port = 5432
+    DEFAULT_HOST = "db-ics"
+    DEFAULT_USER = "pfs"
+    DEFAULT_DBNAME = "opdb"
+    DEFAULT_PORT = 5432

@@ -1,12 +1,16 @@
 import logging
 import re
 from contextlib import contextmanager
+from threading import RLock
 from typing import Any, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
 from sqlalchemy import MetaData, Table, create_engine, text
 from sqlalchemy.engine import Connection, Engine
+
+_DB_ENGINES: dict[str, Engine] = {}
+_DB_ENGINES_LOCK = RLock()
 
 
 class DB:
@@ -32,10 +36,67 @@ class DB:
         db = DB({'dbname': 'opdb', 'user': 'pfs', 'host': 'db-ics'})
     """
 
-    host = "localhost"
-    user = "user"
-    dbname = "dbname"
-    port = 5432
+    # Default connection parameters
+    DEFAULT_HOST = "localhost"
+    DEFAULT_USER = "user"
+    DEFAULT_DBNAME = "dbname"
+    DEFAULT_PORT = 5432
+
+    @classmethod
+    def set_default_connection(
+        cls,
+        *,
+        host: str | None = None,
+        user: str | None = None,
+        dbname: str | None = None,
+        port: int | None = None,
+    ) -> None:
+        """Set default connection parameters for this class.
+
+        Behavior
+        ---------
+        - When called on ``DB`` itself, updates the module-wide defaults used by
+          all classes that don't override their own defaults.
+        - When called on a subclass (e.g., ``OpDB`` or ``GaiaDB``), updates only
+          that subclass's class-level defaults without affecting global defaults
+          or other subclasses.
+
+        Notes
+        -----
+        - This affects only new instances created after calling this method.
+          Existing instances are not modified.
+        - Passwords are not handled here; use your ``~/.pgpass`` or other
+          external mechanisms as before.
+
+        Parameters
+        ----------
+        host : str, optional
+            Default database host.
+        user : str, optional
+            Default database user.
+        dbname : str, optional
+            Default database name.
+        port : int, optional
+            Default database port.
+
+        Examples
+        --------
+        >>> DB.set_default_connection(host="db-ics", user="public_user", dbname="opdb", port=5432)
+        >>> db = DB()  # will use the defaults above
+        >>> from pfs.utils.database.opdb import OpDB
+        >>> OpDB.set_default_connection(host="db-ics", user="pfs", dbname="opdb", port=5432)
+        >>> op = OpDB()  # uses OpDB's class defaults only
+        """
+        # Update subclass-specific DEFAULT_* values only.
+        with _DB_ENGINES_LOCK:
+            if host is not None:
+                cls.DEFAULT_HOST = host
+            if user is not None:
+                cls.DEFAULT_USER = user
+            if dbname is not None:
+                cls.DEFAULT_DBNAME = dbname
+            if port is not None:
+                cls.DEFAULT_PORT = int(port)
 
     def __init__(
         self,
@@ -60,15 +121,18 @@ class DB:
         port : int, optional
             Database port number, default is 5432.
         """
-        self.host = host if host is not None else self.host
-        self.user = user if user is not None else self.user
-        self.dbname = dbname if dbname is not None else self.dbname
-        self.port = port if port is not None else self.port
+        # Resolve defaults with the following precedence:
+        # 1) Explicit argument passed to __init__
+        # 2) Class DEFAULT_* on the concrete subclass (e.g., OpDB.DEFAULT_HOST)
+        cls = type(self)
+        self.host = host if host is not None else cls.DEFAULT_HOST
+        self.user = user if user is not None else cls.DEFAULT_USER
+        self.dbname = dbname if dbname is not None else cls.DEFAULT_DBNAME
+        self.port = int(port) if port is not None else cls.DEFAULT_PORT
 
         self.logger = logging.getLogger(f"DB-{self.dbname}")
 
         self._dsn: Optional[Union[str, Mapping[str, Any]]] = None
-        self._engine: Optional[Engine] = None
         if dsn is not None:
             self.dsn = dsn
 
@@ -86,7 +150,7 @@ class DB:
                 v = self._dsn.get(k)
                 if v is not None:
                     dsn_items.append(f"{k}={v}")
-            return " ".join(dsn_items)
+            self._dsn = " ".join(dsn_items)
 
         return self._dsn
 
@@ -94,6 +158,7 @@ class DB:
     def dsn(self, value: Union[str, Mapping[str, Any]]) -> None:
         """Set the DSN string or mapping used for the connection."""
         self._dsn = value
+
         # Parse a libpq-style DSN string to update attributes
         if isinstance(value, str):
             for k, v in (item.split("=") for item in value.split() if "=" in item):
@@ -114,10 +179,9 @@ class DB:
                 self.dbname = value["dbname"]
             if "port" in value:
                 self.port = int(value["port"])  # type: ignore[arg-type]
-        # Reset engine so it can be re-created with new params
-        self._engine = None
 
-    def _build_url(self) -> str:
+    @property
+    def url(self) -> str:
         """Build a SQLAlchemy URL for PostgreSQL using current attributes.
 
         We intentionally omit the password; libpq will use ~/.pgpass if available.
@@ -131,12 +195,14 @@ class DB:
 
     @property
     def engine(self) -> Engine:
-        """Create or return a cached SQLAlchemy Engine."""
-        if self._engine is None:
-            # If a mapping DSN was provided, prefer those values
-            url = self._build_url()
-            self._engine = create_engine(url, pool_pre_ping=True, future=True)
-        return self._engine
+        """Create or return a SQLAlchemy Engine cached via its URL."""
+        with _DB_ENGINES_LOCK:
+            eng = _DB_ENGINES.get(self.url)
+            if eng is None:
+                eng = create_engine(self.url, pool_pre_ping=True, future=True)
+                _DB_ENGINES[self.url] = eng
+
+            return eng
 
     def connect(self) -> Connection:
         """Return a new SQLAlchemy connection using provided DSN/params.

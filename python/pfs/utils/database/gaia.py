@@ -13,11 +13,10 @@ class GaiaDB(db.DB):
         The base class that implements connection and query helpers.
     """
 
-    # Default host used for the Gen2 gaia database.
-    host = "g2sim-cat"
-    user = "obsuser"
-    dbname = "star_catalog"
-    port = 5438
+    DEFAULT_HOST = "g2sim-cat"
+    DEFAULT_USER = "obsuser"
+    DEFAULT_DBNAME = "star_catalog"
+    DEFAULT_PORT = 5438
 
     def commit(self, *args, **kwargs):
         """Raise an error indicating this is a read-only database.

@@ -43,12 +43,19 @@ module.
 - Authentication: Passwords are expected to be managed externally by libpq (e.g., via `~/.pgpass`). The helpers use
   `psycopg` through SQLAlchemy and do not embed passwords.
 
+- Engine caching (singleton per DSN URL): `DB` now caches a SQLAlchemy `Engine` per DSN URL (as built by
+  `DB.url` property). Multiple `DB` instances that point to the same DSN URL will share the same underlying connection
+  pool/engine. Multiple `DB` instances with the same connection parameters will share a single SQLAlchemy `Engine`. If you change the `dsn` (or
+  connection parameters) such that the URL changes, a new one will be created lazily on
+  next use (although the original will still be cached.)
+
 The two most common operations are `query` (reading) and `insert` (writing). By default, `query` returns a pandas
 `DataFrame`, and `insert` accepts a pandas `DataFrame` for bulk inserts. Both also support other convenient options.
 
 #### Connecting
 
-You can use the generic `DB` class or the convenience subclasses `OpDB`/`QaDB` that provide default connection settings.
+You can use the `DB` class directly or the convenience subclasses `OpDB`/`QaDB` that provide default connection
+settings.
 
 ```python
 from pfs.utils.database.db import DB
@@ -64,6 +71,9 @@ opdb = OpDB()
 #### query — default (DataFrame) and alternatives
 
 ```python
+from pfs.utils.database.opdb import OpDB
+opdb = OpDB()
+
 frame_id = 123456
 
 # Default returns a pandas DataFrame. 
@@ -102,6 +112,9 @@ See other query variants in the API docs.
 
 ```python
 import pandas as pd
+from pfs.utils.database.opdb import OpDB
+
+opdb = OpDB()
 
 # 1) Bulk insert with a DataFrame. 
 # Column names must match the destination table columns.
@@ -129,6 +142,9 @@ use the connection context manager:
 ```python
 from sqlalchemy import text
 import pandas as pd
+from pfs.utils.database.opdb import OpDB
+
+opdb = OpDB()
 
 # Trivial example to re-use connection for multiple operations. 
 # Note that this re-creates the default of `query` but less efficiently.
