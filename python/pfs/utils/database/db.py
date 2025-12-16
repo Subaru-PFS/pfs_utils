@@ -1,12 +1,16 @@
 import logging
 import re
 from contextlib import contextmanager
+from threading import RLock
 from typing import Any, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
 from sqlalchemy import MetaData, Table, create_engine, text
 from sqlalchemy.engine import Connection, Engine
+
+_DB_ENGINES: dict[str, Engine] = {}
+_DB_ENGINES_LOCK = RLock()
 
 
 class DB:
@@ -68,7 +72,6 @@ class DB:
         self.logger = logging.getLogger(f"DB-{self.dbname}")
 
         self._dsn: Optional[Union[str, Mapping[str, Any]]] = None
-        self._engine: Optional[Engine] = None
         if dsn is not None:
             self.dsn = dsn
 
@@ -86,7 +89,7 @@ class DB:
                 v = self._dsn.get(k)
                 if v is not None:
                     dsn_items.append(f"{k}={v}")
-            return " ".join(dsn_items)
+            self._dsn = " ".join(dsn_items)
 
         return self._dsn
 
@@ -94,6 +97,7 @@ class DB:
     def dsn(self, value: Union[str, Mapping[str, Any]]) -> None:
         """Set the DSN string or mapping used for the connection."""
         self._dsn = value
+
         # Parse a libpq-style DSN string to update attributes
         if isinstance(value, str):
             for k, v in (item.split("=") for item in value.split() if "=" in item):
@@ -114,10 +118,9 @@ class DB:
                 self.dbname = value["dbname"]
             if "port" in value:
                 self.port = int(value["port"])  # type: ignore[arg-type]
-        # Reset engine so it can be re-created with new params
-        self._engine = None
 
-    def _build_url(self) -> str:
+    @property
+    def url(self) -> str:
         """Build a SQLAlchemy URL for PostgreSQL using current attributes.
 
         We intentionally omit the password; libpq will use ~/.pgpass if available.
@@ -130,13 +133,15 @@ class DB:
         return f"postgresql+psycopg://{user}@{host}{port}/{dbname}"
 
     @property
-    def engine(self) -> Engine:
-        """Create or return a cached SQLAlchemy Engine."""
-        if self._engine is None:
-            # If a mapping DSN was provided, prefer those values
-            url = self._build_url()
-            self._engine = create_engine(url, pool_pre_ping=True, future=True)
-        return self._engine
+    def engine(self) -> Engine | None:
+        """Create or return a SQLAlchemy Engine cached via its URL."""
+        with _DB_ENGINES_LOCK:
+            eng = _DB_ENGINES.get(self.url)
+            if eng is None:
+                eng = create_engine(self.url, pool_pre_ping=True, future=True)
+                _DB_ENGINES[self.url] = eng
+
+            return eng
 
     def connect(self) -> Connection:
         """Return a new SQLAlchemy connection using provided DSN/params.
