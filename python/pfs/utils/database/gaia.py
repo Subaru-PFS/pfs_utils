@@ -1,5 +1,10 @@
 from pfs.utils.database import db
 
+DEFAULT_HOST = "g2sim-cat"
+DEFAULT_USER = "obsuser"
+DEFAULT_DBNAME = "star_catalog"
+DEFAULT_PORT = 5438
+
 
 class GaiaDB(db.DB):
     """Gaia catalog database convenience subclass of DB.
@@ -13,11 +18,21 @@ class GaiaDB(db.DB):
         The base class that implements connection and query helpers.
     """
 
-    # Default host used for the Gen2 gaia database.
-    host = "g2sim-cat"
-    user = "obsuser"
-    dbname = "star_catalog"
-    port = 5438
+    def __init__(self, **kwargs):
+        """Initialize the GaiaDB instance with default connection parameters.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments to pass to the base class initializer.
+        """
+        super().__init__(
+            host=kwargs.get("host", DEFAULT_HOST),
+            user=kwargs.get("user", DEFAULT_USER),
+            dbname=kwargs.get("dbname", DEFAULT_DBNAME),
+            port=kwargs.get("port", DEFAULT_PORT),
+            **kwargs
+        )
 
     def commit(self, *args, **kwargs):
         """Raise an error indicating this is a read-only database.
