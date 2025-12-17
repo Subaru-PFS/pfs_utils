@@ -12,13 +12,6 @@ from sqlalchemy.engine import Connection, Engine
 _DB_ENGINES: dict[str, Engine] = {}
 _DB_ENGINES_LOCK = RLock()
 
-# Default connection parameters
-DEFAULT_HOST = "localhost"
-DEFAULT_USER = "user"
-DEFAULT_DBNAME = "dbname"
-DEFAULT_PORT = 5432
-
-
 class DB:
     """Generic DB helper that accepts a DSN string or connection parameters.
 
@@ -42,6 +35,12 @@ class DB:
         db = DB({'dbname': 'opdb', 'user': 'pfs', 'host': 'db-ics'})
     """
 
+    # Default connection parameters
+    DEFAULT_HOST = "localhost"
+    DEFAULT_USER = "user"
+    DEFAULT_DBNAME = "dbname"
+    DEFAULT_PORT = 5432
+
     @classmethod
     def set_default_connection(
         cls,
@@ -55,11 +54,7 @@ class DB:
 
         Behavior
         ---------
-        - When called on ``DB`` itself, updates the module-wide defaults used by
-          all classes that don't override their own defaults.
-        - When called on a subclass (e.g., ``OpDB`` or ``GaiaDB``), updates only
-          that subclass's class-level defaults without affecting global defaults
-          or other subclasses.
+        - Updates the given class/subclass connection defaults
 
         Notes
         -----
@@ -87,28 +82,16 @@ class DB:
         >>> OpDB.set_default_connection(host="db-ics", user="pfs", dbname="opdb", port=5432)
         >>> op = OpDB()  # uses OpDB's class defaults only
         """
-        # If invoked on the base DB class, update module-level defaults.
-        if cls is DB:
-            global DEFAULT_HOST, DEFAULT_USER, DEFAULT_DBNAME, DEFAULT_PORT
-            if host is not None:
-                DEFAULT_HOST = host
-            if user is not None:
-                DEFAULT_USER = user
-            if dbname is not None:
-                DEFAULT_DBNAME = dbname
-            if port is not None:
-                DEFAULT_PORT = int(port)
-            return
 
-        # Otherwise, update subclass-specific class attributes without touching globals.
+        # Only update the fields we were given, and only in our class.
         if host is not None:
-            setattr(cls, "DEFAULT_HOST", host)
+            cls.DEFAULT_HOST = host
         if user is not None:
-            setattr(cls, "DEFAULT_USER", user)
+            cls.DEFAULT_USER = user
         if dbname is not None:
-            setattr(cls, "DEFAULT_DBNAME", dbname)
+            cls.DEFAULT_DBNAME = dbname
         if port is not None:
-            setattr(cls, "DEFAULT_PORT", int(port))
+            cls.DEFAULT_PORT = int(port)
 
     def __init__(
         self,
@@ -136,13 +119,11 @@ class DB:
         # Resolve defaults with the following precedence:
         # 1) Explicit argument passed to __init__
         # 2) Class-level defaults on the concrete subclass (attributes: host, user, dbname, port)
-        # 3) Module-wide defaults defined in this module
         cls = type(self)
-        self.host = host if host is not None else getattr(cls, "host", DEFAULT_HOST)
-        self.user = user if user is not None else getattr(cls, "user", DEFAULT_USER)
-        self.dbname = dbname if dbname is not None else getattr(cls, "dbname", DEFAULT_DBNAME)
-        resolved_port = port if port is not None else getattr(cls, "port", DEFAULT_PORT)
-        self.port = int(resolved_port) if resolved_port is not None else None  # type: ignore[assignment]
+        self.host = host if host is not None else cls.DEFAULT_HOST
+        self.user = user if user is not None else cls.DEFAULT_USER
+        self.dbname = dbname if dbname is not None else cls.DEFAULT_DBNAME
+        self.port = int(port) if port is not None else cls.DEFAULT_PORT
 
         self.logger = logging.getLogger(f"DB-{self.dbname}")
 
