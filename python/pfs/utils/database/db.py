@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import MetaData, Table, create_engine, text
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy import exc
 
 _DB_ENGINES: dict[str, Engine] = {}
 _DB_ENGINES_LOCK = RLock()
@@ -625,6 +626,19 @@ class DB:
             self.logger.warning("Input DataFrame is empty. No data inserted.")
             return None
 
+        # Look up column dtypes for table.
+        try:
+            metadata = MetaData()
+            table_obj = Table(table, metadata, autoload_with=self.engine)
+            dtype_map = {
+                col.name: col.type
+                for col in table_obj.columns
+                if col.name in df.columns
+            }
+        except exc.SQLAlchemyError as e:
+            self.logger.error(f"Failed to reflect table '{table}': {e}")
+            raise
+
         try:
             self.logger.info(f"Starting insert of {len(df)} rows into table '{table}'...")
             with self.connection() as conn:
@@ -635,10 +649,16 @@ class DB:
                     index=index,
                     chunksize=chunksize,
                     method="multi",
+                    dtype=dtype_map,
                 )
 
             self.logger.info(f"Successfully inserted {inserted_rows} rows into '{table}'")
             return inserted_rows
+        except exc.SQLAlchemyError as e:
+            # Show a sane error message rather than a wall of SQL.
+            db_error = getattr(e, "orig", e)
+            self.logger.error(db_error)
+            raise
         except Exception as e:
             self.logger.error(f"Failed to insert data into '{table}' using to_sql: {e}")
             raise
