@@ -10,8 +10,7 @@ class QaDB(DB):
         The base class that implements connection and query helpers.
     """
 
-    # Default parameters for the QA database
-    host = "pfsa-db"
-    user = "pfs"
-    dbname = "qadb"
-    port = 5436
+    DEFAULT_HOST = "pfsa-db"
+    DEFAULT_USER = "pfs"
+    DEFAULT_DBNAME = "qadb"
+    DEFAULT_PORT = 5436

@@ -14,6 +14,7 @@ dependencies = [
     "numpy",
     "pandas",
     "pfs-datamodel @ git+https://github.com/Subaru-PFS/datamodel.git",
+    "pfs-instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git",
     "psycopg[binary]",
     "pytz",
     "scipy",
