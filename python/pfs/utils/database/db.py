@@ -578,7 +578,7 @@ class DB:
         table: str,
         df: pd.DataFrame,
         index: bool = False,
-        chunksize: int = 10000,
+        chunksize: int | None = None,
         **kwargs: Any,
     ) -> int | None:
         """Insert into a table via a dataframe.
@@ -591,9 +591,11 @@ class DB:
             DataFrame containing data to insert.
         index : bool, default False
             Write DataFrame index as a column when using df mode.
-        chunksize : int, default 10000
-            Number of rows per batch when using df mode. You shouldn't need to
-            change this unless you are inserting 10_000+ rows and run into memory issues.
+        chunksize : int, default None
+            Number of rows per batch when using df mode. A total of 65,535 parameters
+            can be sent in a single query, so the effective maximum chunk size
+            depends on the number of columns in the DataFrame. When ``None``, the
+            chunk size will be determined by the number of columns, i.e. ``65535 // n_columns``.
 
         Returns
         -------
@@ -619,12 +621,18 @@ class DB:
         >>> df = pd.DataFrame({"value": [10, 20, 30]}, index=["a", "b", "c"])
         >>> n = db.insert_dataframe("data", df, index=True, chunksize=1000)
         """
-
         if not isinstance(df, pd.DataFrame):
             raise TypeError("Input `df` must be a pandas DataFrame.")
         if df.empty:
             self.logger.warning("Input DataFrame is empty. No data inserted.")
             return None
+
+        if chunksize is None:
+            n_columns = len(df.columns) + (1 if index else 0)
+            if n_columns > 0:
+                chunksize = 65535 // n_columns
+            else:
+                raise ValueError("DataFrame has no columns; nothing to insert.")
 
         # Look up column dtypes for table.
         try:
@@ -654,13 +662,10 @@ class DB:
 
             self.logger.info(f"Successfully inserted {inserted_rows} rows into '{table}'")
             return inserted_rows
-        except exc.SQLAlchemyError as e:
-            # Show a sane error message rather than a wall of SQL.
-            db_error = getattr(e, "orig", e)
-            self.logger.error(db_error)
-            raise
         except Exception as e:
-            self.logger.error(f"Failed to insert data into '{table}' using to_sql: {e}")
+            db_error = str(getattr(e, "orig", e))
+            db_error = db_error[:200] + "..." if len(db_error) > 200 else db_error
+            self.logger.error(f"Failed to insert data into '{table}' using to_sql: {db_error}")
             raise
 
     def insert_kw(self, table: str, **kwargs: Any) -> None:
