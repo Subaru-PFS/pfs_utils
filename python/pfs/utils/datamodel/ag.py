@@ -113,9 +113,9 @@ class SourceMatchingFlags(IntFlag):
     UNUSED_MULTI_MATCH = 0x0008
 
     def __str__(self):
-        if self == SourceMatchingFlags.GOOD_MATCH:
-            return "GOOD_MATCH"
-        flags = [flag.name for flag in SourceMatchingFlags if flag in self and flag != SourceMatchingFlags.GOOD_MATCH]
+        if self == SourceMatchingFlags.NONE:
+            return "NONE"
+        flags = [flag.name for flag in SourceMatchingFlags if flag in self and flag != SourceMatchingFlags.NONE]
         return "|".join(flags)
 
 
