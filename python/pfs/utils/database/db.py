@@ -1,5 +1,7 @@
+import io
 import logging
 import re
+import time
 from contextlib import contextmanager
 from threading import RLock
 from typing import Any, Mapping, Optional, Union
@@ -666,6 +668,79 @@ class DB:
             db_error = str(getattr(e, "orig", e))
             db_error = db_error[:200] + "..." if len(db_error) > 200 else db_error
             self.logger.error(f"Failed to insert data into '{table}' using to_sql: {db_error}")
+            raise
+
+    def insert_dataframe_bulk(
+        self,
+        table: str,
+        df: pd.DataFrame,
+        **kwargs: Any,
+    ) -> int | None:
+        """Insert into a table via a dataframe.
+
+        Parameters
+        ----------
+        table : str
+            Destination table name.
+        df : pandas.DataFrame
+            DataFrame containing data to insert.
+
+        Raises
+        ------
+        TypeError
+            If df is provided but is not a pandas DataFrame.
+
+        Examples
+        --------
+        Insert a DataFrame with default parameters:
+
+        >>> db = DB()
+        >>> df = pd.DataFrame({"id": [1, 2, 3], "name": ["alice", "bob", "charlie"]})
+        >>> n = db.insert_dataframe("users", df)
+        >>> print(f"Inserted {n} rows")
+        """
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("Input `df` must be a pandas DataFrame.")
+        if df.empty:
+            self.logger.warning("Input DataFrame is empty. No data inserted.")
+            return None
+
+        # Look up column dtypes for table.
+        # With COPY FROM, might use order of columns to fix up `table`.
+        try:
+            metadata = MetaData()
+            table_obj = Table(table, metadata, autoload_with=self.engine)
+            dtype_map = {
+                col.name: col.type
+                for col in table_obj.columns
+                if col.name in df.columns
+            }
+        except exc.SQLAlchemyError as e:
+            self.logger.error(f"Failed to reflect table '{table}': {e}")
+            raise
+
+        try:
+            t0 = time.time()
+            self.logger.info(f"Starting insert of {len(df)} rows into table '{table}'...")
+            buf = io.StringIO()
+            df.to_csv(buf, sep=',', index=False, header=True)
+            buf.seek(0)
+            try:
+                conn = self.engine.raw_connection()
+                with conn.cursor() as cur:
+                    with cur.copy(f"COPY {table} FROM STDIN WITH (FORMAT csv, HEADER MATCH)") as copy:
+                        while data := buf.read(1024*1024):
+                            copy.write(data)
+                conn.commit()
+                t1 = time.time()
+                self.logger.info(f'insert took {t1-t0:0.3f}s')
+            except Exception as e:
+                self.logger.error(f"Failed to insert+commit data into '{table}' using COPY: {e}")
+                raise
+        except Exception as e:
+            db_error = str(getattr(e, "orig", e))
+            db_error = db_error[:200] + "..." if len(db_error) > 200 else db_error
+            self.logger.error(f"Failed to insert data into '{table}' using COPY: {db_error}")
             raise
 
     def insert_kw(self, table: str, **kwargs: Any) -> None:
