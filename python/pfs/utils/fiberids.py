@@ -1,5 +1,6 @@
 import glob
 import os
+import warnings
 
 import numpy as np
 
@@ -238,8 +239,24 @@ class FiberIds(object):
         x,y : ndarray of positions on the PFI.
           In mm.
         """
-
+        warnings.warn("Use xyForCobraIds() instead!  xyForCobras() accepts (fiberId - 1)", stacklevel=2)
         return self.data[['x', 'y']][cobras]
+
+    def xyForCobraIds(self, cobraIds):
+        """ Return the (x,y) positions of the given cobras.
+
+        Args
+        ----
+        cobraIds : 1-indexed ints
+
+        Returns
+        -------
+        x,y : ndarray of positions on the PFI.
+          In mm.
+        """
+
+        fiberIds = self.cobraIdToFiberId(cobraIds)
+        return self.data[['x', 'y']][fiberIds - 1]
 
     def fiberIdToMTP(self, fiberIds, pfsConfig=None):
         """Return MTP information for the specified fiberIds
