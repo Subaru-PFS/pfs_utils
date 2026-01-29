@@ -75,9 +75,9 @@ agcent = 241.314 #241.292  # mm
 # AG centre position and rotation (measured in Nov 2021) -- update as of May 2025
 # dy[mm] dx[mm] dt[deg] for each camera in PFI coordinates
 
-agcent_off = [[-0.423, 1.035, -0.253368], [-0.037, -0.067, 0.234505],
-              [-0.300, -0.148, 0.2755336], [0.285, -0.359, 0.416894],
-              [0.336, -0.047, -0.0781999], [0.048, 0.096, 0.234977]]
+agcent_off = [[-0.421, 1.036, -0.253368], [-0.164, 0.163, 0.391505],
+              [-0.286, -0.149, 0.2755336], [0.323, -0.219, 0.416894],
+              [0.341, -0.044, -0.0781999], [0.040, 0.094, 0.234977]]
 
 
 # PFI InR offset from the telescope telescope
