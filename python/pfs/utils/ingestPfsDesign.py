@@ -62,7 +62,7 @@ def ingestPfsDesign(pfsDesign, designed_at=None):
             "ets_assigner": [None],
             "designed_at": [designed_at],
             "to_be_observed_at": [pfsDesign.obstime],
-            "pfs_utils_version": [pfsDesign.pfsUtilsVer],
+            "pfs_utils_version": [pfsDesign.getVersion('pfs_utils')],
             "is_obsolete": [False],
         }
     )
@@ -120,9 +120,8 @@ def ingestPfsDesign(pfsDesign, designed_at=None):
     db.insert_dataframe("pfs_design_agc", df=df)
 
 
-def ingestPfsConfig(
-    pfsConfig, allocated_at=None, converg_num_iter=None, converg_elapsed_time=None, converg_tolerance=None
-):
+def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None,
+                    converg_elapsed_time=None, converg_tolerance=None):
     """
     Ingest a `PfsConfig` into the operations database (OpDB).
 
@@ -172,9 +171,9 @@ def ingestPfsConfig(
             "alloc_rms_scatter": [None],
             "allocated_at": [allocated_at],
             "to_be_observed_at": [pfsConfig.obstime],
-            "pfs_utils_version": [pfsConfig.pfsUtilsVer],
+            "pfs_utils_version": [pfsConfig.getVersion('pfs_utils')],
             "to_be_observed_at_design": [pfsConfig.obstimeDesign],
-            "pfs_utils_version_design": [pfsConfig.pfsUtilsVerDesign],
+            "pfs_utils_version_design": [pfsConfig.getVersionDesign('pfs_utils')],
             "was_observed": [False],
         }
     )

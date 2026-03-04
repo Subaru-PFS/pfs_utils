@@ -9,8 +9,8 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 from pfs.datamodel import PfsDesign, FiberStatus, TargetType, CobraId
 from pfs.datamodel.utils import calculate_pfsDesignId
-from pfs.utils.versions import getVersion
 from pfs.utils.location import SUBARU
+from pfs.utils.versions import getVersion
 
 __all__ = ["makePfsDesign", "showPfsDesign", "fakeRaDecFromPfiNominal"]
 
@@ -19,6 +19,7 @@ fakeRa, fakeDec = 100, -89.
 
 from pfs.utils.butler import Butler as Nestor
 from pfs.utils.fiberids import FiberIds
+
 
 def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=None):
     """
@@ -124,7 +125,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                   proposalId="N/A", obCode="N/A",
                   fiberFlux=np.nan, psfFlux=np.nan, totalFlux=np.nan,
                   fiberFluxErr=np.nan, psfFluxErr=np.nan, totalFluxErr=np.nan,
-                  filterNames=None, guideStars=None, designName=None, fiberidsPath=None, obstime=""):
+                  filterNames=None, guideStars=None, designName=None, fiberidsPath=None, obstime="", versions=None):
     """ Make PfsDesign object from cobra x and y required positions.
 
     Parameters
@@ -219,7 +220,7 @@ def makePfsDesign(pfiNominal, ra, dec,
     nScienceFiber = len(gfm.scienceFiberId[isCobra])
     fiberId = gfm.fiberId
     cobraId = gfm.cobraId
-    cobraId[isEng] = CobraId.ENGINEERING # gfm is incorrect at the moment, so overriding.
+    cobraId[isEng] = CobraId.ENGINEERING  # gfm is incorrect at the moment, so overriding.
 
     def setDefaultValues(sciVal, engVal, shape=nFiber, dtype=float):
         """assign provided sci values to cobra index and default value to engineering fibers. "
@@ -299,7 +300,7 @@ def makePfsDesign(pfiNominal, ra, dec,
     psfFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in psfFluxErr]
     totalFluxErr = [np.array(list(filter(None, values)), dtype=float) for values in totalFluxErr]
 
-    pfsUtilsVer = getVersion('pfs_utils')
+    versions = dict() if versions is None else dict(versions)
 
     pfsDesign = PfsDesign(0x0, raBoresight, decBoresight, posAng, arms, fiberId, tract, patch, ra, dec, catId,
                           objId, targetType, fiberStatus,
@@ -307,7 +308,7 @@ def makePfsDesign(pfiNominal, ra, dec,
                           proposalId, obCode,
                           fiberFlux, psfFlux, totalFlux, fiberFluxErr, psfFluxErr,
                           totalFluxErr, filterList, pfiNominal, guideStars,
-                          obstime=obstime, pfsUtilsVer=pfsUtilsVer, cobraId=cobraId)
+                          obstime=obstime, versions=versions, cobraId=cobraId)
 
     if designName is not None:
         pfsDesign.designName = designName
