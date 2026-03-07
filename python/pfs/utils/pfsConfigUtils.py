@@ -8,7 +8,6 @@ import pfs.utils.butler as pfsButler
 import pfs.utils.coordinates.updateTargetPosition as updateTargetPosition
 from pfs.datamodel.utils import convertToIso8601Utc
 from pfs.utils.coordinates.CoordTransp import ag_pfimm_to_pixel
-from pfs.utils.versions import getVersion
 
 __all__ = ["getDateDir", "writePfsConfig", "tweakTargetPosition"]
 
@@ -101,12 +100,10 @@ def tweakTargetPosition(pfsConfig, obstime='now'):
     guide_x_pix = guide_xy_pix[:, 0].astype('float32')
     guide_y_pix = guide_xy_pix[:, 1].astype('float32')
 
-    # Get pfs_utils version.
-    pfsUtilsVer = getVersion('pfs_utils')
     # setting the new positions.
     pfsConfig.updateTargetPosition(ra=ra_now, dec=dec_now,
                                    pfiNominal=np.column_stack((pfi_x_now, pfi_y_now)),
-                                   obstime=obstime, pfsUtilsVer=pfsUtilsVer,
+                                   obstime=obstime,
                                    guide_ra=guide_ra_now, guide_dec=guide_dec_now,
                                    guide_x_pix=guide_x_pix, guide_y_pix=guide_y_pix)
 

@@ -6,7 +6,41 @@ try:
 except ImportError:
     eups = None
 
-__all__ = ["getVersion"]
+__all__ = ["getVersion", "collectVersions"]
+
+
+def collectVersions(packageList):
+    """
+    Return a mapping of product names to version strings.
+
+    For each product in ``packageList``, this function calls
+    ``getVersion`` and builds a dictionary of the form::
+
+        {productName: versionString}
+
+    The version resolution prefers git (``git describe``) over
+    EUPS, following the logic implemented in ``getVersion``.
+
+    Parameters
+    ----------
+    packageList : iterable of `str`
+        List of product names to query.
+
+    Returns
+    -------
+    versionsDict : `dict` (`str`: `str`)
+        Dictionary mapping each product name to its resolved version.
+
+    Raises
+    ------
+    RuntimeError
+        If the version for any product cannot be determined.
+    """
+    """"""
+    versionsDict = {}
+    for package in packageList:
+        versionsDict[package] = getVersion(package)
+    return versionsDict
 
 
 def getVersion(productName):

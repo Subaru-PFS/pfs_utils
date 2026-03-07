@@ -77,7 +77,9 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFractio
                       designId0=pfsDesign0.pfsDesignId,
                       designName=f'{pfsDesign0.designName} V{variant:03}')
 
-    pfsUtilsVer = getVersion('pfs_utils')
+    versions = dict(pfsDesign0.versions)
+    versions['pfs_utils'] = getVersion('pfs_utils')
+
 
     pfsDesign = PfsDesign(pfsDesignId, pfsDesign0.raBoresight, pfsDesign0.decBoresight,
                           pfsDesign0.posAng,
@@ -96,7 +98,7 @@ def makeVariantDesign(pfsDesign0, variant=0, sigma=1, doHex=False, randomFractio
                           pfsDesign0.filterNames, pfiNominal,
                           pfsDesign0.guideStars,
                           obstime=utc,
-                          pfsUtilsVer=pfsUtilsVer,
+                          versions=versions,
                           **kwargs)
 
     return pfsDesign
