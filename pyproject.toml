@@ -30,9 +30,19 @@ dev = [
 [project.urls]
 "Homepage" = "https://github.com/Subaru-PFS/pfs_utils"
 
+[tool.setuptools]
+package-dir = { "" = "python" }
+include-package-data = true
+
 [tool.setuptools.packages.find]
-where = ["python/"]
-include = ["pfs", "pfs.*"]
+where = ["python"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"pfs.utils" = ["data/**/*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.pyc", "__pycache__", ".git*", ".DS_Store"]
 
 [tool.lsst_versions]
 write_to = "python/pfs/utils/version.py"
