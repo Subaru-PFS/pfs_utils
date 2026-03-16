@@ -39,15 +39,23 @@ def writePfsConfig(pfsConfig):
     filepath = pfsButler.Butler().getPath('pfsConfig', pfsConfigId=pfsConfig.pfsDesignId, visit=pfsConfig.visit)
     # Create date/pfsConfig directory if it does not exist.
     rootDir, fileName = os.path.split(filepath)
+
     if not os.path.exists(rootDir):
-        dateDir, _ = os.path.split(rootDir)
         # we currently have weird permissions on /data so fix it manually for now.
         os.makedirs(rootDir, mode=0o2775)
-        # ccdActor create the date directory as pfs-data, so I don't have the permission in that case.
+
+        # guard against silent makedirs failure INSTRM-2899
+        if not os.path.exists(rootDir):
+            raise RuntimeError(f'{rootDir} directory was not created correctly.')
+
+        dateDir, _ = os.path.split(rootDir)
+
+        # ccdActor create the date directory as pfs-data, so iic(pfs) does not have the permission in that case.
         try:
             os.chmod(dateDir, 0o2775)
         except PermissionError:
             pass
+
     # Write pfsConfig file to disk and set correct permissions.
     pfsConfig.write(fileName=filepath)
     os.chmod(filepath, 0o444)
