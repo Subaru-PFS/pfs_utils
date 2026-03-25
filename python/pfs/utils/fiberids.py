@@ -54,9 +54,14 @@ class FiberIds(object):
 
     def __init__(self, path=None):
         if path is None:
-            import eups
-            path = os.path.join(eups.productDir('PFS_UTILS'),
-                                'data', 'fiberids')
+            try:
+                path = os.path.join(os.environ['PFS_UTILS_DIR'],
+                                    'data', 'fiberids')
+            except KeyError:
+                pass
+        if path is None:
+            raise RuntimeError('the directory path must either be passed in '
+                               'or $PFS_UTILS_DIR must be set and contain "data/fiberids"')
         self.filepath = 'unset'
         self.load(path=path)
 
