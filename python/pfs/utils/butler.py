@@ -6,6 +6,7 @@ try:
 except ImportError:
     pass
 import logging
+import os
 import pathlib
 import time
 
@@ -46,15 +47,16 @@ class Butler(object):
         if configRoot is not None:
             self.configRoot = pathlib.Path(configRoot)
         else:
-            import eups
-
-            eupsEnv = eups.Eups()
-            eupsProd = eupsEnv.findSetupProduct('pfs_instdata')
-
-            if eupsProd is None:
-                raise ValueError("either configRoot must be passed in "
-                                 "or the pfs_instdata product must be setup.")
-            self.configRoot = pathlib.Path(eupsProd.dir) / "data"
+            try:
+                instdataRoot = os.environ['PFS_INSTDATA_DIR']
+            except KeyError:
+                raise ValueError("either configRoot must be passed in, "
+                                 "or the pfs_instdata product must be setup, "
+                                 "or $PFS_INSTDATA_DIR must point to the root of that product")
+            configRoot = pathlib.Path(instdataRoot) / "data"
+            if not configRoot.is_dir():
+                raise ValueError(f'configRoot ({configRoot}) must be a directory')
+            self.configRoot = configRoot
 
         if specIds is not None:
             addDataIds = specIds.idDict
