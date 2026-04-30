@@ -232,20 +232,28 @@ class FiberIds(object):
         w = (self.boardId == boardName) & (self.cobraInModuleId == cobraInModule)
         return self.cobraId[w][0]
 
-    def xyForCobras(self, cobras):
-        """ Return the (x,y) positions of the given cobras.
+    def xyForFiberIds(self, fiberIds):
+        """ Returns the (x,y) positions of the cobras corresponding to the given fiberIds.
 
-        Args
-        ----
-        cobras : 0-indexed ints
+        Parameters
+        ----------
+        fiberIds : `int` or `numpy.ndarray`
+            scalar or array of 1-indexed fiber identifiers.
 
         Returns
         -------
-        x,y : ndarray of positions on the PFI.
-          In mm.
+        x,y : `numpy.ndarray` of `float`
+            x, y positions on the PFI in mm
         """
-        warnings.warn("Use xyForCobraIds() instead!  xyForCobras() accepts (fiberId - 1)", stacklevel=2)
-        return self.data[['x', 'y']][cobras]
+        if np.isscalar(fiberIds):
+            if fiberIds < 1:
+                raise ValueError('Input fiberIds cannot be less than 1')
+        else:
+            arr = np.array(fiberIds)
+            if np.any(arr < 1):
+                raise ValueError('Input fiberIds cannot be less than 1')
+
+        return self.data[['x', 'y']][fiberIds - 1]
 
     def xyForCobraIds(self, cobraIds):
         """ Return the (x,y) positions of the given cobras.
@@ -259,9 +267,14 @@ class FiberIds(object):
         x,y : ndarray of positions on the PFI.
           In mm.
         """
+        return self.xyForFiberIds(self.cobraIdToFiberId(cobraIds))
 
-        fiberIds = self.cobraIdToFiberId(cobraIds)
-        return self.data[['x', 'y']][fiberIds - 1]
+    def xyForCobras(self, cobraIds):
+        """Deprecated alias for `xyForCobraIds`."""
+        warnings.warn("xyForCobras is deprecated; use xyForCobraIds (1-indexed cobraId) "
+                      "or xyForFiberIds (1-indexed fiberId).",
+                      DeprecationWarning, stacklevel=2)
+        return self.xyForCobraIds(cobraIds)
 
     def fiberIdToMTP(self, fiberIds, pfsConfig=None):
         """Return MTP information for the specified fiberIds
