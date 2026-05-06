@@ -105,13 +105,10 @@ def CoordinateTransform(xyin, mode, za=0., inr=None, pa=-90., adc=0.,
         adc = DCoeff.calc_adc_position(za)
         # TBF: iterate by guessing if targets will be on inside or outside
         flag = np.full(xyin.shape[1], 2.)    # average inside and outside
+        # additionaldistorion and addtionaldistortion2 are included the below now.
         telx, tely = popt2.celestial2focalplane(xyin[0, :], xyin[1, :],
                                                 adc, inr, (90.-za), m3pos,
                                                 DCoeff.wl_ag, flag)
-        adx, ady = popt2.additionaldistortion(telx, tely)
-        adx2, ady2 = popt2.additionaldistortion2(telx, tely, inr, (90.-za))
-        telx = telx + adx + adx2
-        tely = tely + ady + ady2
 
         xx, yy = convert_out_position(telx, tely, inr, c, cent, time, za)
         xyout = np.vstack((xx, yy, dmya))
