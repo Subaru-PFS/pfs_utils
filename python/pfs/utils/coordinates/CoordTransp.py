@@ -238,6 +238,14 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         y = y +dy
         logging.info("After: x= %s, y=%s", x[:11], y[:11])
 
+        # 2026.05 extra distiortion, rotating term
+        dx, dy = c.extra_distortion2(za, inr, x, y)
+        #print(x[f==1][:11], y[f==1][:11])
+        logging.info("Extra displacement 2: dx= %s, dy=%s", dx[:11], dy[:11])
+        x = x +dx
+        y = y +dy
+        logging.info("After: x= %s, y=%s", x[:11], y[:11])
+        
         xx, yy = rotation(x, y, -1.*inr, rot_off=DCoeff.inr_pfi)
         logging.info("on PFI: x= %s, y=%s", xx[:11], yy[:11])
     elif c.mode == 'pfi_sky':

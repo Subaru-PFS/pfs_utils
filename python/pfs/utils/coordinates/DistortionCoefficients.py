@@ -760,6 +760,126 @@ class Coeff:
         return extra_distortion_x , extra_distortion_y
 
 
+    def extra_distortion2(self, za, inr, x, y):
+        """
+        Analysis of MCS image with cobra Home position at different EL/InR in 2025.09
+        also revealed displacement of Cobra position at low EL.
+        The average of displacement in parallelogram Cobra field cam be modeled a simple
+        sinusoidal curve (2-thea) for inr whose amplitude depends of EL.
+        The phase is shifted by 120deg, among the Cobra fields.
+        
+        Parameters
+        
+        za : `float`
+            zenith andle [deg]
+        inr : `float`
+            rotator andle [deg]
+        x : `float`
+            x position on the telescope plane [mm]
+        y : `float`
+            y position on the telescope plane [mm]
+        ----------
+        Returns
+        extra_distortion2_x : `float`
+            distortion in x axis on the telescope plane [mm]
+        extra_distortion2_y : `float`
+            distortion in y axis on the telescope plane [mm]
+        -------
+        """
+
+        from shapely.geometry import Point, MultiPoint, Polygon
+        
+        # 2026.05.17
+        # Concept test: determine cobra field if they are in parallelogram.
+        # It is ideal to pass cobra_id to handle cobras round the border cleanly.
+
+        # paralellpgram on telescope plane at InR=0
+        field1_corner_tel = np.array([[   2.580, 7.950],
+                                      [-220.150 ,    7.950 ],
+                                      [-112.410 ,  193.052],
+                                      [ 110.229 ,  193.052],
+                                      [   2.580, 7.950]])
+        field2_corner_tel = np.array([[   7.280,   -2.538],
+                                      [ 116.009,  185.761],
+                                      [ 222.369,   -0.134],
+                                      [ 113.31, -186.539],  
+                                      [   7.280,   -2.538]])
+        field3_corner_tel = np.array([[  -5.0,    -4.173],
+                                      [ 102.980, -191.478],
+                                      [-112.219, -191.478],
+                                      [-220.18,    -4.173],
+                                      [  -5.0,    -4.173]])
+
+        rota=inr
+        R = np.array(((np.cos(np.deg2rad(rota)), -np.sin(np.deg2rad(rota))), (np.sin(np.deg2rad(rota)), np.cos(np.deg2rad(rota)))))
+
+
+        #field1_corner_tel[:,0], field1_corner_tel[:,1] = rotation(field1_corner_tel[:0], field1_corner_tel[:1], inr)
+        #field2_corner_tel[:,0], field2_corner_tel[:,1] = rotation(field2_corner_tel[:0], field2_corner_tel[:1], inr)
+        #field3_corner_tel[:,0], field3_corner_tel[:,1] = rotation(field3_corner_tel[:0], field3_corner_tel[:1], inr)
+        field1_corner_tel = np.array([R @ np.array([x,y]) for(x,y) in field1_corner_tel])
+        field2_corner_tel = np.array([R @ np.array([x,y]) for(x,y) in field2_corner_tel])
+        field3_corner_tel = np.array([R @ np.array([x,y]) for(x,y) in field3_corner_tel])
+        #print(field1_corner_tel, field2_corner_tel, field3_corner_tel)
+
+
+        # Create Polygon and pick up cobras inside it
+        area_field1 = Polygon(field1_corner_tel)
+        statusf1=[area_field1.contains(Point(px,py)) for px,py in zip(-x,-y)]
+        area_field2 = Polygon(field2_corner_tel)
+        statusf2=[area_field2.contains(Point(px,py)) for px,py in zip(-x,-y)]
+        area_field3 = Polygon(field3_corner_tel)
+        statusf3=[area_field3.contains(Point(px,py)) for px,py in zip(-x,-y)]
+
+
+        # amplitude of 2theta pattern
+        c_el_amp = [-3.90497387e-06, 5.85942196e-04]
+
+        amp = c_el_amp[0]*za*za + c_el_amp[1]*za
+
+        # dfault field: 0.
+        fields = np.full_like(x, 0.)
+        fields = np.where(statusf1, 1., fields)
+        fields = np.where(statusf2, 2., fields)
+        fields = np.where(statusf3, 3., fields)
+
+        angles = np.full_like(x, 0.)
+        angles = np.where(fields==1, np.deg2rad(inr), angles)
+        angles = np.where(fields==2, np.deg2rad(inr-120.), angles)
+        angles = np.where(fields==3, np.deg2rad(inr+120.), angles)
+
+
+        # pattern [rad]
+        pha_x = 0.16419908
+        pha_y = -1.52226448
+
+
+        dx = amp*np.sin(2*angles+pha_x) 
+        dy = amp*np.sin(2*angles+pha_y) 
+
+        # set 0 for cobras whose fields is uncertain
+        dx = np.where(fields==0, 0., dx)
+        dy = np.where(fields==0, 0., dy)
+
+        #debug
+        #dx = angles
+        #dy = fields*10
+        
+        # center of the shift
+        c_el_shiftx=[-1.01518996e-07, 6.89463720e-05]
+        c_el_shifty=[3.67324371e-06, -6.49423541e-04]
+
+        shiftx = c_el_shiftx[0]*za*za + c_el_shiftx[1]*za
+        shifty = c_el_shifty[0]*za*za + c_el_shifty[1]*za
+
+        extra_distortion2_x = dx + shiftx
+        extra_distortion2_y = dy + shifty
+
+    
+
+        return extra_distortion2_x , extra_distortion2_y
+
+
     def extra_slope_coeff(self, za):
 
         # set 0 for 0-th order term za=0
