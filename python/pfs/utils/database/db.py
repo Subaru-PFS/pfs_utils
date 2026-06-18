@@ -140,6 +140,7 @@ class DB:
             self.dsn = dsn
 
         self.logger.debug(f"Connecting to database {self.dbname}")
+        self.metadata = MetaData()
 
     @property
     def dsn(self) -> str:
@@ -648,8 +649,7 @@ class DB:
 
         # Look up column dtypes for table.
         try:
-            metadata = MetaData()
-            table_obj = Table(table, metadata, autoload_with=self.engine)
+            table_obj = Table(table, self.metadata, autoload_with=self.engine)
             dtype_map = {
                 col.name: col.type
                 for col in table_obj.columns
@@ -714,8 +714,7 @@ class DB:
         """
 
         # Single-row insert path (legacy behavior)
-        md = MetaData()
-        t = Table(table, md, autoload_with=self.engine)
+        t = Table(table, self.metadata, autoload_with=self.engine)
         ins = t.insert().values(**kwargs)
         with self.connection() as conn:
             conn.execute(ins)
