@@ -188,13 +188,12 @@ def convert_out_position(x, y, inr, c, cent, time, za):
     elif c.mode == 'sky_pfi':
 
         # extra distortion
-        logging.info("Correct extra distortion @ tel -- skipped")
+        logging.info("Correct extra distortion @ tel")
         logging.info("Before: x= %s, y=%s", x[:11], y[:11])
-        distCorr=Subaru_POPT2_PFS.distCorr()
-        dx, dy = distCorr.xy2dxdy(x, y)
-        logging.info("correct by %s", distCorr.correction_factor)
-        x = x + distCorr.correction_factor*dx
-        y = y + distCorr.correction_factor*dy
+
+        dx, dy = c.extra_distortion_sky(za, inr, x, y, order=1)
+        x = x + dx
+        y = y + dy
         logging.info("After: x= %s, y=%s", x[:11], y[:11])
 
         # Global shift in Telescope Y (trial)

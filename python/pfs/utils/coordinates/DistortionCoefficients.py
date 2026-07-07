@@ -779,6 +779,95 @@ class Coeff:
                                      [np.poly1d(cy2_fit)(za), np.poly1d(cy3_fit)(za)]])
         return coeffs2_matrix_x, coeffs2_matrix_y
 
+    
+    def extra_distortion_sky(self, za, inr, x, y, order=1):
+        """
+        Analysis raster result in May 2026.
+        Raster result is described as "delta = pos_target - pos_fiber", so the modeled component 
+        should be added.
+        Model the pattern of fiber configuration error with n*inr tems (n=0, 1, 2...)
+        Each term are modeld with polynomial function
+
+        Parameters
+        
+        za : `float`
+            zenith andle [deg]
+        inr : `float`
+            rotator andle [deg]
+        x : `float`
+            x position on the telescope plane [mm]
+        y : `float`
+            y position on the telescope plane [mm]
+        order: `int` (optional)
+            order of inr-term to include. Default is 1
+        ----------
+        Returns
+        extra_distortion_x_sky : `float`
+            distortion in x axis on the telescope plane [mm]
+        extra_distortion_y_sky : `float`
+            distortion in y axis on the telescope plane [mm]
+        -------
+
+        """
+        # 0 * inr, 3rd order of polynomial
+        coeffs_x0 = np.array([[ 8.13451630e-03, -4.13444792e-05,  1.55335727e-08, -6.84724327e-10],
+                              [-4.86472708e-05,  5.62971290e-08,  3.26027440e-10,  6.50051747e-12],
+                              [-3.14852675e-07, -4.76930551e-10, -4.16382044e-12,  5.82449627e-14],
+                             [ 1.85296518e-09,  1.63683635e-12,  7.22475370e-14, -4.16875735e-17]])
+        coeffs_y0 = np.array([[ 3.44081344e-03, -5.56945833e-05,  1.96383122e-07,  1.12099372e-09],
+                              [ 5.14767205e-05, -1.47255575e-07, -1.07550903e-09, -7.14035264e-12],
+                              [-1.02888626e-07,  1.04511625e-09,  1.03032848e-12,  6.81408482e-14],
+                              [ 3.66381855e-10, -1.09780143e-11,  4.62848096e-14,  8.38874326e-16]])
+
+        # 1 * inr, 1st order of polynomial
+        coeffs_x1 = np.array([[ 6.48101542e-03, -1.46651517e-06],
+                              [-2.32766343e-07, -1.68316192e-07]])
+        coeffs_y1 = np.array([[ 6.24121718e-04, -5.01757394e-06],
+                              [-4.66727331e-07, -3.06744436e-08]])
+
+
+        # 2 * inr, 3rd order of polynomial
+        coeffs_x2 = np.array([[-6.41819200e-04,  1.93492937e-06,  2.89673608e-09, -1.30229714e-10],
+                              [-9.95620569e-06, -4.91401996e-08,  4.65042849e-10,  5.04751624e-13],
+                              [-2.65731386e-08, -3.19345367e-10, -3.26916541e-12,  6.01537768e-15],
+                              [ 3.42854938e-10,  1.15567973e-11, -6.80741716e-15, -5.15452159e-16]])
+        coeffs_y2 = np.array([[-4.65149945e-03,  1.39480235e-05,  1.52420573e-07, -8.75536313e-10],
+                              [-4.86171560e-06,  1.26946872e-07,  6.85972958e-10, -1.35412013e-11],
+                              [ 1.16945978e-07, -5.44053496e-10, -1.05034982e-11,  6.60499024e-14],
+                              [ 8.20304414e-11, -1.36688038e-11, -2.91027013e-14,  1.14105672e-15]])
+
+        # 0 * inr
+        extra_distortion_x_sky = np.polynomial.polynomial.polyval2d(x, y, coeffs_x0)
+        extra_distortion_y_sky = np.polynomial.polynomial.polyval2d(x, y, coeffs_y0)
+
+        # 1 * inr
+        if order > 0:
+            tmp_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_x1)
+            tmp_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_y1)
+
+            rota = +1*inr
+            R = np.array(((np.cos(np.deg2rad(rota)), -np.sin(np.deg2rad(rota))), 
+                          (np.sin(np.deg2rad(rota)), np.cos(np.deg2rad(rota)))))
+            tmp_x, tmp_y = R @ np.array([tmp_x, tmp_y])
+        
+            extra_distortion_x_sky += tmp_x
+            extra_distortion_y_sky += tmp_y
+
+        # 2 * inr
+        if order == 2:
+            tmp_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_x2)
+            tmp_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_y2)
+
+            rota = +2*inr
+            R = np.array(((np.cos(np.deg2rad(rota)), -np.sin(np.deg2rad(rota))), 
+                          (np.sin(np.deg2rad(rota)), np.cos(np.deg2rad(rota)))))
+            tmp_x, tmp_y = R @ np.array([tmp_x, tmp_y])
+
+            extra_distortion_x_sky += tmp_x
+            extra_distortion_y_sky += tmp_y
+
+        return extra_distortion_x_sky, extra_distortion_y_sky
+
 # General functions
 def calc_m3pos(za):
 
