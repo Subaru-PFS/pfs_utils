@@ -224,3 +224,6 @@ class HeaderFixDatabase:
         self.add("S", [115821, 115822], W_PFDSNM=designNameCobraHome)
         self.add("S", self.inclRange(115824, 115838), W_PFDSGN=designIdCobraHome)
         self.add("S", self.inclRange(115824, 115838), W_PFDSNM=designNameCobraHome)
+
+        # Subaru run 29: headers say HgCd lamp was on, but it was actually off
+        self.add("S", self.inclRange(147763, 147777), W_AITHGC=False)
