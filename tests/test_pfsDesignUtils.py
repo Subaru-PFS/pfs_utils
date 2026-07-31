@@ -39,7 +39,7 @@ class SetFiberStatusTestCase(unittest.TestCase):
     BROKENCOBRA = ~COBRA_OK_MASK & ~(FIBER_BROKEN_MASK | BLOCKED)
     BAD_PSF = BAD_PSF & ~(FIBER_BROKEN_MASK | BLOCKED | BROKENCOBRA)
 
-    The test is self-contained : the calibModel is faked and the ``blocked.csv``
+    The test is self-contained : the calibModel is faked and the ``blocked.yaml``
     and ``badPsf.yaml`` tables are written to a temporary ``configRoot``, so it
     needs neither pfs_instdata nor whatever those tables currently release.  The
     only real input is the grand fiber map, which ships with this product.
@@ -95,12 +95,8 @@ class SetFiberStatusTestCase(unittest.TestCase):
         cls.configRoot = tempfile.mkdtemp(prefix="pfsDesignUtilsTest_")
         fibersDir = os.path.join(cls.configRoot, "fibers")
         os.makedirs(fibersDir)
-        blockedSet = set(cls.blocked)
-        with open(os.path.join(fibersDir, "blocked.csv"), "w") as fh:
-            fh.write("fiberId,b,r,n,status\n")
-            for fiberId in cls.fiberId:
-                v = "True" if int(fiberId) in blockedSet else "False"
-                fh.write(f"{int(fiberId)},{v},{v},{v},{v}\n")
+        with open(os.path.join(fibersDir, "blocked.yaml"), "w") as fh:
+            fh.write("fiberId: [%s]\n" % ", ".join(str(fiberId) for fiberId in cls.blocked))
         with open(os.path.join(fibersDir, "badPsf.yaml"), "w") as fh:
             fh.write("fiberId: [%s]\n" % ", ".join(str(fiberId) for fiberId in cls.badPsf))
 

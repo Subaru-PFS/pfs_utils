@@ -89,8 +89,8 @@ def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=Non
     brokenFiber[~engFiberMask] = FIBER_BROKEN_MASK[cobraId - 1]
     brokenCobra[~engFiberMask] = COBRA_NOT_OK_MASK[cobraId - 1]
 
-    fiberBlocked = nestor.get('fiberBlocked').set_index('fiberId')
-    blocked = fiberBlocked.loc[pfsDesign.fiberId].status.to_numpy().astype('bool')
+    fiberBlocked = nestor.get('fiberBlocked')
+    blocked = np.isin(pfsDesign.fiberId, fiberBlocked['fiberId'])
 
     fiberBadPsf = nestor.get('fiberBadPsf')
     badPsf = np.isin(pfsDesign.fiberId, fiberBadPsf['fiberId'])
