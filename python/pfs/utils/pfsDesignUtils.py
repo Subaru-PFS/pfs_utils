@@ -42,6 +42,15 @@ def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=Non
     -------
     PfsDesign
         The updated PFS design object with the fiber status set.
+
+    Notes
+    -----
+    The statuses are exclusive, in decreasing order of precedence :
+
+    BROKENFIBER = FIBER_BROKEN_MASK
+    BLOCKED = BLOCKED & ~FIBER_BROKEN_MASK
+    BROKENCOBRA = ~COBRA_OK_MASK & ~(FIBER_BROKEN_MASK | BLOCKED)
+    BAD_PSF = BAD_PSF & ~(FIBER_BROKEN_MASK | BLOCKED | BROKENCOBRA)
     """
 
     def loadCobraMaskFromXml(calibModel):
@@ -57,40 +66,50 @@ def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=Non
         Returns
         -------
         tuple
-            A tuple containing the FIBER_BROKEN_MASK and COBRA_BROKEN_MASK.
+            A tuple containing the FIBER_BROKEN_MASK and the COBRA_NOT_OK_MASK (~COBRA_OK_MASK),
+            both raw, eg without any exclusion applied.
         """
         calibModel = nestor.get('moduleXml', moduleName='ALL', version='') if calibModel is None else calibModel
 
         FIBER_BROKEN_MASK = (calibModel.status & calibModel.FIBER_BROKEN_MASK).astype('bool')
         COBRA_OK_MASK = (calibModel.status & calibModel.COBRA_OK_MASK).astype('bool')
-        COBRA_BROKEN_MASK = np.logical_and(~COBRA_OK_MASK, ~FIBER_BROKEN_MASK)
 
-        return FIBER_BROKEN_MASK, COBRA_BROKEN_MASK
+        return FIBER_BROKEN_MASK, ~COBRA_OK_MASK
 
     nestor = Nestor(configRoot=configRoot)
 
-    # first setting BROKENFIBER and BROKENCOBRA fiberStatus.
-    FIBER_BROKEN_MASK, COBRA_BROKEN_MASK = loadCobraMaskFromXml(calibModel=calibModel)
+    FIBER_BROKEN_MASK, COBRA_NOT_OK_MASK = loadCobraMaskFromXml(calibModel=calibModel)
 
     engFiberMask = pfsDesign.targetType == TargetType.ENGINEERING
-    fiberId = pfsDesign.fiberId[~engFiberMask]
-    cobraId = FiberIds(path=fiberIdsPath).fiberIdToCobraId(fiberId)
+    cobraId = FiberIds(path=fiberIdsPath).fiberIdToCobraId(pfsDesign.fiberId[~engFiberMask])
 
-    # resetting fiberStatus to GOOD.
-    fiberStatus = pfsDesign.fiberStatus[~engFiberMask].copy()
-    fiberStatus[:] = FiberStatus.GOOD
+    # expanding the per-cobra masks to the design fibers, engineering fibers do not carry a cobra status.
+    brokenFiber = np.zeros(len(pfsDesign.fiberId), dtype='bool')
+    brokenCobra = np.zeros(len(pfsDesign.fiberId), dtype='bool')
+    brokenFiber[~engFiberMask] = FIBER_BROKEN_MASK[cobraId - 1]
+    brokenCobra[~engFiberMask] = COBRA_NOT_OK_MASK[cobraId - 1]
 
-    fiberStatus[FIBER_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENFIBER
-    fiberStatus[COBRA_BROKEN_MASK[cobraId - 1]] = FiberStatus.BROKENCOBRA
-    pfsDesign.fiberStatus[~engFiberMask] = fiberStatus
-
-    # setting BAD_PSF fiberStatus.
-    fiberBadPsf = nestor.get('fiberBadPsf')
-    pfsDesign.fiberStatus[np.isin(pfsDesign.fiberId, fiberBadPsf['fiberId'])] = FiberStatus.BAD_PSF
-
-    # then setting BLOCKED fiberStatus.
     fiberBlocked = nestor.get('fiberBlocked').set_index('fiberId')
-    pfsDesign.fiberStatus[fiberBlocked.loc[pfsDesign.fiberId].status.to_numpy()] = FiberStatus.BLOCKED
+    blocked = fiberBlocked.loc[pfsDesign.fiberId].status.to_numpy().astype('bool')
+
+    fiberBadPsf = nestor.get('fiberBadPsf')
+    badPsf = np.isin(pfsDesign.fiberId, fiberBadPsf['fiberId'])
+
+    # making the masks exclusive, a broken fiber stays a broken fiber whatever else is known about it.
+    blocked &= ~brokenFiber
+    brokenCobra &= ~(brokenFiber | blocked)
+    badPsf &= ~(brokenFiber | blocked | brokenCobra)
+
+    # resetting fiberStatus to GOOD, engineering fibers keep whatever status they came in with.
+    fiberStatus = pfsDesign.fiberStatus.copy()
+    fiberStatus[~engFiberMask] = FiberStatus.GOOD
+
+    fiberStatus[badPsf] = FiberStatus.BAD_PSF
+    fiberStatus[brokenCobra] = FiberStatus.BROKENCOBRA
+    fiberStatus[blocked] = FiberStatus.BLOCKED
+    fiberStatus[brokenFiber] = FiberStatus.BROKENFIBER
+
+    pfsDesign.fiberStatus[:] = fiberStatus
 
     return pfsDesign
 
