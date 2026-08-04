@@ -37,5 +37,5 @@ configMap['black_dots'] = dict(template="pfi/dot/black_dots_mm.csv",
 configMap['fiberBlocked'] = dict(template="fibers/blocked.yaml", loader=load_yaml)
 configMap['fiberBadPsf'] = dict(template="fibers/badPsf.yaml", loader=load_yaml)
 configMap['mcsBoresight'] = dict(template="mcs/boresight.yaml", loader=load_yaml)
-configMap['cobraInterferenced'] = dict(template="pfi/fiducials/cobraInterferenceROM_20250627.csv",
+configMap['cobraInterference'] = dict(template="pfi/fiducials/cobraInterference_20260731.csv",
                               loader=lambda fname: pd.read_csv(fname, comment='#'))
