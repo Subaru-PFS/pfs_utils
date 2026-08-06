@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import pandas as pd
+from pfs.datamodel.convergenceParams import ConvergenceParams
 from pfs.utils.database.opdb import OpDB
 
 __all__ = ["ingestPfsDesign", "ingestPfsConfig"]
@@ -120,8 +121,7 @@ def ingestPfsDesign(pfsDesign, designed_at=None):
     db.insert_dataframe("pfs_design_agc", df=df)
 
 
-def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None,
-                    converg_elapsed_time=None, converg_tolerance=None):
+def ingestPfsConfig(pfsConfig, convergenceParams=None, allocated_at=None):
     """
     Ingest a `PfsConfig` into the operations database (OpDB).
 
@@ -130,15 +130,17 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None,
     pfsConfig : pfs.datamodel.pfsConfig.PfsConfig
         The configuration produced from a `PfsDesign`, including fiber
         allocations, final positions, and guide star results.
+    convergenceParams : dict, optional
+        Overrides for ``pfsConfig.convergenceParams``, keyed as that dict is.  A
+        pfsConfig written before those parameters existed carries an empty dict, and
+        this is how its values can still be supplied.  A value of ``None`` is honoured
+        and stored as ``NULL``.
     allocated_at : datetime, optional
         Timestamp when the configuration was allocated. If ``None``, stored
         as ``NULL``.
-    converg_num_iter : int, optional
-        Number of iterations used by the convergence/assignment procedure.
-    converg_elapsed_time : float, optional
-        Elapsed time in seconds for the convergence/assignment procedure.
-    converg_tolerance : float, optional
-        Convergence tolerance used by the assignment procedure.
+
+    Convergence values otherwise come from ``pfsConfig.convergenceParams``, so that the
+    database and the FITS header cannot describe the same visit differently.
 
     Returns
     -------
@@ -156,6 +158,13 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None,
     db = OpDB()
 
     # get information from pfsConfig
+    convergence = dict(pfsConfig.convergenceParams)
+    if convergenceParams is not None:
+        # A key outside the table reaches no column, so it would be dropped in silence.
+        unknown = set(convergenceParams) - set(ConvergenceParams.getFieldNames())
+        if unknown:
+            raise ValueError(f"unknown convergence parameters: {sorted(unknown)}")
+        convergence.update(convergenceParams)
 
     # insert into `pfs_config` table
     df = pd.DataFrame(
@@ -165,9 +174,14 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None,
             "ra_center_config": [pfsConfig.raBoresight],
             "dec_center_config": [pfsConfig.decBoresight],
             "pa_config": [pfsConfig.posAng],
-            "converg_num_iter": [converg_num_iter],
-            "converg_elapsed_time": [converg_elapsed_time],
-            "converg_tolerance": [converg_tolerance],
+            "converg_num_iter": [convergence.get("numIterations")],
+            "converg_elapsed_time": [convergence.get("elapsedTime")],
+            "converg_tolerance": [convergence.get("requestedTolerance")],
+            "converg_distance_threshold": [convergence.get("distanceTolerance")],
+            "target_fallback_invalid": [convergence.get("targetFallbackInvalid")],
+            "target_fallback_unassigned": [convergence.get("targetFallbackUnassigned")],
+            "fiducial_check_skipped": [convergence.get("fiducialCheckSkipped")],
+            "inst_status_flag": [int(pfsConfig.instStatusFlag)],
             "alloc_rms_scatter": [None],
             "allocated_at": [allocated_at],
             "to_be_observed_at": [pfsConfig.obstime],
@@ -192,6 +206,8 @@ def ingestPfsConfig(pfsConfig, allocated_at=None, converg_num_iter=None,
             "pfi_center_final_x_mm": pfsConfig.pfiCenter[:, 0],
             "pfi_center_final_y_mm": pfsConfig.pfiCenter[:, 1],
             "fiber_status": pfsConfig.fiberStatus,
+            "target_validation_mask": pfsConfig.targetValidationMask,
+            "cobra_command": pfsConfig.cobraCommand,
             "motor_map_summary": [None for _ in pfsConfig.fiberId],
             "config_elapsed_time": [None for _ in pfsConfig.fiberId],
             "is_on_source": [True for _ in pfsConfig.fiberId],
