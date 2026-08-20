@@ -772,6 +772,7 @@ def scrub_dataframe_for_copy(df):
     Scans a DataFrame and:
     1. Converts 'float' columns that contain only integers (and NaNs) to 'Int64'.
     2. Ensures real 'None' objects are used instead of NaNs for safety.
+    3. Preserves timezone information on datetime columns (avoids lossy string conversion).
     """
     df_clean = df.copy()
 
@@ -790,6 +791,10 @@ def scrub_dataframe_for_copy(df):
     # Optional: Scrub string columns to ensure empty strings are None
     # (Useful because COPY can get confused by empty strings vs NULLs)
     for col in df_clean.select_dtypes(include=['object']):
+        # Skip columns that contain datetime-like objects to avoid dropping timezone info
+        non_null = df_clean[col].dropna()
+        if len(non_null) > 0 and isinstance(non_null.iloc[0], pd.Timestamp):
+            continue
         df_clean[col] = df_clean[col].replace({'': None, np.nan: None})
 
     return df_clean
