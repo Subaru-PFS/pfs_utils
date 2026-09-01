@@ -82,7 +82,8 @@ def setFiberStatus(pfsDesign, calibModel=None, configRoot=None, fiberIdsPath=Non
 
     engFiberMask = pfsDesign.targetType == TargetType.ENGINEERING
     cobraId = FiberIds(path=fiberIdsPath).fiberIdToCobraId(pfsDesign.fiberId[~engFiberMask])
-
+    # convenient with older design.
+    pfsDesign.cobraId[~engFiberMask] = cobraId
     # expanding the per-cobra masks to the design fibers, engineering fibers do not carry a cobra status.
     brokenFiber = np.zeros(len(pfsDesign.fiberId), dtype='bool')
     brokenCobra = np.zeros(len(pfsDesign.fiberId), dtype='bool')
