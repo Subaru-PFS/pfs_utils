@@ -107,6 +107,7 @@ class SetFiberStatusTestCase(unittest.TestCase):
     def setUp(self):
         self.design = SimpleNamespace(
             fiberId=self.fiberId.copy(),
+            cobraId=np.zeros(len(self.fiberId), dtype=np.int32),
             targetType=self.targetType.copy(),
             fiberStatus=np.full(len(self.fiberId), int(FiberStatus.GOOD), dtype=int),
         )
