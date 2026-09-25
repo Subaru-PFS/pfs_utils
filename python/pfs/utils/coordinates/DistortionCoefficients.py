@@ -72,12 +72,12 @@ agpixel = 1.3e-2
 # 241.292 is the center of CCD
 # 241.314 is the center of half region of CCD.
 agcent = 241.314 #241.292  # mm
-# AG centre position and rotation (measured in Nov 2021) -- update as of May 2025
+# AG centre position and rotation (measured in Nov 2021) -- update as of Sep 2026
 # dy[mm] dx[mm] dt[deg] for each camera in PFI coordinates
 
-agcent_off = [[-0.421, 1.036, -0.253368], [-0.164, 0.163, 0.391505],
-              [-0.348, -0.321, 0.2755336], [0.323, -0.219, 0.416894],
-              [0.341, -0.044, -0.0781999], [0.260, 0.194, 0.276977]]
+agcent_off = [[ 0.015,  0.540, 0.2066320], [-0.155,  0.179, 0.391505],
+              [-0.357, -0.305, 0.2755336], [ 0.305, -0.219, 0.416894],
+              [ 0.237, -0.082, 0.0318001], [ 0.269,  0.178, 0.276977]]
 
 
 # PFI InR offset from the telescope telescope
