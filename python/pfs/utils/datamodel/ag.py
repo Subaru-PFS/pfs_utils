@@ -104,6 +104,16 @@ class SourceMatchingFlags(IntFlag):
             larger than allowed threshold.
         UNUSED_MULTI_MATCH: Source was matched to a catalog entry, but wasn't the
             closest source so is unused.
+
+    In the opdb, ``agc_match.flags`` holds this bitmask for rows written by
+    ics_agActor 1.1.78 or later (INSTRM-3038, merged 2026-10-22): GOOD_MATCH
+    alone for a match within tolerance, otherwise the reason(s) it is not one.
+    Rows from ics_agActor 1.1.67 to 1.1.77 hold 1 (GOOD_MATCH) or 0 with no
+    reason recorded, and rows from before 1.1.67 (INSTRM-2832, 2026-01-08) are
+    always 0. GOOD_MATCH says how well the detection matched its guide star,
+    not whether it entered the astrometric fit (that is ``camera_enabled``,
+    INSTRM-3057). ``flags == GOOD_MATCH`` selects valid matches in every era
+    that recorded them.
     """
 
     NONE = 0x0000
