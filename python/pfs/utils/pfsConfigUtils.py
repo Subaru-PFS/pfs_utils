@@ -1,6 +1,8 @@
 import datetime
 import glob
 import os
+import pwd
+import stat
 from datetime import timezone
 
 import numpy as np
@@ -9,7 +11,7 @@ import pfs.utils.coordinates.updateTargetPosition as updateTargetPosition
 from pfs.datamodel.utils import convertToIso8601Utc
 from pfs.utils.coordinates.CoordTransp import ag_pfimm_to_pixel
 
-__all__ = ["getDateDir", "writePfsConfig", "tweakTargetPosition"]
+__all__ = ["getDateDir", "makePfsConfigDir", "writePfsConfig", "tweakTargetPosition"]
 
 
 def getDateDir(pfsConfig):
@@ -33,28 +35,71 @@ def getDateDir(pfsConfig):
     return dateDir
 
 
-def writePfsConfig(pfsConfig):
-    """Write pfsConfig file to /data/raw/$DATE/pfsConfig using pfsButler."""
-    # Get path from pfsButler.
+def makePfsConfigDir(pfsConfig):
+    """Create the /data/raw/$DATE/pfsConfig directory of pfsConfig, if it does not exist yet.
+
+    Parameters
+    ----------
+    pfsConfig : `pfs.datamodel.PfsConfig`
+
+    Returns
+    -------
+    filepath : `pathlib.Path`
+        Path of the pfsConfig file in that directory, from pfsButler.
+
+    Raises
+    ------
+    OSError
+        If the directory cannot be created; when the date directory exists, a PermissionError names its mode
+        and owner.
+    """
     filepath = pfsButler.Butler().getPath('pfsConfig', pfsConfigId=pfsConfig.pfsDesignId, visit=pfsConfig.visit)
-    # Create date/pfsConfig directory if it does not exist.
-    rootDir, fileName = os.path.split(filepath)
+    rootDir, _ = os.path.split(filepath)
 
-    if not os.path.exists(rootDir):
-        # we currently have weird permissions on /data so fix it manually for now.
-        os.makedirs(rootDir, mode=0o2775)
+    if os.path.exists(rootDir):
+        return filepath
 
-        # guard against silent makedirs failure INSTRM-2899
-        if not os.path.exists(rootDir):
-            raise RuntimeError(f'{rootDir} directory was not created correctly.')
+    dateDir, _ = os.path.split(rootDir)
 
-        dateDir, _ = os.path.split(rootDir)
+    try:
+        os.makedirs(rootDir, mode=0o2775, exist_ok=True)
+    except PermissionError as e:
+        if not os.path.isdir(dateDir):
+            raise
 
-        # ccdActor create the date directory as pfs-data, so iic(pfs) does not have the permission in that case.
+        dirStat = os.stat(dateDir)
         try:
-            os.chmod(dateDir, 0o2775)
-        except PermissionError:
-            pass
+            owner = pwd.getpwuid(dirStat.st_uid).pw_name
+        except KeyError:
+            owner = dirStat.st_uid
+
+        mode = stat.filemode(dirStat.st_mode)
+        message = f'cannot create {rootDir}: {dateDir} is {mode} {owner}, group write is needed'
+        raise PermissionError(message) from e
+
+    # guard against silent makedirs failure INSTRM-2899
+    if not os.path.exists(rootDir):
+        raise FileNotFoundError(f'{rootDir} directory was not created correctly.')
+
+    # the date directory may be owned by another user; make it group-writable when it is ours.
+    try:
+        os.chmod(dateDir, 0o2775)
+    except PermissionError:
+        pass
+
+    return filepath
+
+
+def writePfsConfig(pfsConfig, filepath=None):
+    """Write pfsConfig file to /data/raw/$DATE/pfsConfig using pfsButler.
+
+    Parameters
+    ----------
+    pfsConfig : `pfs.datamodel.PfsConfig`
+    filepath : `pathlib.Path`, optional
+        Path to write to, as returned by `makePfsConfigDir`; the pfsButler path of the current day by default.
+    """
+    filepath = makePfsConfigDir(pfsConfig) if filepath is None else filepath
 
     # Write pfsConfig file to disk and set correct permissions.
     pfsConfig.write(fileName=filepath)
