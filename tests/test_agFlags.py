@@ -24,6 +24,20 @@ class AgFlagsTestCase(unittest.TestCase):
         self.assertEqual(int(SourceDetectionFlags.RIGHT), 1)
         self.assertEqual(SourceDetectionFlags.BAD_DETECTION & SourceDetectionFlags.RIGHT, 0)
 
+    def testFlatTopRetired(self):
+        """FLAT_TOP (0x20) is retired (INSTRM-2586): rows written before still decode, but it no longer marks a bad detection."""
+        self.assertEqual(int(SourceDetectionFlags.FLAT_TOP), 0x20)
+        self.assertEqual(SourceDetectionFlags.BAD_DETECTION & SourceDetectionFlags.FLAT_TOP, 0)
+        self.assertEqual(SourceDetectionFlags(0x20) & SourceDetectionFlags.BAD_DETECTION, 0)
+        # A saturated flat-top spot from before the change: still named, still bad (via SATURATED).
+        old = SourceDetectionFlags(0x24)
+        self.assertEqual(str(old), "SATURATED|FLAT_TOP")
+        self.assertNotEqual(old & SourceDetectionFlags.BAD_DETECTION, 0)
+        # Negative control: no live flag reuses the retired bit.
+        for flag in SourceDetectionFlags:
+            if flag is not SourceDetectionFlags.FLAT_TOP:
+                self.assertEqual(int(flag) & 0x20, 0, flag)
+
     def testStr(self):
         self.assertEqual(str(SourceMatchingFlags.GOOD_MATCH), "GOOD_MATCH")
         self.assertEqual(
