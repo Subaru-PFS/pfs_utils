@@ -21,8 +21,7 @@ def fixPfsConfig(pfsConfig: PfsConfig) -> None:
     """
     if pfsConfig.visit in range(144587, 145150):
         fixRun29(pfsConfig)
-        return
-    if pfsConfig.visit in {
+    elif pfsConfig.visit in {
         148840, 148841, 148842, 148843, 148844, 148845, 148846, 148847,
         148848, 148864, 148865, 148866, 148867, 148868, 148869, 148870,
         148871, 148872, 148876, 148877, 148878, 148891, 148892, 148893,
@@ -30,7 +29,7 @@ def fixPfsConfig(pfsConfig: PfsConfig) -> None:
         148902, 148903, 148904, 148905,
     }:
         fixNight20260903(pfsConfig)
-        return
+    fixBrokenCobras(pfsConfig)
 
 
 def fixRun29(pfsConfig: PfsConfig) -> None:
@@ -58,6 +57,42 @@ def fixRun29(pfsConfig: PfsConfig) -> None:
     ]
     select = np.isin(pfsConfig.fiberId, fiberId)
     pfsConfig.fiberStatus[select] = FiberStatus.BLOCKED
+
+
+def fixBrokenCobras(pfsConfig: PfsConfig) -> None:
+    """Mark the cobras with a broken theta or phi motor BROKENCOBRA.
+
+    Since BROKENCOBRA was first written (visit 109273, 2024-05-03), some
+    pfsConfigs carry these fibres as GOOD or NOTCONVERGED:
+
+    - the calibration in use from 2024-10-25 to 2025-09-03 had cleared the
+      broken-motor bits of fiberId= 84 86 417 487 950 1003 1214 2208 2267 2344
+      2386, none of which converged in that period;
+    - fiberId= 745 2184 were only flagged from 2025-11-10, although they never
+      converged before either;
+    - a pfsConfig written without an fps convergence keeps the fiberStatus of
+      its design, which can predate either flag.
+
+    Only GOOD and NOTCONVERGED are replaced: BROKENFIBER and BLOCKED take
+    precedence over BROKENCOBRA.
+
+    Parameters
+    ----------
+    pfsConfig : `pfs.datamodel.PfsConfig`
+        The PfsConfig object to fix. The object is modified in place.
+    """
+    if pfsConfig.visit not in range(109273, 152449):
+        return
+    # cobras with a broken theta or phi motor throughout these visits
+    fiberId = [
+        23, 84, 85, 86, 315, 367, 417, 487, 601, 603, 745, 950, 963, 1003,
+        1214, 1217, 1231, 1251, 1588, 1669, 1924, 1945, 2008, 2107, 2156, 2159,
+        2184, 2208, 2267, 2344, 2386, 2575, 2586,
+    ]
+    select = np.isin(pfsConfig.fiberId, fiberId)
+    select &= np.isin(pfsConfig.fiberStatus,
+                      [FiberStatus.GOOD, FiberStatus.NOTCONVERGED])
+    pfsConfig.fiberStatus[select] = FiberStatus.BROKENCOBRA
 
 
 def fixNight20260903(pfsConfig: PfsConfig) -> None:
