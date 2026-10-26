@@ -67,7 +67,59 @@ class FixNight20260903TestCase(unittest.TestCase):
         d = design(148849)
         fixPfsConfig(d)
         self.assertTrue((d.pfiCenter == -1.0).all())
-        self.assertTrue((d.fiberStatus == FiberStatus.GOOD).all())
+        self.assertTrue(np.isin(d.fiberStatus, [FiberStatus.GOOD, FiberStatus.BROKENCOBRA]).all())
+
+
+class FixBrokenCobrasTestCase(unittest.TestCase):
+    """Cobras with a broken motor are BROKENCOBRA from visit 109273 on."""
+
+    def status(self, d, fiberId):
+        return d.fiberStatus[fiberId - 1]
+
+    def testClearedCalibrationIsFlagged(self):
+        # visit 125745 (2025-05): the calibration in use had cleared fiberId 84
+        d = design(125745)
+        fixPfsConfig(d)
+        self.assertEqual(self.status(d, 84), FiberStatus.BROKENCOBRA)
+        self.assertEqual(self.status(d, 100), FiberStatus.GOOD)
+
+    def testNotConvergedIsFlagged(self):
+        # run 24: fiberId 2184 and 745 were NOTCONVERGED or GOOD
+        d = design(130000)
+        d.fiberStatus[2184 - 1] = FiberStatus.NOTCONVERGED
+        fixPfsConfig(d)
+        self.assertEqual(self.status(d, 2184), FiberStatus.BROKENCOBRA)
+        self.assertEqual(self.status(d, 745), FiberStatus.BROKENCOBRA)
+
+    def testOtherStatusesTakePrecedence(self):
+        d = design(125745)
+        d.fiberStatus[2344 - 1] = FiberStatus.BLOCKED
+        d.fiberStatus[84 - 1] = FiberStatus.BROKENFIBER
+        fixPfsConfig(d)
+        self.assertEqual(self.status(d, 2344), FiberStatus.BLOCKED)
+        self.assertEqual(self.status(d, 84), FiberStatus.BROKENFIBER)
+
+    def testAppliedAfterRun29(self):
+        # fixRun29 blocks fiberId 2344; fiberId 2184 still becomes BROKENCOBRA
+        d = design(144600)
+        fixPfsConfig(d)
+        self.assertEqual(self.status(d, 2344), FiberStatus.BLOCKED)
+        self.assertEqual(self.status(d, 2184), FiberStatus.BROKENCOBRA)
+
+    def testOutsideTheRangeIsUntouched(self):
+        for visit in (109272, 152449):
+            d = design(visit)
+            fixPfsConfig(d)
+            self.assertTrue((d.fiberStatus == FiberStatus.GOOD).all(), visit)
+
+    def testSubsetCarriesOnlyItsOwnFibres(self):
+        d = design(125745)
+        d.fiberId = d.fiberId[651:1302]
+        d.pfiCenter = d.pfiCenter[651:1302]
+        d.fiberStatus = d.fiberStatus[651:1302]
+        fixPfsConfig(d)
+        flagged = d.fiberId[d.fiberStatus == FiberStatus.BROKENCOBRA]
+        np.testing.assert_array_equal(flagged, [745, 950, 963, 1003, 1214, 1217, 1231, 1251])
 
 
 if __name__ == "__main__":
