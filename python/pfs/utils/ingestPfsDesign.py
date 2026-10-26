@@ -184,7 +184,7 @@ def ingestPfsConfig(pfsConfig, convergenceParams=None, allocated_at=None):
             "inst_status_flag": [int(pfsConfig.instStatusFlag)],
             "alloc_rms_scatter": [None],
             "allocated_at": [allocated_at],
-            "to_be_observed_at": [pfsConfig.obstime],
+            "to_be_observed_at": [pfsConfig.obstime0],
             "pfs_utils_version": [pfsConfig.getVersion('pfs_utils')],
             "to_be_observed_at_design": [pfsConfig.obstimeDesign],
             "pfs_utils_version_design": [pfsConfig.getVersionDesign('pfs_utils')],
