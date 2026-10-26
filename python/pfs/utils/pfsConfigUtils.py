@@ -11,7 +11,7 @@ import pfs.utils.coordinates.updateTargetPosition as updateTargetPosition
 from pfs.datamodel.utils import convertToIso8601Utc
 from pfs.utils.coordinates.CoordTransp import ag_pfimm_to_pixel
 
-__all__ = ["getDateDir", "makePfsConfigDir", "writePfsConfig", "tweakTargetPosition"]
+__all__ = ["getDateDir", "getPfsConfigPath", "makePfsConfigDir", "writePfsConfig", "tweakTargetPosition"]
 
 
 def getDateDir(pfsConfig):
@@ -35,6 +35,20 @@ def getDateDir(pfsConfig):
     return dateDir
 
 
+def getPfsConfigPath(pfsConfig):
+    """Path of the pfsConfig file in /data/raw/$DATE/pfsConfig for the current day, from pfsButler.
+
+    Parameters
+    ----------
+    pfsConfig : `pfs.datamodel.PfsConfig`
+
+    Returns
+    -------
+    filepath : `pathlib.Path`
+    """
+    return pfsButler.Butler().getPath('pfsConfig', pfsConfigId=pfsConfig.pfsDesignId, visit=pfsConfig.visit)
+
+
 def makePfsConfigDir(pfsConfig):
     """Create the /data/raw/$DATE/pfsConfig directory of pfsConfig, if it does not exist yet.
 
@@ -53,7 +67,7 @@ def makePfsConfigDir(pfsConfig):
         If the directory cannot be created; when the date directory exists, a PermissionError names its mode
         and owner.
     """
-    filepath = pfsButler.Butler().getPath('pfsConfig', pfsConfigId=pfsConfig.pfsDesignId, visit=pfsConfig.visit)
+    filepath = getPfsConfigPath(pfsConfig)
     rootDir, _ = os.path.split(filepath)
 
     if os.path.exists(rootDir):
