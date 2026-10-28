@@ -129,6 +129,33 @@ class SourceMatchingFlags(IntFlag):
         return "|".join(flags)
 
 
+class GuideOffsetFlag(IntFlag):
+    """
+    Represents a bitmask for a guide offset: why ics_agActor did not use it.
+
+    Attributes:
+        OK: The offset was usable; ics_agActor sent it if it was guiding.
+        INVALID_OFFSET: The offset was not used. Set for every rejected offset,
+            alone when the offset was larger than ``max_correction``.
+        TOO_FEW_STARS: Fewer guide stars matched than ``min_matched_stars``;
+            always set together with INVALID_OFFSET (INSTRM-2800).
+
+    In the opdb, ``agc_guide_offset.mask`` holds this bitmask. Select the offsets
+    that were not used with ``mask & INVALID_OFFSET``, and the reason with the
+    other flags. Rows from before ics_agActor started writing it (2025-09-11) are NULL.
+    """
+
+    OK = 0x0000
+    INVALID_OFFSET = 0x0001
+    TOO_FEW_STARS = 0x0002
+
+    def __str__(self):
+        if self == GuideOffsetFlag.OK:
+            return "OK"
+        flags = [flag.name for flag in GuideOffsetFlag if flag in self and flag != GuideOffsetFlag.OK]
+        return "|".join(flags)
+
+
 def __getattr__(name):
     if name == "AutoGuiderStarMask":
         warnings.warn(
