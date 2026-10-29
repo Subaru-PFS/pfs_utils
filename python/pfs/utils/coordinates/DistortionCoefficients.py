@@ -779,6 +779,33 @@ class Coeff:
                                      [np.poly1d(cy2_fit)(za), np.poly1d(cy3_fit)(za)]])
         return coeffs2_matrix_x, coeffs2_matrix_y
 
+        
+    # Fixed to zenith
+    def extra_distortion2(self, x, y):
+
+        shift_x = 0.17190563066305858
+        shift_y = 0.3397077105457979
+
+        xx = x - shift_x
+        yy = y - shift_y
+
+        xx = 1/(1-0.00608983)*xx
+        yy = 1/(1-0.00608983)*yy
+
+        ccx = np.array([[ 1.34321958e-02,  2.74748113e-04],
+                        [2.90607798e-05, -8.84795008e-07]])
+        ccy = np.array([[-2.13790430e-02,  3.88996805e-05], 
+                        [-1.75474249e-04,  5.59109530e-07]])
+        
+        slx = np.polynomial.polynomial.polyval2d(xx, yy , ccx)
+        sly = np.polynomial.polynomial.polyval2d(xx, yy , ccy)
+        xx = xx  - slx
+        yy = yy  - sly
+        
+        return xx, yy
+
+        
+
 # General functions
 def calc_m3pos(za):
 
