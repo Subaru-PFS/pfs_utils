@@ -181,6 +181,7 @@ def ingestPfsConfig(pfsConfig, convergenceParams=None, allocated_at=None):
             "target_fallback_invalid": [convergence.get("targetFallbackInvalid")],
             "target_fallback_unassigned": [convergence.get("targetFallbackUnassigned")],
             "fiducial_check_skipped": [convergence.get("fiducialCheckSkipped")],
+            "blind_move_calib_id": [convergence.get("blindMoveCalibId")],
             "inst_status_flag": [int(pfsConfig.instStatusFlag)],
             "alloc_rms_scatter": [None],
             "allocated_at": [allocated_at],
