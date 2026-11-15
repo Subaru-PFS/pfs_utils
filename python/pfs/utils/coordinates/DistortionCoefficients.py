@@ -670,7 +670,7 @@ class Coeff:
         -------
         """
 
-        factor = 1
+        factor = -1.
 
         # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
         # simply scale to 1 at EL=30, and 0 at EL=90
@@ -678,6 +678,7 @@ class Coeff:
 
         # Coefficient of the distortion pattern as 7-order polynomial.
         # Here, displacement between EL=30 and EL=90 is used
+        """
         coeffs_matrix_x = np.array([[-1.53332504e-03,  1.87195111e-06, -9.59107515e-07,  
                                       2.99981468e-09,  4.34173422e-11, -1.49198635e-13, 
                                      -4.08290446e-16,  1.98415549e-18],
@@ -726,6 +727,16 @@ class Coeff:
                                     [ 1.10152714e-18, -1.89963928e-19, -5.00246861e-23,  
                                       3.90342107e-23, -6.28164074e-27, -1.86871216e-27,  
                                       1.80603387e-31,  2.51597632e-32]])
+        """
+        # 2026.11 3-order
+        coeffs_matrix_x = np.array([[-8.64876034e-04,  1.91723674e-06,  6.47863379e-08, -9.01172192e-11],
+                            [ 2.19384955e-05,  2.98538773e-06, -6.66810075e-10, -3.60866817e-11],
+                            [ 2.66839966e-08,  1.68356914e-10, -5.74878705e-12,  2.60791773e-14],
+                            [ 9.21260407e-11, -1.52866960e-11,  1.00452418e-13,  5.94402406e-16]])
+        coeffs_matrix_y = np.array([[-3.41974219e-02,  1.84498397e-05,  2.91919428e-06,  6.48171735e-10],
+                            [-8.05798910e-06, -1.07550270e-06,  4.51475408e-10,  3.30567983e-11],
+                            [ 7.68609659e-07,  3.38944109e-10, -2.62787293e-11,  2.96756877e-14],
+                            [ 4.58774771e-10,  3.59087047e-11, -2.55778118e-14, -7.74530315e-16]])
 
         extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
         extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
@@ -740,12 +751,15 @@ class Coeff:
         extra_distortion2_x = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_x)
         extra_distortion2_y = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_y)
 
-        extra_distortion_x = extra_distortion_x - extra_distortion2_x
-        extra_distortion_y = extra_distortion_y - extra_distortion2_y
+        extra_distortion_x = extra_distortion_x - extra_distortion2_x*0
+        extra_distortion_y = extra_distortion_y - extra_distortion2_y*0
 
         # Median of shift
-        c_shiftx = np.array([1.08352478e-08,  4.05903700e-08, -6.32151149e-05, 1.76593801e-03, 0.])
-        c_shifty = np.array([4.39128406e-07, -5.35996061e-05,  1.58049961e-03,  2.12912506e-03, 0.])
+        #c_shiftx = np.array([1.08352478e-08,  4.05903700e-08, -6.32151149e-05, 1.76593801e-03, 0.])
+        #c_shifty = np.array([4.39128406e-07, -5.35996061e-05,  1.58049961e-03,  2.12912506e-03, 0.])
+        c_shiftx = np.array([3.79884335e-06, -2.30644058e-03, 3.41109380e-02])
+        c_shifty = np.array([-0.0004211, 0.02007317 , -0.00750677])
+        
         extra_shift_x = np.poly1d(c_shiftx)(za)
         extra_shift_y = np.poly1d(c_shifty)(za)
         
@@ -783,23 +797,34 @@ class Coeff:
     # Fixed to zenith
     def extra_distortion2(self, x, y):
 
-        # run29
-        #shift_x = 0.17190563066305858
-        #shift_y = 0.3397077105457979
-        # run30
-        shift_x = 0.1699793392746214
-        shift_y = 0.33858631984335896
-
-        xx = x - shift_x
-        yy = y - shift_y
-
+        # scale
         # Run 29
         #xx = 1/(1-0.00608983)*xx
         #yy = 1/(1-0.00608983)*yy
         # run 30
-        xx = 1/(1-0.00301728)*xx
-        yy = 1/(1-0.00301728)*yy
+        #xx = 1/(1-0.00301728)*xx
+        #yy = 1/(1-0.00301728)*yy
+        # run 31
+        xx =  1/(1-0.00315038)*x
+        yy =  1/(1-0.00315038)*y
 
+        # shift
+        # run29
+        #shift_x = 0.17190563066305858
+        #shift_y = 0.3397077105457979
+        # run30
+        #shift_x = 0.1699793392746214
+        #shift_y = 0.33858631984335896
+        # run 31
+        shift_x = 0.21422365842705426 
+        shift_y = -0.007146058350361273
+
+        xx = xx - shift_x
+        yy = yy - shift_y
+
+
+        """
+        skip run 31
         # Run 29
         #ccx = np.array([[ 1.34321958e-02,  2.74748113e-04],
         #                [2.90607798e-05, -8.84795008e-07]])
@@ -815,6 +840,7 @@ class Coeff:
         sly = np.polynomial.polynomial.polyval2d(xx, yy , ccy)
         xx = xx  - slx
         yy = yy  - sly
+        """
         
         return xx, yy
 
