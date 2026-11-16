@@ -3,15 +3,21 @@
 ics_agccActor measures each spot's second moments under a Gaussian weight that it iterates
 until the weight matches the spot (adaptive moments), and stores the weighted moments as
 measured (``central_image_moment_20_pix``, ``_02_pix``, ``_11_pix``). A Gaussian seen through
-a matched Gaussian weight has half its variance, so a spot's variance is twice the stored
-moment. The sizes here include that factor; a size taken straight from the stored moments is
-too small by sqrt(2).
+a matched Gaussian weight has half its variance, so the sigma here is that of twice the stored
+moment; a size taken straight from the stored moments is too small by sqrt(2).
 
-The spots are not Gaussian: Moffat profiles fitted to 1,300 isolated spots in 24 AG frames from
-two observing runs (17 nights, five fields, FWHM of 4 to 9 pixels) have a median beta of 3.3 to
-3.9 and a FWHM of 2.9 times the radius of the stored moments (2.88 and 2.94 in the two runs), the
-same for both detector halves. That is 2.05 sigma, where a Gaussian's FWHM is 2.355 sigma, and it
-is the factor used here.
+That holds for spots whose iteration converged. A spot flagged
+`SourceDetectionFlags.BAD_SHAPE` keeps the unweighted moments of the detection instead, about
+the full variance, and comes out sqrt(2) too large here: leave such spots out before calling,
+as ics_agActor's detection filter does. Before ics_agccActor 2.1.0 (2026-06-19) the iteration
+used the wrong cross moment, and spots elongated off the pixel axes were stored smaller.
+
+The spots are not Gaussian. Moffat profiles fitted to 1,200 isolated spots in 24 AG frames from
+two observing runs (17 nights, four fields, FWHM of 4 to 9 pixels) have a median beta of 3.3
+and 3.9 and a FWHM of 2.88 and 2.94 times the radius of the stored moments, the same for both
+detector halves; the frames' medians run from 2.7 to 3.0. The factor used here is 2.9, which is
+2.05 sigma where a Gaussian's FWHM is 2.355 sigma. It is a measurement, good to about 3% from
+frame to frame, not a property of a profile.
 """
 
 from dataclasses import dataclass
@@ -66,10 +72,10 @@ def momentsToSigma(mxx, myy, mxy=None, *, radius="trace"):
 
     Returns
     -------
-    sigma : `numpy.ndarray` of `float`
+    sigma : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
         The spots' sigma (pix), with the factor between the stored moments and the variance
         applied. NaN where the moments are not those of a spot (a negative ``mxx`` or
-        ``myy``, or for the determinant radius ``mxy^2 > mxx myy``).
+        ``myy``, or for the determinant radius ``mxy^2 > mxx myy``); zero moments give zero.
 
     Raises
     ------
@@ -131,9 +137,10 @@ def summarizeFwhm(fwhm, flags):
     Parameters
     ----------
     fwhm : array-like of `float`
-        The spots' FWHM (arcsec), from `momentsToFwhm`; NaN are left out.
+        The spots' FWHM (arcsec), from `momentsToFwhm`; NaN and infinities are left out.
     flags : array-like of `int`
-        The spots' ``agc_data.flags``; only `SourceDetectionFlags.RIGHT` is read.
+        The spots' ``agc_data.flags``, as integers. Only `SourceDetectionFlags.RIGHT` is read:
+        spots with a bad detection flag are counted like the others, so leave them out first.
 
     Returns
     -------
