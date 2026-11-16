@@ -113,6 +113,19 @@ class MomentsTestCase(unittest.TestCase):
         # elongated spot reads larger.
         self.assertGreater(agMetrics.momentsToSigma(mxx, myy, 0.0, radius="determinant"), determinant + 0.05)
 
+    def testStoredRadius(self):
+        """A radius of the stored moments gives the FWHM its moments give."""
+        mxx = np.array([2.0, 4.5, 0.0])
+        myy = np.array([3.0, 1.5, 0.0])
+        radius = np.sqrt(0.5 * (mxx + myy))
+        np.testing.assert_allclose(agMetrics.storedRadiusToFwhm(radius), agMetrics.momentsToFwhm(mxx, myy))
+        self.assertAlmostEqual(agMetrics.storedRadiusToFwhm(2.0), 2.9 * 2.0 * 13 / 94.7, places=3)
+        self.assertTrue(np.isnan(agMetrics.storedRadiusToFwhm(-1.0)))
+        # Negative control: the stored radius is not the sigma; as a Gaussian's sigma it gives
+        # a FWHM 19% smaller.
+        gaussian = 2 * np.sqrt(2 * np.log(2)) * 2.0 * agMetrics.AG_ARCSEC_PER_PIX
+        self.assertLess(gaussian / agMetrics.storedRadiusToFwhm(2.0), 0.85)
+
     def testArraysAndBadMoments(self):
         """Arrays in, arrays out; moments that are not a spot's give NaN."""
         mxx = np.array([2.0, -1.0, 2.0, 2.0])

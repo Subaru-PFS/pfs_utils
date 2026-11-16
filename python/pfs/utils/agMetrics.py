@@ -34,6 +34,7 @@ __all__ = [
     "AgImageSize",
     "momentsToFwhm",
     "momentsToSigma",
+    "storedRadiusToFwhm",
     "summarizeFwhm",
 ]
 
@@ -105,6 +106,29 @@ def momentsToFwhm(mxx, myy, mxy=None, *, radius="trace"):
     are `momentsToSigma`'s.
     """
     return AG_FWHM_PER_SIGMA * AG_ARCSEC_PER_PIX * momentsToSigma(mxx, myy, mxy, radius=radius)
+
+
+def storedRadiusToFwhm(radius):
+    """Return the FWHM (arcsec) of AG spots from the radius of their stored second moments.
+
+    For a radius already taken from the moments as stored, such as a median of
+    sqrt((mxx + myy) / 2) computed in the database; `momentsToFwhm` on the moments gives
+    the same.
+
+    Parameters
+    ----------
+    radius : array-like of `float`
+        The radius (pix) of the stored moments, without the factor between them and the
+        variance.
+
+    Returns
+    -------
+    fwhm : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
+        The spots' FWHM (arcsec); NaN for a negative radius.
+    """
+    radius = np.asarray(radius, dtype=float)
+    sigma = np.sqrt(VARIANCE_PER_AGC_MOMENT) * np.where(radius < 0, np.nan, radius)
+    return AG_FWHM_PER_SIGMA * AG_ARCSEC_PER_PIX * sigma
 
 
 @dataclass(frozen=True)
