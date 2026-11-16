@@ -68,7 +68,12 @@ class SourceDetectionFlags(IntFlag):
         SATURATED: Source is saturated.
         BAD_SHAPE: Source has a bad shape.
         BAD_ELLIP: Source has a bad ellipticity.
-        FLAT_TOP: Source has a flat top profile.
+        FLAT_TOP: Retired (INSTRM-2586, 2026-10-26); not a bad detection.
+            ics_agccActor set it for a spot whose profile fell by less than
+            ``flatVal`` over 5 pixels either side of the centroid. Most such
+            spots were SATURATED and the rest faint spots that never matched
+            a guide star, so the test was removed. Kept so that ``agc_data``
+            rows written before then still decode; never reuse the bit.
         BAD_SIZE: Source has a bad size.
     """
 
@@ -78,11 +83,11 @@ class SourceDetectionFlags(IntFlag):
     SATURATED = 0x0004
     BAD_SHAPE = 0x0008
     BAD_ELLIP = 0x0010
-    FLAT_TOP = 0x0020
+    FLAT_TOP = 0x0020  # retired, see above
     BAD_SIZE = 0x0040
 
     GOOD_DETECTION = NONE | RIGHT
-    BAD_DETECTION = EDGE | SATURATED | BAD_SHAPE | BAD_ELLIP | FLAT_TOP | BAD_SIZE
+    BAD_DETECTION = EDGE | SATURATED | BAD_SHAPE | BAD_ELLIP | BAD_SIZE
 
     def __str__(self):
         if self == SourceDetectionFlags.NONE:
