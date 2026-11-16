@@ -7,10 +7,11 @@ a matched Gaussian weight has half its variance, so a spot's variance is twice t
 moment. The sizes here include that factor; a size taken straight from the stored moments is
 too small by sqrt(2).
 
-The spots are not Gaussian: Moffat profiles fitted to 765 isolated spots in twelve AG frames of
-five nights (FWHM of 4 to 9 pixels) have a median beta of 3.3 and a FWHM of 2.9 times the radius
-of the stored moments, the same to 0.04 from frame to frame and for both detector halves. That
-is 2.05 sigma, where a Gaussian's FWHM is 2.355 sigma, and it is the factor used here.
+The spots are not Gaussian: Moffat profiles fitted to 1,300 isolated spots in 24 AG frames from
+two observing runs (17 nights, five fields, FWHM of 4 to 9 pixels) have a median beta of 3.3 to
+3.9 and a FWHM of 2.9 times the radius of the stored moments (2.88 and 2.94 in the two runs), the
+same for both detector halves. That is 2.05 sigma, where a Gaussian's FWHM is 2.355 sigma, and it
+is the factor used here.
 """
 
 from dataclasses import dataclass
