@@ -2,10 +2,26 @@
 
 import unittest
 
-from pfs.utils.datamodel.ag import SourceDetectionFlags, SourceMatchingFlags
+from pfs.utils.datamodel.ag import GuideOffsetFlag, SourceDetectionFlags, SourceMatchingFlags
 
 
 class AgFlagsTestCase(unittest.TestCase):
+    def testGuideOffsetValues(self):
+        """``agc_guide_offset.mask`` values written since 2025-09-11 keep their meaning."""
+        self.assertEqual(int(GuideOffsetFlag.OK), 0)
+        self.assertEqual(int(GuideOffsetFlag.INVALID_OFFSET), 1)
+        self.assertEqual(int(GuideOffsetFlag.TOO_FEW_STARS), 2)
+
+    def testTooFewStarsIsInvalid(self):
+        """ics_agActor writes TOO_FEW_STARS with INVALID_OFFSET, so ``mask & INVALID_OFFSET`` finds it."""
+        tooFew = GuideOffsetFlag.INVALID_OFFSET | GuideOffsetFlag.TOO_FEW_STARS
+        self.assertEqual(int(tooFew), 3)
+        self.assertTrue(tooFew & GuideOffsetFlag.INVALID_OFFSET)
+        # Negative control: the bits are distinct, so TOO_FEW_STARS alone would read as used.
+        self.assertFalse(GuideOffsetFlag.TOO_FEW_STARS & GuideOffsetFlag.INVALID_OFFSET)
+        self.assertEqual(str(tooFew), "INVALID_OFFSET|TOO_FEW_STARS")
+        self.assertEqual(str(GuideOffsetFlag(0)), "OK")
+
     def testGoodMatchIsOne(self):
         """``agc_match.flags == 1`` has meant a valid match since the column was first written."""
         self.assertEqual(int(SourceMatchingFlags.GOOD_MATCH), 1)
