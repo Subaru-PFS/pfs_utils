@@ -38,21 +38,63 @@ def gaussianSpot(covariance, half=30, oversample=5):
     return np.exp(-0.5 * (x * x * cyy - 2 * x * y * cxy + y * y * cxx) / det), x, y
 
 
+def moffatStoredMoment(fwhm, beta, half=40, oversample=5):
+    """The second moment ics_agccActor stores for a round Moffat spot of the given FWHM (pix).
+
+    The Gaussian weight is iterated as ``windowedFWHM`` does it: each pass measures the weighted
+    moment, takes the weight out of it and uses the result as the next weight. The weighted
+    moment of the last pass is what is stored.
+    """
+    step = 1.0 / oversample
+    y, x = np.mgrid[-half : half + step : step, -half : half + step : step]
+    alpha = fwhm / (2 * np.sqrt(2 ** (1 / beta) - 1))
+    image = (1 + (x * x + y * y) / alpha**2) ** (-beta)
+    weightVariance = 6.0
+    for _ in range(200):
+        weight = np.exp(-0.5 * (x * x + y * y) / weightVariance)
+        moment = (image * weight * x * x).sum() / (image * weight).sum()
+        newVariance = 1.0 / (1.0 / moment - 1.0 / weightVariance)
+        if abs(newVariance / weightVariance - 1) < 1e-10:
+            break
+        weightVariance = newVariance
+    return moment
+
+
 class MomentsTestCase(unittest.TestCase):
-    def testGaussianFwhm(self):
-        """A Gaussian spot's stored moments give back its FWHM."""
+    def testGaussianSigma(self):
+        """A Gaussian spot's stored moments give back its sigma."""
         for sigma in (1.5, 2.0, 3.5):
             covariance = np.diag([sigma**2, sigma**2])
             mxx, myy, mxy = storedMoments(*gaussianSpot(covariance), covariance)
-            expected = agMetrics.GAUSSIAN_FWHM_PER_SIGMA * sigma * agMetrics.AG_ARCSEC_PER_PIX
             for radius in ("trace", "determinant"):
-                self.assertAlmostEqual(agMetrics.momentsToSigma(mxx, myy, mxy, radius=radius), sigma, places=6)
-                self.assertAlmostEqual(agMetrics.momentsToFwhm(mxx, myy, mxy, radius=radius), expected, places=6)
-            # Negative control: the stored moment is not the variance; read as one, the FWHM
+                self.assertAlmostEqual(
+                    agMetrics.momentsToSigma(mxx, myy, mxy, radius=radius), sigma, places=6
+                )
+                self.assertAlmostEqual(
+                    agMetrics.momentsToFwhm(mxx, myy, mxy, radius=radius),
+                    agMetrics.AG_FWHM_PER_SIGMA * sigma * agMetrics.AG_ARCSEC_PER_PIX,
+                    places=6,
+                )
+            # Negative control: the stored moment is not the variance; read as one, the sigma
             # comes out sqrt(2) too small.
-            naive = agMetrics.GAUSSIAN_FWHM_PER_SIGMA * np.sqrt(0.5 * (mxx + myy)) * agMetrics.AG_ARCSEC_PER_PIX
-            self.assertFalse(np.allclose(naive, expected, rtol=0.25))
-            self.assertAlmostEqual(expected / naive, np.sqrt(2), places=6)
+            naive = np.sqrt(0.5 * (mxx + myy))
+            self.assertFalse(np.allclose(naive, sigma, rtol=0.25))
+            self.assertAlmostEqual(sigma / naive, np.sqrt(2), places=6)
+
+    def testMoffatFwhm(self):
+        """The FWHM is that of spots with the profile the AG cameras give, a Moffat of beta near 3.3."""
+        gaussianFwhmPerSigma = 2 * np.sqrt(2 * np.log(2))
+        for fwhm in (4.0, 5.5, 8.0):
+            moment = moffatStoredMoment(fwhm, 3.3)
+            measured = agMetrics.momentsToFwhm(moment, moment) / agMetrics.AG_ARCSEC_PER_PIX
+            self.assertAlmostEqual(measured / fwhm, 1.0, delta=0.03)
+            # Negative control: a Gaussian with the spot's variance is more than 10% wider
+            # than the spot at half maximum.
+            gaussian = gaussianFwhmPerSigma * agMetrics.momentsToSigma(moment, moment)
+            self.assertGreater(gaussian / fwhm, 1.10)
+        self.assertAlmostEqual(
+            agMetrics.AG_FWHM_PER_SIGMA * np.sqrt(agMetrics.VARIANCE_PER_AGC_MOMENT), 2.9, places=2
+        )
 
     def testRadii(self):
         """The trace radius grows with elongation; the determinant radius keeps the area."""
@@ -90,7 +132,9 @@ class PlateScaleTestCase(unittest.TestCase):
         model = Subaru_POPT2_PFS.POPT2()
 
         def focalPlane(sep, zpa):
-            x, y = model.celestial2focalplane(np.array([sep]), np.array([zpa]), 0.0, 0.0, 60.0, 6.0, 0.62, np.array([flag]))
+            x, y = model.celestial2focalplane(
+                np.array([sep]), np.array([zpa]), 0.0, 0.0, 60.0, 6.0, 0.62, np.array([flag])
+            )
             return np.array([x[0], y[0]])
 
         seps = np.linspace(0.6, 0.79, 200)
@@ -106,7 +150,9 @@ class PlateScaleTestCase(unittest.TestCase):
         """The plate scale is the optical model's at the AG cameras, on both detector halves."""
         for flag in (0, 1):
             radial, tangential = self.modelScales(flag)
-            self.assertAlmostEqual(np.sqrt(radial * tangential) / agMetrics.AG_PLATE_SCALE_UM_PER_ARCSEC, 1.0, delta=0.005)
+            self.assertAlmostEqual(
+                np.sqrt(radial * tangential) / agMetrics.AG_PLATE_SCALE_UM_PER_ARCSEC, 1.0, delta=0.005
+            )
             # Negative control: the scale of a 15 m focal length (72.7 microns/arcsec), which
             # ics_agActor's spot size used, is not the model's.
             self.assertGreater(abs(np.sqrt(radial * tangential) / (15000 / 206.265) - 1.0), 0.25)

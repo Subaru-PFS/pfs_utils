@@ -7,8 +7,10 @@ a matched Gaussian weight has half its variance, so a spot's variance is twice t
 moment. The sizes here include that factor; a size taken straight from the stored moments is
 too small by sqrt(2).
 
-The FWHM is that of the Gaussian with the spot's variance. For a Moffat profile with beta
-between 2.5 and 4.8 it is 8-20% above the profile's own FWHM.
+The spots are not Gaussian: Moffat profiles fitted to 765 isolated spots in twelve AG frames of
+five nights (FWHM of 4 to 9 pixels) have a median beta of 3.3 and a FWHM of 2.9 times the radius
+of the stored moments, the same to 0.04 from frame to frame and for both detector halves. That
+is 2.05 sigma, where a Gaussian's FWHM is 2.355 sigma, and it is the factor used here.
 """
 
 from dataclasses import dataclass
@@ -18,9 +20,9 @@ from pfs.utils.datamodel.ag import SourceDetectionFlags
 
 __all__ = [
     "AG_ARCSEC_PER_PIX",
+    "AG_FWHM_PER_SIGMA",
     "AG_PIXEL_SIZE_UM",
     "AG_PLATE_SCALE_UM_PER_ARCSEC",
-    "GAUSSIAN_FWHM_PER_SIGMA",
     "VARIANCE_PER_AGC_MOMENT",
     "AgImageSize",
     "momentsToFwhm",
@@ -38,8 +40,8 @@ AG_PLATE_SCALE_UM_PER_ARCSEC = 94.7
 #: An AG pixel on the sky, arcsec (0.137).
 AG_ARCSEC_PER_PIX = AG_PIXEL_SIZE_UM / AG_PLATE_SCALE_UM_PER_ARCSEC
 
-#: A Gaussian's FWHM over its sigma.
-GAUSSIAN_FWHM_PER_SIGMA = 2.0 * np.sqrt(2.0 * np.log(2.0))
+#: The FWHM of an AG spot over its sigma, measured (see the module docstring); 2.355 for a Gaussian.
+AG_FWHM_PER_SIGMA = 2.05
 
 #: A spot's variance over its second moment in ``agc_data`` (see the module docstring).
 VARIANCE_PER_AGC_MOMENT = 2.0
@@ -48,7 +50,7 @@ _RADII = ("trace", "determinant")
 
 
 def momentsToSigma(mxx, myy, mxy=None, *, radius="trace"):
-    """Return the Gaussian sigma of AG spots from their ``agc_data`` second moments.
+    """Return the sigma of AG spots from their ``agc_data`` second moments.
 
     Parameters
     ----------
@@ -92,10 +94,10 @@ def momentsToSigma(mxx, myy, mxy=None, *, radius="trace"):
 def momentsToFwhm(mxx, myy, mxy=None, *, radius="trace"):
     """Return the FWHM (arcsec) of AG spots from their ``agc_data`` second moments.
 
-    The FWHM of the Gaussian of `momentsToSigma`'s sigma, at `AG_ARCSEC_PER_PIX`. The
-    parameters are `momentsToSigma`'s.
+    `AG_FWHM_PER_SIGMA` times `momentsToSigma`'s sigma, at `AG_ARCSEC_PER_PIX`. The parameters
+    are `momentsToSigma`'s.
     """
-    return GAUSSIAN_FWHM_PER_SIGMA * AG_ARCSEC_PER_PIX * momentsToSigma(mxx, myy, mxy, radius=radius)
+    return AG_FWHM_PER_SIGMA * AG_ARCSEC_PER_PIX * momentsToSigma(mxx, myy, mxy, radius=radius)
 
 
 @dataclass(frozen=True)
