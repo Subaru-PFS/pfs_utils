@@ -110,8 +110,9 @@ inr_tel_offset = 0.124  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001)
 tel_x_offset = -0.006  # + 0.006  mm
 tel_y_offset = 0.
 # This is applied on PFI plane (after tel->pfi rotation)
-pfi_x_offset = -0.115  # -0.09 -0.025 mm
-pfi_y_offset = 0.03  # 0.01 + 0.02 + 0 mm
+# 2026.11 update shift after incident
+pfi_x_offset = -0.115 -0.01  # -0.09 -0.025 mm
+pfi_y_offset = 0.03  -0.01 # 0.01 + 0.02 + 0 mm
 
 # Wavelength used in AG
 wl_ag = 0.62
