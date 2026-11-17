@@ -1,3 +1,4 @@
+import functools
 import os
 import pathlib
 
@@ -43,9 +44,13 @@ def collectVersions(packageList):
     return versionsDict
 
 
+@functools.cache
 def getVersion(productName):
     """
     Return a single version string for a named product. Prefers git over eups.
+
+    The version is cached per product for the life of the process; a lookup that
+    raises is not cached.
 
     Args
     ----
