@@ -1,4 +1,7 @@
-"""Image sizes of AG spots from the second moments in opdb ``agc_data``.
+"""Image sizes and sky transparency from the AG spots in opdb ``agc_data``.
+
+Image sizes
+-----------
 
 ics_agccActor measures each spot's second moments under a Gaussian weight that it iterates
 until the weight matches the spot (adaptive moments), and stores them in
@@ -35,6 +38,34 @@ two observing runs (17 nights, four fields, FWHM of 4 to 9 pixels) have a median
 for both detector halves; the frames' medians run from 2.7 to 3.0. The factor used here is 2.9,
 which is 2.05 sigma where a Gaussian's FWHM is 2.355 sigma. It is a measurement, good to about 3%
 from frame to frame, not a property of a profile.
+
+Transparency
+------------
+The transparency a guide star shows is its measured flux over the flux its catalogue
+magnitude predicts: 10^(-0.4 dmag), where dmag is ics_agccActor's instrumental magnitude
+(``agc_data.estimated_magnitude``) less the catalogue magnitude
+(``pfs_design_agc.guide_star_magnitude``) and a colour term in the star's Gaia BP-RP
+(``pfs_design_agc.guide_star_color``). It is 1 for a clear sky and falls with cloud. The
+colour term and the selection of stars are those of the observatory's tool
+(pfs_obsproc_qa_tools, ``obsCondition.calcTransparency``), whose qadb values these reproduce.
+
+``estimated_magnitude`` has meant several things:
+
+- From ics_agccActor 2.4.0 (``agc_exposure.version_actor``) it comes from the flux in a fixed
+  aperture and is linear in the star's light. Its zero point is nominal: it equals the
+  earlier magnitude for a star of magnitude 16.
+- From exposure 484418 (2024-05-02) until then it comes from the isophotal flux, which holds a
+  smaller share of a fainter star's light: the transparency of the same sky reads 0.72 for
+  stars of magnitude 13 to 14 and 0.83 at 17 to 18. These are the exposures whose qadb
+  values are reproduced.
+- Earlier exposures hold it with other coefficients, or with an offset of 13.92 mag (March
+  2024), or not at all (before April 2023): they give no transparency here.
+
+The transparency is not yet calibrated to read 1 under a clear sky: in 2026 the clearest
+exposures of a night read 0.75 to 0.92, the cameras differ by up to 20%, and the level changes
+by up to 10% from one observing run to the next. ``zeroPoint`` is where a calibration goes
+(the run's zero point plus the camera's). Until there is one, compare an exposure with others
+of the same field, not with 1.
 """
 
 from dataclasses import dataclass
@@ -44,6 +75,8 @@ from pfs.utils.datamodel.ag import SourceDetectionFlags
 
 __all__ = [
     "AG_ARCSEC_PER_PIX",
+    "AG_COLOR_TERM_COEFFS",
+    "AG_COLOR_TERM_OFFSET_MAG",
     "AG_FOCUS_MM_PER_PIX2",
     "AG_FOCUS_OFFSET_MM",
     "AG_FWHM_PER_SIGMA",
@@ -51,10 +84,14 @@ __all__ = [
     "AG_PLATE_SCALE_UM_PER_ARCSEC",
     "VARIANCE_PER_AGC_MOMENT",
     "AgImageSize",
+    "AgTransparency",
+    "agColorTerm",
+    "magnitudesToTransparency",
     "momentsToFwhm",
     "momentsToSigma",
     "storedRadiusToFwhm",
     "summarizeFwhm",
+    "summarizeTransparency",
 ]
 
 #: Size of an AG detector pixel, microns.
@@ -85,6 +122,19 @@ AG_FOCUS_MM_PER_PIX2 = 0.0043
 
 #: The offset of that calibration, mm: subtracted from the slope term.
 AG_FOCUS_OFFSET_MM = 0.026
+
+#: The colour term of the AG instrumental magnitude: a polynomial in Gaia BP-RP, highest power
+#: first (mag), from pfs_obsproc_qa_tools. `agColorTerm` adds `AG_COLOR_TERM_OFFSET_MAG` to it.
+AG_COLOR_TERM_COEFFS = (-0.00578838, 0.02017098, -0.00800825, 0.06147291, 0.12580689, -0.03511767)
+
+#: The constant pfs_obsproc_qa_tools adds to that polynomial (mag).
+AG_COLOR_TERM_OFFSET_MAG = -0.20
+
+#: The BP-RP range the colour term is used over; a star outside it gets no transparency.
+_COLOR_RANGE = (-1.0, 3.0)
+
+#: A star's transparency counts only between these: beyond them it is a mismatch, not sky.
+_TRANSPARENCY_RANGE = (0.0, 2.0)
 
 _RADII = ("trace", "determinant")
 
@@ -219,3 +269,105 @@ def summarizeFwhm(fwhm, flags):
         nLeft=int((good & ~right).sum()),
         nRight=int((good & right).sum()),
     )
+
+
+def agColorTerm(color):
+    """Return the colour term of the AG instrumental magnitude (mag).
+
+    Parameters
+    ----------
+    color : array-like of `float`
+        The stars' Gaia BP-RP (``pfs_design_agc.guide_star_color``).
+
+    Returns
+    -------
+    term : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
+        What to subtract from the instrumental minus the catalogue magnitude: the polynomial
+        `AG_COLOR_TERM_COEFFS` plus `AG_COLOR_TERM_OFFSET_MAG`. NaN outside -1 < BP-RP < 3.
+    """
+    color = np.asarray(color, dtype=float)
+    inRange = (color > _COLOR_RANGE[0]) & (color < _COLOR_RANGE[1])
+    return np.where(inRange, np.polyval(AG_COLOR_TERM_COEFFS, color) + AG_COLOR_TERM_OFFSET_MAG, np.nan)[()]
+
+
+def magnitudesToTransparency(estimatedMagnitude, catalogMagnitude, color, *, zeroPoint=0.0):
+    """Return the sky transparency each AG guide star shows.
+
+    Parameters
+    ----------
+    estimatedMagnitude : array-like of `float`
+        ``agc_data.estimated_magnitude``, ics_agccActor's instrumental magnitude (see the
+        module docstring for the exposures it is valid for).
+    catalogMagnitude : array-like of `float`
+        ``pfs_design_agc.guide_star_magnitude``.
+    color : array-like of `float`
+        ``pfs_design_agc.guide_star_color``, Gaia BP-RP.
+    zeroPoint : `float` or array-like of `float`
+        What a star reads, less its catalogue magnitude and colour term, under a clear sky
+        (mag): a calibration's zero point, which may differ per star (by camera). Zero, the
+        default, is no calibration (see the module docstring).
+
+    Returns
+    -------
+    transparency : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
+        Measured over expected flux, 10^(-0.4 dmag): less under cloud; a star measured
+        fainter than its catalogue magnitude gives less. NaN where an input is missing or
+        the colour is outside the colour term's range.
+    """
+    dmag = np.asarray(estimatedMagnitude, dtype=float) - np.asarray(catalogMagnitude, dtype=float)
+    dmag = dmag - agColorTerm(color) - np.asarray(zeroPoint, dtype=float)
+    return np.power(10.0, -0.4 * dmag)[()]
+
+
+@dataclass(frozen=True)
+class AgTransparency:
+    """The sky transparency of one AG exposure.
+
+    Attributes
+    ----------
+    transparency : `float`
+        Median transparency of the stars used; NaN if there are none.
+    nStars : `int`
+        Number of stars used.
+    """
+
+    transparency: float
+    nStars: int
+
+
+def summarizeTransparency(transparency, estimatedMagnitude, *, brightFraction=0.75):
+    """Return the median transparency of an AG exposure's guide stars.
+
+    Parameters
+    ----------
+    transparency : array-like of `float`
+        The stars' transparency, from `magnitudesToTransparency`, for the detections matched
+        to guide stars. NaN and values outside 0 to 2 are left out.
+    estimatedMagnitude : array-like of `float`
+        The stars' ``agc_data.estimated_magnitude``, to choose the brighter ones.
+    brightFraction : `float`
+        Use the stars up to this quantile of ``estimatedMagnitude``: the faintest quarter is
+        left out by default.
+
+    Returns
+    -------
+    summary : `AgTransparency`
+        The median and the number of stars behind it.
+
+    Notes
+    -----
+    pfs_obsproc_qa_tools takes the quantile over all the stars of a visit rather than of one
+    exposure, so its per-exposure values differ a little from these where the stars change
+    during a visit.
+    """
+    transparency = np.asarray(transparency, dtype=float)
+    magnitude = np.asarray(estimatedMagnitude, dtype=float)
+    finite = np.isfinite(magnitude)
+    if not finite.any():
+        return AgTransparency(transparency=float("nan"), nStars=0)
+    with np.errstate(invalid="ignore"):
+        use = magnitude <= np.quantile(magnitude[finite], brightFraction)
+        use = use & (transparency > _TRANSPARENCY_RANGE[0]) & (transparency < _TRANSPARENCY_RANGE[1])
+    if not use.any():
+        return AgTransparency(transparency=float("nan"), nStars=0)
+    return AgTransparency(transparency=float(np.median(transparency[use])), nStars=int(use.sum()))

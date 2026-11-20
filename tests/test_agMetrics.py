@@ -213,6 +213,97 @@ class FocusCalibrationTestCase(unittest.TestCase):
         self.assertFalse(np.allclose(0.0086 * variance, 0.0086 * halved))
 
 
+class TransparencyTestCase(unittest.TestCase):
+    def testColorTerm(self):
+        """The colour term is pfs_obsproc_qa_tools' polynomial in BP-RP, less 0.20 mag."""
+        for color in (0.0, 0.8, 2.2):
+            tool = (
+                -0.00578838 * color**5 + 0.02017098 * color**4 - 0.00800825 * color**3
+                + 0.06147291 * color**2 + 0.12580689 * color - 0.03511767 - 0.20
+            )  # fmt: skip
+            self.assertAlmostEqual(agMetrics.agColorTerm(color), tool, places=12)
+        self.assertAlmostEqual(agMetrics.agColorTerm(0.0), -0.23511767, places=12)
+        # Outside the range it was fitted over there is no term; the limits themselves are outside.
+        for color in (-1.0, 3.0, 3.5, np.nan):
+            self.assertTrue(np.isnan(agMetrics.agColorTerm(color)))
+        np.testing.assert_allclose(
+            agMetrics.agColorTerm([0.0, 5.0]), [agMetrics.agColorTerm(0.0), np.nan], equal_nan=True
+        )
+        # Negative control: the coefficients are highest power first; reversed they give another value.
+        reversed_ = np.polyval(agMetrics.AG_COLOR_TERM_COEFFS[::-1], 0.8) + agMetrics.AG_COLOR_TERM_OFFSET_MAG
+        self.assertFalse(np.isclose(agMetrics.agColorTerm(0.8), reversed_, atol=0.01))
+
+    def testTransparency(self):
+        """A star measured at its catalogue magnitude, after the colour term, shows a clear sky."""
+        color = 0.8
+        catalog = 15.0
+        clear = catalog + agMetrics.agColorTerm(color)
+        self.assertAlmostEqual(agMetrics.magnitudesToTransparency(clear, catalog, color), 1.0, places=12)
+        # Half the light is 0.7526 mag fainter.
+        halfLight = clear + 2.5 * np.log10(2)
+        self.assertAlmostEqual(agMetrics.magnitudesToTransparency(halfLight, catalog, color), 0.5, places=12)
+        # Negative control: fainter is less transparent, not more.
+        fainter = agMetrics.magnitudesToTransparency(halfLight, catalog, color)
+        self.assertFalse(np.isclose(fainter, 2.0, rtol=0.5))
+        self.assertLess(fainter, 1.0)
+        # Negative control: without the colour term the same star does not read 1.
+        self.assertFalse(np.isclose(10 ** (-0.4 * (clear - catalog)), 1.0, rtol=0.05))
+        # Arrays in, arrays out; a missing input or a colour out of range gives NaN.
+        values = agMetrics.magnitudesToTransparency(
+            [clear, np.nan, clear, clear], [catalog, catalog, np.nan, catalog], [color, color, color, 4.0]
+        )
+        np.testing.assert_allclose(values, [1.0, np.nan, np.nan, np.nan], equal_nan=True)
+        self.assertIsInstance(agMetrics.magnitudesToTransparency(clear, catalog, color), np.float64)
+
+    def testZeroPoint(self):
+        """A calibration's zero point is what a clear sky reads: a star at it shows a transparency of 1."""
+        color, catalog, zeroPoint = 1.2, 16.0, 0.15
+        clear = catalog + agMetrics.agColorTerm(color) + zeroPoint
+        self.assertAlmostEqual(
+            agMetrics.magnitudesToTransparency(clear, catalog, color, zeroPoint=zeroPoint), 1.0, places=12
+        )
+        # One zero point per star, as for stars on two cameras.
+        perStar = agMetrics.magnitudesToTransparency(
+            [clear, clear + 0.1], catalog, color, zeroPoint=[zeroPoint, zeroPoint + 0.1]
+        )
+        np.testing.assert_allclose(perStar, [1.0, 1.0])
+        # Negative controls: without it the same star reads low; with the other sign, lower still.
+        self.assertAlmostEqual(agMetrics.magnitudesToTransparency(clear, catalog, color), 10 ** (-0.4 * 0.15))
+        self.assertLess(agMetrics.magnitudesToTransparency(clear, catalog, color, zeroPoint=-zeroPoint), 0.8)
+
+    def testSummary(self):
+        """The median is over the brighter stars with a transparency between 0 and 2."""
+        magnitude = np.array([12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0])
+        transparency = np.array([0.90, 0.80, 0.70, 5.0, np.nan, 0.60, 0.10, 0.10])
+        summary = agMetrics.summarizeTransparency(transparency, magnitude)
+        # The 0.75 quantile of the magnitudes is 17.25: the two faintest stars are out, as are 5.0 and NaN.
+        self.assertEqual(summary.nStars, 4)
+        self.assertAlmostEqual(summary.transparency, 0.75)
+        # Negative control: with every star, the faint ones pull the median down.
+        everyStar = agMetrics.summarizeTransparency(transparency, magnitude, brightFraction=1.0)
+        self.assertEqual(everyStar.nStars, 6)
+        self.assertAlmostEqual(everyStar.transparency, 0.65)
+        # Negative control: the stars are chosen by magnitude, not by transparency.
+        shuffled = agMetrics.summarizeTransparency(transparency, magnitude[::-1])
+        self.assertNotAlmostEqual(shuffled.transparency, summary.transparency)
+
+    def testSummaryWithMagnitudesThatAreNotFinite(self):
+        """A star without a finite magnitude is left out; it does not cost the others their quantile."""
+        summary = agMetrics.summarizeTransparency([0.9, 0.8, 0.7, 0.6], [16.0, 16.1, np.inf, np.nan])
+        # The brighter three quarters of the two stars with a magnitude is one star.
+        self.assertEqual(summary.nStars, 1)
+        self.assertAlmostEqual(summary.transparency, 0.9)
+        # Negative control: all four with a magnitude, and three of them count.
+        allFinite = agMetrics.summarizeTransparency([0.9, 0.8, 0.7, 0.6], [16.0, 16.1, 16.2, 16.3])
+        self.assertEqual(allFinite.nStars, 3)
+
+    def testSummaryWithoutStars(self):
+        for transparency, magnitude in (([], []), ([np.nan, 3.0], [12.0, 13.0]), ([0.9], [np.nan])):
+            summary = agMetrics.summarizeTransparency(transparency, magnitude)
+            self.assertTrue(np.isnan(summary.transparency))
+            self.assertEqual(summary.nStars, 0)
+
+
 class PlateScaleTestCase(unittest.TestCase):
     def modelScales(self, flag):
         """Radial and tangential plate scale (microns/arcsec) of the optical model at the AG radius."""
