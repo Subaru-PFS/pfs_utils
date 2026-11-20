@@ -362,10 +362,11 @@ def summarizeTransparency(transparency, estimatedMagnitude, *, brightFraction=0.
     """
     transparency = np.asarray(transparency, dtype=float)
     magnitude = np.asarray(estimatedMagnitude, dtype=float)
-    if not np.isfinite(magnitude).any():
+    finite = np.isfinite(magnitude)
+    if not finite.any():
         return AgTransparency(transparency=float("nan"), nStars=0)
     with np.errstate(invalid="ignore"):
-        use = magnitude <= np.nanquantile(magnitude, brightFraction)
+        use = magnitude <= np.quantile(magnitude[finite], brightFraction)
         use = use & (transparency > _TRANSPARENCY_RANGE[0]) & (transparency < _TRANSPARENCY_RANGE[1])
     if not use.any():
         return AgTransparency(transparency=float("nan"), nStars=0)

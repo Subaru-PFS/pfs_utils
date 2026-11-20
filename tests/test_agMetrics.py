@@ -287,6 +287,16 @@ class TransparencyTestCase(unittest.TestCase):
         shuffled = agMetrics.summarizeTransparency(transparency, magnitude[::-1])
         self.assertNotAlmostEqual(shuffled.transparency, summary.transparency)
 
+    def testSummaryWithMagnitudesThatAreNotFinite(self):
+        """A star without a finite magnitude is left out; it does not cost the others their quantile."""
+        summary = agMetrics.summarizeTransparency([0.9, 0.8, 0.7, 0.6], [16.0, 16.1, np.inf, np.nan])
+        # The brighter three quarters of the two stars with a magnitude is one star.
+        self.assertEqual(summary.nStars, 1)
+        self.assertAlmostEqual(summary.transparency, 0.9)
+        # Negative control: all four with a magnitude, and three of them count.
+        allFinite = agMetrics.summarizeTransparency([0.9, 0.8, 0.7, 0.6], [16.0, 16.1, 16.2, 16.3])
+        self.assertEqual(allFinite.nStars, 3)
+
     def testSummaryWithoutStars(self):
         for transparency, magnitude in (([], []), ([np.nan, 3.0], [12.0, 13.0]), ([0.9], [np.nan])):
             summary = agMetrics.summarizeTransparency(transparency, magnitude)
