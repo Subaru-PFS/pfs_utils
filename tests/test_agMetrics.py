@@ -11,12 +11,14 @@ AG_RADIUS_MM = 241.0
 """Radius of the AG cameras on the focal plane."""
 
 
-def storedMoments(image, x, y):
-    """Second moments of an image as ics_agccActor stores them, as (mxx, myy, mxy).
+def adaptiveMoments(image, x, y):
+    """Second moments of an image by ics_agccActor's method, as (stored, halved).
 
     Its ``windowedFWHM`` weights the image by a Gaussian; each pass measures the weighted
     moments, takes the weight out of them and uses the result as the next weight, until the
-    weight stops changing. It returns the weighted moments of the last pass, not the weight's.
+    weight stops changing. ``stored`` is (mxx, myy, mxy) of that weight, which agcc stores:
+    the spot's variance. ``halved`` is the weighted moments of the last pass, which a bug made
+    it store instead: half the variance.
     """
     weight = np.diag([6.0, 6.0])
     for _ in range(200):
@@ -31,7 +33,17 @@ def storedMoments(image, x, y):
         weight = newWeight
     else:
         raise AssertionError("The weight did not converge")
-    return mxx, myy, mxy
+    return (weight[0, 0], weight[1, 1], weight[0, 1]), (mxx, myy, mxy)
+
+
+def storedMoments(image, x, y):
+    """The moments ics_agccActor stores for an image: its variance. See `adaptiveMoments`."""
+    return adaptiveMoments(image, x, y)[0]
+
+
+def halvedMoments(image, x, y):
+    """The moments ics_agccActor stored for an image while a bug halved them. See `adaptiveMoments`."""
+    return adaptiveMoments(image, x, y)[1]
 
 
 def grid(half=40, oversample=5):
@@ -50,30 +62,41 @@ def gaussianSpot(covariance):
 
 
 def moffatFwhmPerStoredRadius(beta, fwhm=5.0):
-    """The FWHM of a round Moffat spot over the radius of the moments stored for it."""
+    """The FWHM of a round Moffat spot over the radius of the halved moments once stored for it."""
     x, y = grid()
     alpha = fwhm / (2 * np.sqrt(2 ** (1 / beta) - 1))
-    mxx, myy, _ = storedMoments((1 + (x * x + y * y) / alpha**2) ** (-beta), x, y)
+    mxx, myy, _ = halvedMoments((1 + (x * x + y * y) / alpha**2) ** (-beta), x, y)
     return fwhm / np.sqrt(0.5 * (mxx + myy))
 
 
 class MomentsTestCase(unittest.TestCase):
     def testGaussianSigma(self):
         """A Gaussian spot's stored moments give back its sigma."""
+        halvedFactor = agMetrics.VARIANCE_PER_AGC_MOMENT
         for sigma in (1.5, 2.0, 3.5):
-            mxx, myy, mxy = storedMoments(*gaussianSpot(np.diag([sigma**2, sigma**2])))
+            spot = gaussianSpot(np.diag([sigma**2, sigma**2]))
+            mxx, myy, mxy = storedMoments(*spot)
+            halved = halvedMoments(*spot)
+            fwhm = agMetrics.AG_FWHM_PER_SIGMA * sigma * agMetrics.AG_ARCSEC_PER_PIX
             for radius in ("trace", "determinant"):
                 self.assertAlmostEqual(
                     agMetrics.momentsToSigma(mxx, myy, mxy, radius=radius), sigma, places=6
                 )
+                self.assertAlmostEqual(agMetrics.momentsToFwhm(mxx, myy, mxy, radius=radius), fwhm, places=6)
+                # The moments a bug in agcc halved take the correction.
                 self.assertAlmostEqual(
-                    agMetrics.momentsToFwhm(mxx, myy, mxy, radius=radius),
-                    agMetrics.AG_FWHM_PER_SIGMA * sigma * agMetrics.AG_ARCSEC_PER_PIX,
+                    agMetrics.momentsToSigma(*halved, radius=radius, variancePerMoment=halvedFactor),
+                    sigma,
                     places=6,
                 )
-            # Negative control: the stored moment is not the variance; read as one, the sigma
+                self.assertAlmostEqual(
+                    agMetrics.momentsToFwhm(*halved, radius=radius, variancePerMoment=halvedFactor),
+                    fwhm,
+                    places=6,
+                )
+            # Negative control: a halved moment is not the variance; read as one, the sigma
             # comes out sqrt(2) too small.
-            naive = np.sqrt(0.5 * (mxx + myy))
+            naive = agMetrics.momentsToSigma(*halved)
             self.assertFalse(np.allclose(naive, sigma, rtol=0.25))
             self.assertAlmostEqual(sigma / naive, np.sqrt(2), places=6)
 
@@ -119,24 +142,55 @@ class MomentsTestCase(unittest.TestCase):
         myy = np.array([3.0, 1.5, 0.0])
         radius = np.sqrt(0.5 * (mxx + myy))
         np.testing.assert_allclose(agMetrics.storedRadiusToFwhm(radius), agMetrics.momentsToFwhm(mxx, myy))
-        self.assertAlmostEqual(agMetrics.storedRadiusToFwhm(2.0), 2.9 * 2.0 * 13 / 94.7, places=3)
+        self.assertAlmostEqual(agMetrics.storedRadiusToFwhm(2.0), 2.05 * 2.0 * 13 / 94.7, places=6)
         self.assertTrue(np.isnan(agMetrics.storedRadiusToFwhm(-1.0)))
-        # Negative control: the stored radius is not the sigma; as a Gaussian's sigma it gives
-        # a FWHM 19% smaller.
+        # A radius of the moments a bug in agcc halved takes the correction: 2.9 times it, per spot if asked.
+        halvedFactor = agMetrics.VARIANCE_PER_AGC_MOMENT
+        np.testing.assert_allclose(
+            agMetrics.storedRadiusToFwhm(radius, variancePerMoment=halvedFactor),
+            agMetrics.momentsToFwhm(mxx, myy, variancePerMoment=halvedFactor),
+        )
+        self.assertAlmostEqual(
+            agMetrics.storedRadiusToFwhm(2.0, variancePerMoment=halvedFactor), 2.9 * 2.0 * 13 / 94.7, places=3
+        )
+        np.testing.assert_allclose(
+            agMetrics.storedRadiusToFwhm([2.0, 2.0], variancePerMoment=[halvedFactor, 1]),
+            [
+                agMetrics.storedRadiusToFwhm(2.0, variancePerMoment=halvedFactor),
+                agMetrics.storedRadiusToFwhm(2.0),
+            ],
+        )
+        # Negative controls: the correction on a radius of the variance gives a FWHM sqrt(2) too
+        # large; a Gaussian of that sigma has a FWHM 15% larger than the spots'.
+        corrected = agMetrics.storedRadiusToFwhm(2.0, variancePerMoment=halvedFactor)
+        self.assertAlmostEqual(corrected / agMetrics.storedRadiusToFwhm(2.0), np.sqrt(2), places=6)
         gaussian = 2 * np.sqrt(2 * np.log(2)) * 2.0 * agMetrics.AG_ARCSEC_PER_PIX
-        self.assertLess(gaussian / agMetrics.storedRadiusToFwhm(2.0), 0.85)
+        self.assertGreater(gaussian / agMetrics.storedRadiusToFwhm(2.0), 1.10)
 
     def testArraysAndBadMoments(self):
         """Arrays in, arrays out; moments that are not a spot's give NaN."""
         mxx = np.array([2.0, -1.0, 2.0, 2.0])
         myy = np.array([2.0, 2.0, -0.5, 2.0])
         mxy = np.array([0.0, 0.0, 0.0, 3.0])
-        np.testing.assert_allclose(agMetrics.momentsToSigma(mxx, myy), [2.0, np.nan, np.nan, 2.0])
+        sigma = np.sqrt(2.0)
+        np.testing.assert_allclose(agMetrics.momentsToSigma(mxx, myy), [sigma, np.nan, np.nan, sigma])
         np.testing.assert_allclose(
-            agMetrics.momentsToSigma(mxx, myy, mxy, radius="determinant"), [2.0, np.nan, np.nan, np.nan]
+            agMetrics.momentsToSigma(mxx, myy, mxy, radius="determinant"), [sigma, np.nan, np.nan, np.nan]
         )
         self.assertEqual(agMetrics.momentsToFwhm(mxx, myy).shape, (4,))
         self.assertEqual(np.ndim(agMetrics.momentsToFwhm(2.0, 2.0)), 0)
+        # One factor per spot, through to the FWHM.
+        perSpot = [2, 1]
+        np.testing.assert_allclose(
+            agMetrics.momentsToSigma([1.0, 2.0], [1.0, 2.0], variancePerMoment=perSpot), [sigma, sigma]
+        )
+        np.testing.assert_allclose(
+            agMetrics.momentsToFwhm([1.0, 2.0], [1.0, 2.0], variancePerMoment=perSpot),
+            np.full(2, agMetrics.momentsToFwhm(2.0, 2.0)),
+        )
+        # Scalars in, NumPy scalars out.
+        for value in (agMetrics.momentsToSigma(2.0, 2.0), agMetrics.storedRadiusToFwhm(2.0)):
+            self.assertIsInstance(value, np.float64)
         # Zero moments are a spot of no size, not a bad one.
         self.assertEqual(agMetrics.momentsToSigma(0.0, 0.0), 0.0)
         self.assertEqual(agMetrics.momentsToSigma(0.0, 0.0, 0.0, radius="determinant"), 0.0)
@@ -144,6 +198,19 @@ class MomentsTestCase(unittest.TestCase):
             agMetrics.momentsToSigma(mxx, myy, radius="determinant")
         with self.assertRaises(ValueError):
             agMetrics.momentsToSigma(mxx, myy, mxy, radius="isophotal")
+
+
+class FocusCalibrationTestCase(unittest.TestCase):
+    def testCalibration(self):
+        """The focus calibration is for moments that are the variance."""
+        self.assertEqual(agMetrics.AG_FOCUS_MM_PER_PIX2, 0.0043)
+        self.assertEqual(agMetrics.AG_FOCUS_OFFSET_MM, 0.026)
+        # It was calibrated as 0.0086 on halved moments: the same spots give the same focus error.
+        halved = np.array([4.5, 7.0])  # the difference between the halves of a detector, pix^2
+        variance = agMetrics.VARIANCE_PER_AGC_MOMENT * halved
+        np.testing.assert_allclose(agMetrics.AG_FOCUS_MM_PER_PIX2 * variance, 0.0086 * halved)
+        # Negative control: the old slope on the variance doubles it.
+        self.assertFalse(np.allclose(0.0086 * variance, 0.0086 * halved))
 
 
 class PlateScaleTestCase(unittest.TestCase):
