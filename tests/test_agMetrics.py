@@ -200,6 +200,19 @@ class MomentsTestCase(unittest.TestCase):
             agMetrics.momentsToSigma(mxx, myy, mxy, radius="isophotal")
 
 
+class FocusCalibrationTestCase(unittest.TestCase):
+    def testCalibration(self):
+        """The focus calibration is for moments that are the variance."""
+        self.assertEqual(agMetrics.AG_FOCUS_MM_PER_PIX2, 0.0043)
+        self.assertEqual(agMetrics.AG_FOCUS_OFFSET_MM, 0.026)
+        # It was calibrated as 0.0086 on halved moments: the same spots give the same focus error.
+        halved = np.array([4.5, 7.0])  # the difference between the halves of a detector, pix^2
+        variance = agMetrics.VARIANCE_PER_AGC_MOMENT * halved
+        np.testing.assert_allclose(agMetrics.AG_FOCUS_MM_PER_PIX2 * variance, 0.0086 * halved)
+        # Negative control: the old slope on the variance doubles it.
+        self.assertFalse(np.allclose(0.0086 * variance, 0.0086 * halved))
+
+
 class PlateScaleTestCase(unittest.TestCase):
     def modelScales(self, flag):
         """Radial and tangential plate scale (microns/arcsec) of the optical model at the AG radius."""

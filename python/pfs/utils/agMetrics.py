@@ -44,6 +44,8 @@ from pfs.utils.datamodel.ag import SourceDetectionFlags
 
 __all__ = [
     "AG_ARCSEC_PER_PIX",
+    "AG_FOCUS_MM_PER_PIX2",
+    "AG_FOCUS_OFFSET_MM",
     "AG_FWHM_PER_SIGMA",
     "AG_PIXEL_SIZE_UM",
     "AG_PLATE_SCALE_UM_PER_ARCSEC",
@@ -72,6 +74,17 @@ AG_FWHM_PER_SIGMA = 2.05
 #: ``agc_data``, for the exposures whose ``agc_exposure.version_actor`` is ``"git"``, which
 #: hold half the variance (see the module docstring). Moments stored since are the variance.
 VARIANCE_PER_AGC_MOMENT = 2.0
+
+#: The slope of ics_agActor's focus calibration, mm per pix^2. A camera's focus error (mm) is
+#: this times the difference between the two halves of its detector in the spots' second
+#: moments, less `AG_FOCUS_OFFSET_MM`: the median of mxx + myy over the left half minus that
+#: over the right half (`SourceDetectionFlags.RIGHT`, where the glass was removed). The moments
+#: are the variance; on the moments a bug in ics_agccActor halved (`VARIANCE_PER_AGC_MOMENT`),
+#: on which it was calibrated, the slope was twice this.
+AG_FOCUS_MM_PER_PIX2 = 0.0043
+
+#: The offset of that calibration, mm: subtracted from the slope term.
+AG_FOCUS_OFFSET_MM = 0.026
 
 _RADII = ("trace", "determinant")
 
