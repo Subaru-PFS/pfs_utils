@@ -673,9 +673,6 @@ class Coeff:
 
         factor = -1.
 
-        # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
-        # simply scale to 1 at EL=30, and 0 at EL=90
-        factor_el = (1-np.cos(np.deg2rad(za)))/(1-np.cos(np.deg2rad(60.)))
 
         # Coefficient of the distortion pattern as 7-order polynomial.
         # Here, displacement between EL=30 and EL=90 is used
@@ -730,14 +727,33 @@ class Coeff:
                                       1.80603387e-31,  2.51597632e-32]])
         """
         # 2026.11 3-order
-        coeffs_matrix_x = np.array([[-8.64876034e-04,  1.91723674e-06,  6.47863379e-08, -9.01172192e-11],
-                            [ 2.19384955e-05,  2.98538773e-06, -6.66810075e-10, -3.60866817e-11],
-                            [ 2.66839966e-08,  1.68356914e-10, -5.74878705e-12,  2.60791773e-14],
-                            [ 9.21260407e-11, -1.52866960e-11,  1.00452418e-13,  5.94402406e-16]])
-        coeffs_matrix_y = np.array([[-3.41974219e-02,  1.84498397e-05,  2.91919428e-06,  6.48171735e-10],
-                            [-8.05798910e-06, -1.07550270e-06,  4.51475408e-10,  3.30567983e-11],
-                            [ 7.68609659e-07,  3.38944109e-10, -2.62787293e-11,  2.96756877e-14],
-                            [ 4.58774771e-10,  3.59087047e-11, -2.55778118e-14, -7.74530315e-16]])
+        # mcs-pfi
+        if self.mode=="mcs_pfi":
+            # The scale of displacement, by setting 0 at EL=90, and ~1 at EL=30
+            # simply scale to 1 at EL=30, and 0 at EL=90
+            factor_el = (1-np.cos(np.deg2rad(za)))/(1-np.cos(np.deg2rad(60.)))
+            coeffs_matrix_x = np.array([[-8.64876034e-04,  1.91723674e-06,  6.47863379e-08, -9.01172192e-11],
+                                        [ 2.19384955e-05,  2.98538773e-06, -6.66810075e-10, -3.60866817e-11],
+                                        [ 2.66839966e-08,  1.68356914e-10, -5.74878705e-12,  2.60791773e-14],
+                                        [ 9.21260407e-11, -1.52866960e-11,  1.00452418e-13,  5.94402406e-16]])
+            coeffs_matrix_y = np.array([[-3.41974219e-02,  1.84498397e-05,  2.91919428e-06,  6.48171735e-10],
+                                        [-8.05798910e-06, -1.07550270e-06,  4.51475408e-10,  3.30567983e-11],
+                                        [ 7.68609659e-07,  3.38944109e-10, -2.62787293e-11,  2.96756877e-14],
+                                        [ 4.58774771e-10,  3.59087047e-11, -2.55778118e-14, -7.74530315e-16]])
+        elif self.mode=="sky_pfi":
+            factor_el = 1
+            coeffs_matrix_x = np.array([[ 3.74950774e-03, -4.67436394e-07, -2.08636960e-07,  1.29169424e-10],
+                                        [-5.16948865e-05, -8.30695355e-07,  1.59209640e-09,  1.19877033e-11],
+                                        [-1.87965513e-07,  6.24563407e-10,  4.74384158e-12, -5.62195344e-14],
+                                        [ 3.92823465e-09,  1.49149468e-11,  8.72839956e-14, -1.27936105e-15]])
+            coeffs_matrix_y = np.array([[ 9.66422835e-03, -9.14613495e-05, -9.67843725e-07,  2.00969180e-09],
+                                        [ 1.66941426e-06, -2.69853786e-10,  2.05071690e-10,  5.34687174e-12],
+                                        [ 1.94794501e-08,  1.36114918e-09, -6.29623722e-12,  1.36717633e-13],
+                                        [ 2.25108440e-10, -1.99575165e-12, -7.33349934e-14, -1.23828085e-15]])
+        else:
+            coeffs_matrix_x = 0.
+            coeffs_matrix_y = 0.
+
 
         extra_distortion_x = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_x)
         extra_distortion_y = np.polynomial.polynomial.polyval2d(x, y, coeffs_matrix_y)
@@ -747,26 +763,27 @@ class Coeff:
         extra_distortion_x = extra_distortion_x*factor_el*factor
         extra_distortion_y = extra_distortion_y*factor_el*factor
 
-        # residual: slope
-        coeffs2_matrix_x, coeffs2_matrix_y = self.extra_slope_coeff(za)
-        extra_distortion2_x = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_x)
-        extra_distortion2_y = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_y)
+        if self.mode=="mcs_pfi":
+            # residual: slope
+            coeffs2_matrix_x, coeffs2_matrix_y = self.extra_slope_coeff(za)
+            extra_distortion2_x = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_x)
+            extra_distortion2_y = np.polynomial.polynomial.polyval2d(x, y, coeffs2_matrix_y)
 
-        extra_distortion_x = extra_distortion_x - extra_distortion2_x*0
-        extra_distortion_y = extra_distortion_y - extra_distortion2_y*0
+            extra_distortion_x = extra_distortion_x - extra_distortion2_x*0
+            extra_distortion_y = extra_distortion_y - extra_distortion2_y*0
 
-        # Median of shift
-        #c_shiftx = np.array([1.08352478e-08,  4.05903700e-08, -6.32151149e-05, 1.76593801e-03, 0.])
-        #c_shifty = np.array([4.39128406e-07, -5.35996061e-05,  1.58049961e-03,  2.12912506e-03, 0.])
-        c_shiftx = np.array([3.79884335e-06, -2.30644058e-03, 3.41109380e-02])
-        c_shifty = np.array([-0.0004211, 0.02007317 , -0.00750677])
+            # Median of shift
+            #c_shiftx = np.array([1.08352478e-08,  4.05903700e-08, -6.32151149e-05, 1.76593801e-03, 0.])
+            #c_shifty = np.array([4.39128406e-07, -5.35996061e-05,  1.58049961e-03,  2.12912506e-03, 0.])
+            c_shiftx = np.array([3.79884335e-06, -2.30644058e-03, 3.41109380e-02])
+            c_shifty = np.array([-0.0004211, 0.02007317 , -0.00750677])
         
-        extra_shift_x = np.poly1d(c_shiftx)(za)
-        extra_shift_y = np.poly1d(c_shifty)(za)
+            extra_shift_x = np.poly1d(c_shiftx)(za)
+            extra_shift_y = np.poly1d(c_shifty)(za)
         
                                                          
-        extra_distortion_x = extra_distortion_x + extra_shift_x
-        extra_distortion_y = extra_distortion_y + extra_shift_y
+            extra_distortion_x = extra_distortion_x + extra_shift_x
+            extra_distortion_y = extra_distortion_y + extra_shift_y
 
         # to make model
         #extra_distortion_x = extra_distortion_x*0.
