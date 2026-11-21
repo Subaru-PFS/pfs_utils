@@ -317,15 +317,17 @@ def calibratedSeeing(fwhm, altitude, *, psf=AG_SEEING_PSF_FWHM, airmassExponent=
     Returns
     -------
     seeing : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
-        The atmospheric seeing (arcsec FWHM at zenith). Zero where the image size is at or below
-        the PSF (seeing too good for the AG to measure); NaN where an input is NaN or the altitude
-        is not above the horizon.
+        The atmospheric seeing (arcsec FWHM at zenith). NaN where the image size is at or below
+        the PSF (seeing too good for the AG to resolve), where an input is NaN, or where the
+        altitude is not above the horizon; so, like `summarizeFwhm`'s NaN, it drops out of a
+        downstream median rather than biasing it.
     """
     fwhm = np.asarray(fwhm, dtype=float)
     sinAlt = np.sin(np.radians(np.asarray(altitude, dtype=float)))
     airmass = 1.0 / np.where(sinAlt > 0, sinAlt, np.nan)  # NaN below the horizon, no divide by zero
     zenith = fwhm / airmass ** airmassExponent
-    return np.sqrt(np.clip(zenith**2 - np.asarray(psf, dtype=float) ** 2, 0.0, None))[()]
+    excess = zenith**2 - np.asarray(psf, dtype=float) ** 2  # NaN (not 0) at or below the PSF
+    return np.sqrt(np.where(excess > 0, excess, np.nan))[()]
 
 
 def agColorTerm(color):

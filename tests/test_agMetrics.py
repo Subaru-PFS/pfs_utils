@@ -386,12 +386,12 @@ class SeeingCalibrationTestCase(unittest.TestCase):
         self.assertGreater(fwhm, zenithOnly + 0.03)  # airmass not removed -> larger still
 
     def testFloorAndArray(self):
-        """At or below the PSF the seeing is zero, not negative or NaN; inputs broadcast."""
+        """At or below the PSF the seeing is NaN (unmeasurable, dropped downstream); inputs broadcast."""
         psf = agMetrics.AG_SEEING_PSF_FWHM
-        self.assertEqual(float(agMetrics.calibratedSeeing(psf, 90.0)), 0.0)  # at zenith, image size = PSF
-        self.assertEqual(float(agMetrics.calibratedSeeing(psf * 0.5, 90.0)), 0.0)  # below the PSF
+        self.assertTrue(np.isnan(float(agMetrics.calibratedSeeing(psf, 90.0))))  # at zenith, image size = PSF
+        self.assertTrue(np.isnan(float(agMetrics.calibratedSeeing(psf * 0.5, 90.0))))  # below the PSF
         out = agMetrics.calibratedSeeing([psf, 1.0, np.nan], [90.0, 90.0, 90.0])
-        self.assertEqual(out[0], 0.0)
+        self.assertTrue(np.isnan(out[0]))
         self.assertAlmostEqual(out[1], np.sqrt(1.0 - psf**2))
         self.assertTrue(np.isnan(out[2]))
 
@@ -399,6 +399,15 @@ class SeeingCalibrationTestCase(unittest.TestCase):
         """A non-positive altitude gives NaN, not a division error."""
         self.assertTrue(np.isnan(float(agMetrics.calibratedSeeing(0.8, 0.0))))
         self.assertTrue(np.isnan(float(agMetrics.calibratedSeeing(0.8, -5.0))))
+
+    def testOverrides(self):
+        """The psf and airmass exponent are overridable, the knobs a later refit uses."""
+        # Exponent 0 removes the airmass correction; psf 0 removes the quadrature term.
+        self.assertAlmostEqual(float(agMetrics.calibratedSeeing(0.9, 30.0, psf=0.0, airmassExponent=0.0)), 0.9)
+        base = float(agMetrics.calibratedSeeing(0.9, 90.0, psf=0.2))
+        self.assertAlmostEqual(base, np.sqrt(0.9**2 - 0.2**2))
+        # Negative control: a larger PSF takes more out, so the seeing is smaller.
+        self.assertLess(float(agMetrics.calibratedSeeing(0.9, 90.0, psf=0.4)), base)
 
 
 if __name__ == "__main__":
