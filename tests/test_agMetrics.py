@@ -370,5 +370,36 @@ class SummarizeTestCase(unittest.TestCase):
         self.assertEqual((size.nLeft, size.nRight), (1, 0))
 
 
+class SeeingCalibrationTestCase(unittest.TestCase):
+    """`calibratedSeeing`: airmass to zenith, then the instrument PSF out in quadrature."""
+
+    def testRoundTrip(self):
+        """An image size built from a known seeing and airmass comes back as that seeing."""
+        psf, exponent = agMetrics.AG_SEEING_PSF_FWHM, agMetrics.AG_SEEING_AIRMASS_EXPONENT
+        seeing, altitude = 0.7, 40.0
+        airmass = 1.0 / np.sin(np.radians(altitude))
+        fwhm = np.sqrt(seeing**2 + psf**2) * airmass**exponent
+        self.assertAlmostEqual(float(agMetrics.calibratedSeeing(fwhm, altitude)), seeing)
+        # Negative control: skipping the quadrature PSF, or the airmass correction, overestimates.
+        zenithOnly = fwhm / airmass**exponent
+        self.assertGreater(zenithOnly, seeing + 0.03)  # PSF not removed -> too large
+        self.assertGreater(fwhm, zenithOnly + 0.03)  # airmass not removed -> larger still
+
+    def testFloorAndArray(self):
+        """At or below the PSF the seeing is zero, not negative or NaN; inputs broadcast."""
+        psf = agMetrics.AG_SEEING_PSF_FWHM
+        self.assertEqual(float(agMetrics.calibratedSeeing(psf, 90.0)), 0.0)  # at zenith, image size = PSF
+        self.assertEqual(float(agMetrics.calibratedSeeing(psf * 0.5, 90.0)), 0.0)  # below the PSF
+        out = agMetrics.calibratedSeeing([psf, 1.0, np.nan], [90.0, 90.0, 90.0])
+        self.assertEqual(out[0], 0.0)
+        self.assertAlmostEqual(out[1], np.sqrt(1.0 - psf**2))
+        self.assertTrue(np.isnan(out[2]))
+
+    def testBelowHorizon(self):
+        """A non-positive altitude gives NaN, not a division error."""
+        self.assertTrue(np.isnan(float(agMetrics.calibratedSeeing(0.8, 0.0))))
+        self.assertTrue(np.isnan(float(agMetrics.calibratedSeeing(0.8, -5.0))))
+
+
 if __name__ == "__main__":
     unittest.main()

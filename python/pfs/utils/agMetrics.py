@@ -39,6 +39,18 @@ for both detector halves; the frames' medians run from 2.7 to 3.0. The factor us
 which is 2.05 sigma where a Gaussian's FWHM is 2.355 sigma. It is a measurement, good to about 3%
 from frame to frame, not a property of a profile.
 
+Seeing
+------
+`calibratedSeeing` turns an image size into the atmospheric seeing, the FWHM at zenith. An AG
+image size is broader than the seeing: it grows with airmass and carries the instrument's own
+PSF. So it is corrected to zenith by ``airmass ** AG_SEEING_AIRMASS_EXPONENT``, and the PSF
+`AG_SEEING_PSF_FWHM` is taken out in quadrature. Both are from seven clear nights against the
+CFHT/MKWC DIMM, the Maunakea seeing standard: the corrected median tracks DIMM one to one, where
+the raw image size reads about 16% high and floors near 0.5 arcsec in the best seeing. There is
+about 15% scatter per exposure, so it is a nightly conditions proxy, not a seeing monitor. The
+PSF was fit on exposures before ics_agccActor 2.4.0; confirm it on 2.4.0 before trusting the
+seeing below about 0.5 arcsec.
+
 Transparency
 ------------
 The transparency a guide star shows is its measured flux over the flux its catalogue
@@ -106,6 +118,16 @@ AG_ARCSEC_PER_PIX = AG_PIXEL_SIZE_UM / AG_PLATE_SCALE_UM_PER_ARCSEC
 
 #: The FWHM of an AG spot over its sigma, measured (see the module docstring); 2.355 for a Gaussian.
 AG_FWHM_PER_SIGMA = 2.05
+
+#: The exponent of the airmass scaling of seeing: FWHM grows as airmass to this power off zenith
+#: (the Kolmogorov value). `calibratedSeeing` uses it to correct an AG image size to zenith.
+AG_SEEING_AIRMASS_EXPONENT = 0.6
+
+#: The AG instrument PSF (arcsec FWHM) added to the atmospheric seeing in quadrature, so the AG
+#: image size floors here in excellent seeing. Calibrated against CFHT/MKWC DIMM over seven clear
+#: nights, on the trace-radius FWHM `momentsToFwhm` gives by default. Provisional: fit on
+#: ics_agccActor exposures before agcc 2.4.0; confirm on 2.4.0 before relying on it below ~0.5 arcsec.
+AG_SEEING_PSF_FWHM = 0.31
 
 #: The correction for an ics_agccActor bug: a spot's variance over its second moment in
 #: ``agc_data``, for the exposures whose ``agc_exposure.version_actor`` is ``"git"``, which
@@ -269,6 +291,41 @@ def summarizeFwhm(fwhm, flags):
         nLeft=int((good & ~right).sum()),
         nRight=int((good & right).sum()),
     )
+
+
+def calibratedSeeing(fwhm, altitude, *, psf=AG_SEEING_PSF_FWHM, airmassExponent=AG_SEEING_AIRMASS_EXPONENT):
+    """Return the atmospheric seeing (arcsec FWHM at zenith) from an AG image size.
+
+    The AG image size (`momentsToFwhm`, `summarizeFwhm`) is the spots' FWHM at the field's
+    airmass, broadened by the instrument. This corrects it to zenith by ``airmass ** exponent``,
+    then removes the instrument PSF in quadrature: ``sqrt((fwhm / airmass ** exponent) ** 2 -
+    psf ** 2)``, with ``airmass = 1 / sin(altitude)``. Over seven clear nights it reproduces the
+    CFHT/MKWC DIMM seeing in the median (per-exposure scatter about 15%); it is a nightly
+    conditions proxy, not a per-exposure seeing monitor.
+
+    Parameters
+    ----------
+    fwhm : array-like of `float`
+        The AG image size (arcsec), such as `AgImageSize.fwhm`, at the field's airmass.
+    altitude : array-like of `float`
+        The telescope altitude (degrees), ``agc_exposure.altitude``.
+    psf : `float`
+        The instrument PSF removed in quadrature (arcsec FWHM); `AG_SEEING_PSF_FWHM`.
+    airmassExponent : `float`
+        The exponent of the airmass scaling; `AG_SEEING_AIRMASS_EXPONENT`.
+
+    Returns
+    -------
+    seeing : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
+        The atmospheric seeing (arcsec FWHM at zenith). Zero where the image size is at or below
+        the PSF (seeing too good for the AG to measure); NaN where an input is NaN or the altitude
+        is not above the horizon.
+    """
+    fwhm = np.asarray(fwhm, dtype=float)
+    sinAlt = np.sin(np.radians(np.asarray(altitude, dtype=float)))
+    airmass = 1.0 / np.where(sinAlt > 0, sinAlt, np.nan)  # NaN below the horizon, no divide by zero
+    zenith = fwhm / airmass ** airmassExponent
+    return np.sqrt(np.clip(zenith**2 - np.asarray(psf, dtype=float) ** 2, 0.0, None))[()]
 
 
 def agColorTerm(color):
