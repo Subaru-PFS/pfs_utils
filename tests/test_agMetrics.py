@@ -240,7 +240,7 @@ class TransparencyTestCase(unittest.TestCase):
     def testCameraZeroPoint(self):
         """Each spot gets its camera's zero point, by agc_camera_id and detector half."""
         right = int(SourceDetectionFlags.RIGHT)
-        # AG3 (id 2): the left half, with the glass, is 0.19 mag faint; the right half is not.
+        # AG3 (id 2): its half without RIGHT is 0.19 mag faint; its RIGHT half is not.
         self.assertAlmostEqual(agMetrics.agCameraZeroPoint(2, 0), 0.190)
         self.assertAlmostEqual(agMetrics.agCameraZeroPoint(2, right), -0.009)
         np.testing.assert_allclose(
@@ -253,7 +253,7 @@ class TransparencyTestCase(unittest.TestCase):
         self.assertEqual(agMetrics.agCameraZeroPoint(2, 0x10), agMetrics.agCameraZeroPoint(2, 0))
         working = [z for i, z in enumerate(agMetrics.AG_CAMERA_ZERO_POINTS_MAG) if i != 1]
         self.assertAlmostEqual(float(np.mean(working)), 0.0, places=2)
-        # A star on AG3's glass half that reads 0.19 mag faint shows a clear sky with the zero point.
+        # A star on AG3 without RIGHT that reads 0.19 mag faint shows a clear sky with the zero point.
         color, catalog = 1.2, 16.0
         measured = catalog + agMetrics.agColorTerm(color) + 0.190
         zeroPoint = agMetrics.agCameraZeroPoint(2, 0)

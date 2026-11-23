@@ -160,7 +160,7 @@ AG_COLOR_TERM_COEFFS = (0.06010, -0.19370, 0.40108, 0.0)
 AG_COLOR_TERM_OFFSET_MAG = -0.050
 
 #: Each AG camera's zero point (mag), indexed by ``agc_camera_id`` (AG1 is 0) and then by the
-#: detector half: the left half, which has the glass, then the right (`SourceDetectionFlags.RIGHT`).
+#: detector half: not RIGHT, then RIGHT (`SourceDetectionFlags.RIGHT`).
 #: What a star there reads under a clear sky, less the colour term, about the mean of the cameras.
 #: AG2 did not work when they were fitted and has none.
 AG_CAMERA_ZERO_POINTS_MAG = (
@@ -378,7 +378,7 @@ def agCameraZeroPoint(cameraId, flags):
     cameraId : array-like of `int`
         ``agc_data.agc_camera_id`` (AG1 is 0).
     flags : array-like of `int`
-        ``agc_data.flags``: `SourceDetectionFlags.RIGHT` picks the right half.
+        ``agc_data.flags``: `SourceDetectionFlags.RIGHT` picks the RIGHT half's zero point.
 
     Returns
     -------
