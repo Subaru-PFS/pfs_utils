@@ -215,23 +215,54 @@ class FocusCalibrationTestCase(unittest.TestCase):
 
 class TransparencyTestCase(unittest.TestCase):
     def testColorTerm(self):
-        """The colour term is pfs_obsproc_qa_tools' polynomial in BP-RP, less 0.20 mag."""
-        for color in (0.0, 0.8, 2.2):
-            tool = (
-                -0.00578838 * color**5 + 0.02017098 * color**4 - 0.00800825 * color**3
-                + 0.06147291 * color**2 + 0.12580689 * color - 0.03511767 - 0.20
-            )  # fmt: skip
-            self.assertAlmostEqual(agMetrics.agColorTerm(color), tool, places=12)
-        self.assertAlmostEqual(agMetrics.agColorTerm(0.0), -0.23511767, places=12)
+        """The colour term is the 2.4.0 fit: a cubic in BP-RP, plus the clear-sky constant."""
+        for color in (0.6, 1.0, 2.2):
+            fit = 0.06010 * color**3 - 0.19370 * color**2 + 0.40108 * color - 0.050
+            self.assertAlmostEqual(agMetrics.agColorTerm(color), fit, places=12)
+        # The fitted values at BP-RP 1 and 2 (the colour polynomial about 1, plus the clear sky).
+        self.assertAlmostEqual(agMetrics.agColorTerm(1.0), 0.2174, places=3)
+        self.assertAlmostEqual(agMetrics.agColorTerm(2.0) - agMetrics.agColorTerm(1.0), 0.240, places=2)
+        # Negative control: pfs_obsproc_qa_tools' colour term, fitted to the isophotal magnitude, is
+        # 0.14 mag steeper from BP-RP 1 to 2.
+        toolCoeffs = (-0.00578838, 0.02017098, -0.00800825, 0.06147291, 0.12580689, -0.03511767)
+        toolSlope = np.diff(np.polyval(toolCoeffs, [1.0, 2.0]))[0]
+        self.assertGreater(toolSlope - (agMetrics.agColorTerm(2.0) - agMetrics.agColorTerm(1.0)), 0.1)
         # Outside the range it was fitted over there is no term; the limits themselves are outside.
-        for color in (-1.0, 3.0, 3.5, np.nan):
+        for color in (0.0, 0.5, 2.8, 3.5, np.nan):
             self.assertTrue(np.isnan(agMetrics.agColorTerm(color)))
         np.testing.assert_allclose(
-            agMetrics.agColorTerm([0.0, 5.0]), [agMetrics.agColorTerm(0.0), np.nan], equal_nan=True
+            agMetrics.agColorTerm([1.0, 5.0]), [agMetrics.agColorTerm(1.0), np.nan], equal_nan=True
         )
         # Negative control: the coefficients are highest power first; reversed they give another value.
-        reversed_ = np.polyval(agMetrics.AG_COLOR_TERM_COEFFS[::-1], 0.8) + agMetrics.AG_COLOR_TERM_OFFSET_MAG
-        self.assertFalse(np.isclose(agMetrics.agColorTerm(0.8), reversed_, atol=0.01))
+        reversed_ = np.polyval(agMetrics.AG_COLOR_TERM_COEFFS[::-1], 1.5) + agMetrics.AG_COLOR_TERM_OFFSET_MAG
+        self.assertFalse(np.isclose(agMetrics.agColorTerm(1.5), reversed_, atol=0.01))
+
+    def testCameraZeroPoint(self):
+        """Each spot gets its camera's zero point, by agc_camera_id and detector half."""
+        right = int(SourceDetectionFlags.RIGHT)
+        # AG3 (id 2): its half without RIGHT is 0.19 mag faint; its RIGHT half is not.
+        self.assertAlmostEqual(agMetrics.agCameraZeroPoint(2, 0), 0.190)
+        self.assertAlmostEqual(agMetrics.agCameraZeroPoint(2, right), -0.009)
+        np.testing.assert_allclose(
+            agMetrics.agCameraZeroPoint([0, 0, 5], [0, right, right]), [-0.073, -0.026, -0.069]
+        )
+        self.assertIsInstance(agMetrics.agCameraZeroPoint(2, 0), np.float64)
+        # Negative control: the camera id is 0-based; read as AG number (1-based) AG3 would be AG4's.
+        self.assertFalse(np.isclose(agMetrics.agCameraZeroPoint(3, 0), 0.190, atol=0.05))
+        # Other flags do not change the half; the zero points are about the mean of the cameras.
+        self.assertEqual(agMetrics.agCameraZeroPoint(2, 0x10), agMetrics.agCameraZeroPoint(2, 0))
+        working = [z for i, z in enumerate(agMetrics.AG_CAMERA_ZERO_POINTS_MAG) if i != 1]
+        self.assertAlmostEqual(float(np.mean(working)), 0.0, places=2)
+        # A star on AG3 without RIGHT that reads 0.19 mag faint shows a clear sky with the zero point.
+        color, catalog = 1.2, 16.0
+        measured = catalog + agMetrics.agColorTerm(color) + 0.190
+        zeroPoint = agMetrics.agCameraZeroPoint(2, 0)
+        self.assertAlmostEqual(
+            agMetrics.magnitudesToTransparency(measured, catalog, color, zeroPoint=zeroPoint), 1.0, places=12
+        )
+        self.assertLess(agMetrics.magnitudesToTransparency(measured, catalog, color), 0.85)
+        with self.assertRaises(IndexError):
+            agMetrics.agCameraZeroPoint(6, 0)
 
     def testTransparency(self):
         """A star measured at its catalogue magnitude, after the colour term, shows a clear sky."""
