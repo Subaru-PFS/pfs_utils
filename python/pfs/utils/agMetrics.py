@@ -155,8 +155,8 @@ AG_FOCUS_OFFSET_MM = 0.026
 #: `agColorTerm` adds `AG_COLOR_TERM_OFFSET_MAG` to it.
 AG_COLOR_TERM_COEFFS = (0.06010, -0.19370, 0.40108, 0.0)
 
-#: The colour term's constant (mag): what a star of BP-RP 0 reads under a clear sky, less its
-#: catalogue magnitude, on the mean of the cameras.
+#: The colour term's constant (mag), which carries the clear-sky level: with it a star reads its
+#: catalogue magnitude plus `agColorTerm` under a clear sky, on the mean of the cameras.
 AG_COLOR_TERM_OFFSET_MAG = -0.050
 
 #: Each AG camera's zero point (mag), indexed by ``agc_camera_id`` (AG1 is 0) and then by the
