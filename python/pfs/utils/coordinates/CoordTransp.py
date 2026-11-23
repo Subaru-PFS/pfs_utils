@@ -208,8 +208,8 @@ def convert_out_position(x, y, inr, c, cent, time, za):
         # Add extra distortion after aligning to the rotation center
         dx, dy = c.extra_distortion(za, inr, x, y)
         logging.info("Extra displacement : dx= %s, dy=%s", dx[:11], dy[:11])
-        x = x +dx
-        y = y +dy
+        x = x -dx
+        y = y -dy
         logging.info("After: x= %s, y=%s", x[:11], y[:11])
 
         logging.info("Rotating to PFI...")

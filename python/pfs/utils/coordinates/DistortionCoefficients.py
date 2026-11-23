@@ -104,15 +104,18 @@ pfi_diffscale = 0.999232042
 # correction after the September 2025 run
 # It turned out measurement in June 2025 was wrong.
 # Shift was (x, y) = (-0.006, 0)  mm on the telescope plane
+# November 2026 run
+# Shift was (x, y ) = (0, +0.02) mm on the telescope plane
+# Rotation was +15 arcsec
 # Here, the measured value is written with the same sign.
-inr_tel_offset = 0.124  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001)
+inr_tel_offset = 0.124 + 15/3600.  # deg (0.08 + 0.03 + 0.01 + 0.005 -0.001) 
 # This is applied on PFI plane (before tel->pfi rotation)
-tel_x_offset = -0.006  # + 0.006  mm
-tel_y_offset = 0.
+tel_x_offset = -0.006 + 0.0  # + 0.006  mm
+tel_y_offset = 0. + 0.02
 # This is applied on PFI plane (after tel->pfi rotation)
 # 2026.11 update shift after incident
-pfi_x_offset = -0.115 -0.01  # -0.09 -0.025 mm
-pfi_y_offset = 0.03  -0.01 # 0.01 + 0.02 + 0 mm
+pfi_x_offset = -0.115  # -0.09 -0.025 mm
+pfi_y_offset = 0.03   # 0.01 + 0.02 + 0 mm
 
 # Wavelength used in AG
 wl_ag = 0.62
