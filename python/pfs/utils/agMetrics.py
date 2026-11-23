@@ -58,26 +58,29 @@ magnitude predicts: 10^(-0.4 dmag), where dmag is ics_agccActor's instrumental m
 (``agc_data.estimated_magnitude``) less the catalogue magnitude
 (``pfs_design_agc.guide_star_magnitude``) and a colour term in the star's Gaia BP-RP
 (``pfs_design_agc.guide_star_color``). It is 1 for a clear sky and falls with cloud. The
-colour term and the selection of stars are those of the observatory's tool
-(pfs_obsproc_qa_tools, ``obsCondition.calcTransparency``), whose qadb values these reproduce.
+selection of stars is that of the observatory's tool (pfs_obsproc_qa_tools,
+``obsCondition.calcTransparency``).
 
 ``estimated_magnitude`` has meant several things:
 
 - From ics_agccActor 2.4.0 (``agc_exposure.version_actor``) it comes from the flux in a fixed
-  aperture and is linear in the star's light. Its zero point is nominal: it equals the
-  earlier magnitude for a star of magnitude 16.
+  aperture and is linear in the star's light. The calibration here is for these exposures.
 - From exposure 484418 (2024-05-02) until then it comes from the isophotal flux, which holds a
   smaller share of a fainter star's light: the transparency of the same sky reads 0.72 for
-  stars of magnitude 13 to 14 and 0.83 at 17 to 18. These are the exposures whose qadb
-  values are reproduced.
+  stars of magnitude 13 to 14 and 0.83 at 17 to 18.
 - Earlier exposures hold it with other coefficients, or with an offset of 13.92 mag (March
   2024), or not at all (before April 2023): they give no transparency here.
 
-The transparency is not yet calibrated to read 1 under a clear sky: in 2026 the clearest
-exposures of a night read 0.75 to 0.92, the cameras differ by up to 20%, and the level changes
-by up to 10% from one observing run to the next. ``zeroPoint`` is where a calibration goes
-(the run's zero point plus the camera's). Until there is one, compare an exposure with others
-of the same field, not with 1.
+The calibration is a joint fit to the good matches of the first two nights of agcc 2.4.0 (530k
+stars in 4,200 exposures): each exposure's sky, a zero point for each half of each camera, and
+the colour term. The two nights agree to 0.01 mag in the colour term and 0.015 mag in the
+camera zero points, and what is left has no trend with catalogue magnitude (0.004 mag per mag).
+The colour term carries the clear-sky level: the clearest exposures of the clearer night read
+1, on the mean of the cameras. A star reads 1 on its own camera with that camera's zero point
+(`agCameraZeroPoint`) as ``zeroPoint``; without it the cameras differ by up to 0.26 mag. The
+clear-sky level moves by up to 0.10 mag from one observing run to the next, so a run's clearest
+exposures may read a little off 1. There is no airmass term: the transparency includes the
+extinction, about 0.10 mag per airmass.
 """
 
 from dataclasses import dataclass
@@ -87,6 +90,7 @@ from pfs.utils.datamodel.ag import SourceDetectionFlags
 
 __all__ = [
     "AG_ARCSEC_PER_PIX",
+    "AG_CAMERA_ZERO_POINTS_MAG",
     "AG_COLOR_TERM_COEFFS",
     "AG_COLOR_TERM_OFFSET_MAG",
     "AG_FOCUS_MM_PER_PIX2",
@@ -97,6 +101,7 @@ __all__ = [
     "VARIANCE_PER_AGC_MOMENT",
     "AgImageSize",
     "AgTransparency",
+    "agCameraZeroPoint",
     "agColorTerm",
     "magnitudesToTransparency",
     "momentsToFwhm",
@@ -146,14 +151,29 @@ AG_FOCUS_MM_PER_PIX2 = 0.0043
 AG_FOCUS_OFFSET_MM = 0.026
 
 #: The colour term of the AG instrumental magnitude: a polynomial in Gaia BP-RP, highest power
-#: first (mag), from pfs_obsproc_qa_tools. `agColorTerm` adds `AG_COLOR_TERM_OFFSET_MAG` to it.
-AG_COLOR_TERM_COEFFS = (-0.00578838, 0.02017098, -0.00800825, 0.06147291, 0.12580689, -0.03511767)
+#: first (mag), for ics_agccActor 2.4.0 (see the module docstring). Its constant is zero:
+#: `agColorTerm` adds `AG_COLOR_TERM_OFFSET_MAG` to it.
+AG_COLOR_TERM_COEFFS = (0.06010, -0.19370, 0.40108, 0.0)
 
-#: The constant pfs_obsproc_qa_tools adds to that polynomial (mag).
-AG_COLOR_TERM_OFFSET_MAG = -0.20
+#: The colour term's constant (mag): what a star of BP-RP 0 reads under a clear sky, less its
+#: catalogue magnitude, on the mean of the cameras.
+AG_COLOR_TERM_OFFSET_MAG = -0.050
 
-#: The BP-RP range the colour term is used over; a star outside it gets no transparency.
-_COLOR_RANGE = (-1.0, 3.0)
+#: Each AG camera's zero point (mag), indexed by ``agc_camera_id`` (AG1 is 0) and then by the
+#: detector half: the left half, which has the glass, then the right (`SourceDetectionFlags.RIGHT`).
+#: What a star there reads under a clear sky, less the colour term, about the mean of the cameras.
+#: AG2 did not work when they were fitted and has none.
+AG_CAMERA_ZERO_POINTS_MAG = (
+    (-0.073, -0.026),
+    (0.0, 0.0),
+    (0.190, -0.009),
+    (-0.011, 0.006),
+    (0.027, 0.026),
+    (-0.062, -0.069),
+)
+
+#: The BP-RP range the colour term was fitted over; a star outside it gets no transparency.
+_COLOR_RANGE = (0.5, 2.8)
 
 #: A star's transparency counts only between these: beyond them it is a mismatch, not sky.
 _TRANSPARENCY_RANGE = (0.0, 2.0)
@@ -342,11 +362,40 @@ def agColorTerm(color):
     -------
     term : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
         What to subtract from the instrumental minus the catalogue magnitude: the polynomial
-        `AG_COLOR_TERM_COEFFS` plus `AG_COLOR_TERM_OFFSET_MAG`. NaN outside -1 < BP-RP < 3.
+        `AG_COLOR_TERM_COEFFS` plus `AG_COLOR_TERM_OFFSET_MAG`. NaN outside 0.5 < BP-RP < 2.8,
+        the range it was fitted over.
     """
     color = np.asarray(color, dtype=float)
     inRange = (color > _COLOR_RANGE[0]) & (color < _COLOR_RANGE[1])
     return np.where(inRange, np.polyval(AG_COLOR_TERM_COEFFS, color) + AG_COLOR_TERM_OFFSET_MAG, np.nan)[()]
+
+
+def agCameraZeroPoint(cameraId, flags):
+    """Return the zero point of the AG camera and detector half each spot is on.
+
+    Parameters
+    ----------
+    cameraId : array-like of `int`
+        ``agc_data.agc_camera_id`` (AG1 is 0).
+    flags : array-like of `int`
+        ``agc_data.flags``: `SourceDetectionFlags.RIGHT` picks the right half.
+
+    Returns
+    -------
+    zeroPoint : `numpy.ndarray` of `float`, or `numpy.float64` for scalars
+        `AG_CAMERA_ZERO_POINTS_MAG` for each spot (mag), to pass as ``zeroPoint`` to
+        `magnitudesToTransparency`.
+
+    Raises
+    ------
+    IndexError
+        For a camera id outside 0 to 5.
+    """
+    cameraId = np.asarray(cameraId, dtype=int)
+    half = (np.asarray(flags, dtype=int) & int(SourceDetectionFlags.RIGHT)) != 0
+    if np.any((cameraId < 0) | (cameraId >= len(AG_CAMERA_ZERO_POINTS_MAG))):
+        raise IndexError(f"AG camera ids run from 0 to {len(AG_CAMERA_ZERO_POINTS_MAG) - 1}")
+    return np.asarray(AG_CAMERA_ZERO_POINTS_MAG, dtype=float)[cameraId, half.astype(int)][()]
 
 
 def magnitudesToTransparency(estimatedMagnitude, catalogMagnitude, color, *, zeroPoint=0.0):
@@ -363,8 +412,8 @@ def magnitudesToTransparency(estimatedMagnitude, catalogMagnitude, color, *, zer
         ``pfs_design_agc.guide_star_color``, Gaia BP-RP.
     zeroPoint : `float` or array-like of `float`
         What a star reads, less its catalogue magnitude and colour term, under a clear sky
-        (mag): a calibration's zero point, which may differ per star (by camera). Zero, the
-        default, is no calibration (see the module docstring).
+        (mag), which may differ per star: the camera's, from `agCameraZeroPoint`. Zero, the
+        default, is the mean of the cameras (see the module docstring).
 
     Returns
     -------
